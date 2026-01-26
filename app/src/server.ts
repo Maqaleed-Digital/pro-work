@@ -8,6 +8,7 @@ import {
 import { workspacesRouter } from "./workspaces/workspaces.routes"
 import { podsRouter } from "./pods/pods.routes"
 import { podRoleAssignmentsRouter } from "./pods/podRoleAssignments.routes"
+import { workspacePodsRouter } from "./workspaces/workspacePods.routes"
 
 const app = express()
 app.use(express.json())
@@ -29,6 +30,8 @@ app.get("/health", (_req, res) => {
 })
 
 app.use("/api/workspaces", workspacesRouter)
+app.use("/api/workspaces/:id/pods", workspacePodsRouter)
+
 app.use("/api/pods", podsRouter)
 app.use("/api/pod-role-assignments", podRoleAssignmentsRouter)
 
