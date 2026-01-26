@@ -1,4 +1,5 @@
 import { db, type AuditEvent, type UUID } from "../db/inmemory"
+import { getRequestContext } from "../runtime/requestContext"
 
 function nowIso(): string {
   return new Date().toISOString()
@@ -9,11 +10,16 @@ function genId(): UUID {
 }
 
 export function emitAuditEvent(input: Omit<AuditEvent, "id" | "ts">): AuditEvent {
+  const ctx = getRequestContext()
+  const requestId = input.requestId ?? ctx?.requestId ?? null
+
   const event: AuditEvent = {
     id: genId(),
     ts: nowIso(),
     ...input,
+    requestId,
   }
+
   db.audit.push(event)
   return event
 }
@@ -21,3 +27,4 @@ export function emitAuditEvent(input: Omit<AuditEvent, "id" | "ts">): AuditEvent
 export function listAuditEvents(): AuditEvent[] {
   return [...db.audit]
 }
+
