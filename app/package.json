@@ -1,0 +1,17 @@
+{
+  "name": "prowork-app",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "private": "true",
+  "devDependencies": {
+    "vitest": "^4.0.18"
+  }
+}
