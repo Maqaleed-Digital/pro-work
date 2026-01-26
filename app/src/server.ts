@@ -7,6 +7,7 @@ import {
 } from "./runtime/requestContext"
 import { workspacesRouter } from "./workspaces/workspaces.routes"
 import { podsRouter } from "./pods/pods.routes"
+import { podRoleAssignmentsRouter } from "./pods/podRoleAssignments.routes"
 
 const app = express()
 app.use(express.json())
@@ -29,6 +30,7 @@ app.get("/health", (_req, res) => {
 
 app.use("/api/workspaces", workspacesRouter)
 app.use("/api/pods", podsRouter)
+app.use("/api/pod-role-assignments", podRoleAssignmentsRouter)
 
 const port = process.env.PORT ? Number(process.env.PORT) : 3005
 
