@@ -6,6 +6,7 @@ import {
   resolveOwnerIdFromHeaders,
 } from "./runtime/requestContext"
 import { workspacesRouter } from "./workspaces/workspaces.routes"
+import { podsRouter } from "./pods/pods.routes"
 
 const app = express()
 app.use(express.json())
@@ -27,11 +28,10 @@ app.get("/health", (_req, res) => {
 })
 
 app.use("/api/workspaces", workspacesRouter)
+app.use("/api/pods", podsRouter)
 
 const port = process.env.PORT ? Number(process.env.PORT) : 3005
 
 app.listen(port, () => {
   console.log(`prowork api listening on http://127.0.0.1:${port}`)
 })
-
-
