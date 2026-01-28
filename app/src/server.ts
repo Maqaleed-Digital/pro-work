@@ -1,6 +1,7 @@
 import express from "express";
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import net from "net";
+import crypto from "crypto";
 import { registerAuthSessionsRoutes } from "./auth/authSessions.routes";
 import { registerAuthDevLoginRoutes } from "./auth/authDevLogin.routes";
 
@@ -77,14 +78,219 @@ async function pickPort(): Promise<number> {
   throw new Error("No available port found in preferred/fallback ranges");
 }
 
+function nowIso(): string {
+  return new Date().toISOString();
+}
+
+function requestIdFrom(req: Request): string {
+  const v = req.header("x-request-id");
+  if (v && v.trim().length > 0) return v.trim();
+  return "req_" + crypto.randomUUID();
+}
+
+function jsonError(res: Response, status: number, code: string, message: string, requestId: string) {
+  return res.status(status).json({ ok: false, error: { code, message }, requestId, time: nowIso(), service: "pro-work" });
+}
+
+type LoopJob = {
+  job_id: string;
+  title: string;
+  budget: number;
+  currency: string;
+  created_at: string;
+  status: "open" | "accepted" | "completed" | "paid";
+  accepted_application_id?: string;
+};
+
+type LoopApplication = {
+  application_id: string;
+  job_id: string;
+  seller_id: string;
+  price: number;
+  created_at: string;
+  status: "applied" | "accepted" | "rejected";
+};
+
+type LoopPayout = {
+  payout_id: string;
+  job_id: string;
+  amount: number;
+  currency: string;
+  created_at: string;
+};
+
+type LoopState = {
+  jobs: Map<string, LoopJob>;
+  applications: Map<string, LoopApplication>;
+  payouts: Map<string, LoopPayout>;
+};
+
+function createLoopState(): LoopState {
+  return {
+    jobs: new Map(),
+    applications: new Map(),
+    payouts: new Map()
+  };
+}
+
+function parseNumber(x: any): number | null {
+  if (typeof x === "number" && Number.isFinite(x)) return x;
+  if (typeof x === "string" && x.trim().length > 0) {
+    const n = Number(x);
+    if (Number.isFinite(n)) return n;
+  }
+  return null;
+}
+
 async function main() {
   const app = express();
+  const loop = createLoopState();
 
   app.use(express.json({ limit: "1mb" }));
 
-  app.get("/health", (_req, res) => res.status(200).json({ ok: true }));
+  app.get("/health", (req, res) => {
+    const requestId = requestIdFrom(req);
+    res.status(200).json({ ok: true, service: "pro-work", time: nowIso(), requestId });
+  });
 
-  // Existing route modules
+  app.get("/api/health", (req, res) => {
+    const requestId = requestIdFrom(req);
+    res.status(200).json({ ok: true, service: "pro-work", time: nowIso(), requestId });
+  });
+
+  app.post("/api/loop/job", (req, res) => {
+    const requestId = requestIdFrom(req);
+    const title = typeof req.body?.title === "string" ? req.body.title.trim() : "";
+    const budget = parseNumber(req.body?.budget);
+    const currency = typeof req.body?.currency === "string" && req.body.currency.trim().length > 0 ? req.body.currency.trim() : "USD";
+
+    if (!title) return jsonError(res, 400, "invalid_request", "title is required", requestId);
+    if (budget === null || budget <= 0) return jsonError(res, 400, "invalid_request", "budget must be a positive number", requestId);
+
+    const job_id = crypto.randomUUID();
+    const job: LoopJob = {
+      job_id,
+      title,
+      budget,
+      currency,
+      created_at: nowIso(),
+      status: "open"
+    };
+
+    loop.jobs.set(job_id, job);
+
+    return res.status(201).json({ ok: true, job_id, job, requestId, time: nowIso(), service: "pro-work" });
+  });
+
+  app.post("/api/loop/apply", (req, res) => {
+    const requestId = requestIdFrom(req);
+    const job_id = typeof req.body?.job_id === "string" ? req.body.job_id.trim() : "";
+    const seller_id = typeof req.body?.seller_id === "string" ? req.body.seller_id.trim() : "";
+    const price = parseNumber(req.body?.price);
+
+    if (!job_id) return jsonError(res, 400, "invalid_request", "job_id is required", requestId);
+    if (!seller_id) return jsonError(res, 400, "invalid_request", "seller_id is required", requestId);
+    if (price === null || price <= 0) return jsonError(res, 400, "invalid_request", "price must be a positive number", requestId);
+
+    const job = loop.jobs.get(job_id);
+    if (!job) return jsonError(res, 404, "not_found", "job not found", requestId);
+    if (job.status !== "open") return jsonError(res, 409, "conflict", "job is not open for applications", requestId);
+
+    const application_id = crypto.randomUUID();
+    const appRec: LoopApplication = {
+      application_id,
+      job_id,
+      seller_id,
+      price,
+      created_at: nowIso(),
+      status: "applied"
+    };
+
+    loop.applications.set(application_id, appRec);
+
+    return res.status(201).json({ ok: true, application_id, application: appRec, requestId, time: nowIso(), service: "pro-work" });
+  });
+
+  app.post("/api/loop/accept", (req, res) => {
+    const requestId = requestIdFrom(req);
+    const job_id = typeof req.body?.job_id === "string" ? req.body.job_id.trim() : "";
+    const application_id = typeof req.body?.application_id === "string" ? req.body.application_id.trim() : "";
+
+    if (!job_id) return jsonError(res, 400, "invalid_request", "job_id is required", requestId);
+    if (!application_id) return jsonError(res, 400, "invalid_request", "application_id is required", requestId);
+
+    const job = loop.jobs.get(job_id);
+    if (!job) return jsonError(res, 404, "not_found", "job not found", requestId);
+    if (job.status !== "open") return jsonError(res, 409, "conflict", "job is not open", requestId);
+
+    const appRec = loop.applications.get(application_id);
+    if (!appRec) return jsonError(res, 404, "not_found", "application not found", requestId);
+    if (appRec.job_id !== job_id) return jsonError(res, 409, "conflict", "application does not belong to job", requestId);
+    if (appRec.status !== "applied") return jsonError(res, 409, "conflict", "application is not in applied status", requestId);
+
+    for (const a of loop.applications.values()) {
+      if (a.job_id === job_id && a.application_id !== application_id && a.status === "applied") {
+        a.status = "rejected";
+        loop.applications.set(a.application_id, a);
+      }
+    }
+
+    appRec.status = "accepted";
+    loop.applications.set(application_id, appRec);
+
+    job.status = "accepted";
+    job.accepted_application_id = application_id;
+    loop.jobs.set(job_id, job);
+
+    return res.status(200).json({ ok: true, job_id, application_id, job, application: appRec, requestId, time: nowIso(), service: "pro-work" });
+  });
+
+  app.post("/api/loop/complete", (req, res) => {
+    const requestId = requestIdFrom(req);
+    const job_id = typeof req.body?.job_id === "string" ? req.body.job_id.trim() : "";
+
+    if (!job_id) return jsonError(res, 400, "invalid_request", "job_id is required", requestId);
+
+    const job = loop.jobs.get(job_id);
+    if (!job) return jsonError(res, 404, "not_found", "job not found", requestId);
+    if (job.status !== "accepted") return jsonError(res, 409, "conflict", "job must be accepted before completion", requestId);
+
+    job.status = "completed";
+    loop.jobs.set(job_id, job);
+
+    return res.status(200).json({ ok: true, job_id, job, requestId, time: nowIso(), service: "pro-work" });
+  });
+
+  app.post("/api/loop/payout", (req, res) => {
+    const requestId = requestIdFrom(req);
+    const job_id = typeof req.body?.job_id === "string" ? req.body.job_id.trim() : "";
+    const amount = parseNumber(req.body?.amount);
+    const currency = typeof req.body?.currency === "string" && req.body.currency.trim().length > 0 ? req.body.currency.trim() : "USD";
+
+    if (!job_id) return jsonError(res, 400, "invalid_request", "job_id is required", requestId);
+    if (amount === null || amount <= 0) return jsonError(res, 400, "invalid_request", "amount must be a positive number", requestId);
+
+    const job = loop.jobs.get(job_id);
+    if (!job) return jsonError(res, 404, "not_found", "job not found", requestId);
+    if (job.status !== "completed") return jsonError(res, 409, "conflict", "job must be completed before payout", requestId);
+
+    const payout_id = crypto.randomUUID();
+    const payout: LoopPayout = {
+      payout_id,
+      job_id,
+      amount,
+      currency,
+      created_at: nowIso()
+    };
+
+    loop.payouts.set(payout_id, payout);
+
+    job.status = "paid";
+    loop.jobs.set(job_id, job);
+
+    return res.status(201).json({ ok: true, payout_id, payout, job, requestId, time: nowIso(), service: "pro-work" });
+  });
+
   const podsRoutes = await import("./pods/pods.routes");
   const podRoleAssignmentsRoutes = await import("./pods/podRoleAssignments.routes");
   const workspacesRoutes = await import("./workspaces/workspaces.routes");
@@ -95,10 +301,7 @@ async function main() {
   tryRegisterRoutes(app, workspacesRoutes, "workspaces.routes");
   tryRegisterRoutes(app, workspacePodsRoutes, "workspacePods.routes");
 
-  // Sprint S4 auth session routes
   registerAuthSessionsRoutes(app);
-
-  // Sprint S3 bootstrap (DEV ONLY, gated by PROWORK_DEV_AUTH=true)
   registerAuthDevLoginRoutes(app);
 
   const port = await pickPort();
@@ -106,6 +309,7 @@ async function main() {
   app.listen(port, "127.0.0.1", () => {
     console.log("prowork-app listening on http://127.0.0.1:" + port);
     console.log("health: curl -sS http://127.0.0.1:" + port + "/health");
+    console.log("api health: curl -sS http://127.0.0.1:" + port + "/api/health");
   });
 }
 
