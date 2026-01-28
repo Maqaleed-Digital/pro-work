@@ -4,6 +4,7 @@ import net from "net";
 import crypto from "crypto";
 import { registerAuthSessionsRoutes } from "./auth/authSessions.routes";
 import { registerAuthDevLoginRoutes } from "./auth/authDevLogin.routes";
+import { i18nMiddleware } from "./i18n/i18n.middleware";
 
 type RouteModule = Record<string, any>;
 
@@ -147,6 +148,7 @@ async function main() {
   const loop = createLoopState();
 
   app.use(express.json({ limit: "1mb" }));
+  app.use(i18nMiddleware);
 
   app.get("/health", (req, res) => {
     const requestId = requestIdFrom(req);
@@ -156,6 +158,22 @@ async function main() {
   app.get("/api/health", (req, res) => {
     const requestId = requestIdFrom(req);
     res.status(200).json({ ok: true, service: "pro-work", time: nowIso(), requestId });
+  });
+
+  app.get("/api/i18n/ping", (req, res) => {
+    const requestId = requestIdFrom(req);
+    const locale = String(res.locals.locale ?? "en");
+    const dir = String(res.locals.dir ?? "ltr");
+    const msg = typeof res.locals.t === "function" ? res.locals.t("i18n.hello") : "Hello";
+    res.status(200).json({
+      ok: true,
+      locale,
+      dir,
+      message: msg,
+      requestId,
+      time: nowIso(),
+      service: "pro-work"
+    });
   });
 
   app.post("/api/loop/job", (req, res) => {
@@ -310,6 +328,7 @@ async function main() {
     console.log("prowork-app listening on http://127.0.0.1:" + port);
     console.log("health: curl -sS http://127.0.0.1:" + port + "/health");
     console.log("api health: curl -sS http://127.0.0.1:" + port + "/api/health");
+    console.log("i18n ping: curl -sS http://127.0.0.1:" + port + "/api/i18n/ping");
   });
 }
 

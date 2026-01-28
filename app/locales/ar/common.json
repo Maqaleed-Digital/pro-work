@@ -1,0 +1,8 @@
+{
+  "app.name": "بروورك",
+  "i18n.hello": "مرحباً",
+  "i18n.locale": "ar",
+  "i18n.dir": "rtl",
+  "health.ok": "حسناً",
+  "errors.invalid_request": "طلب غير صالح"
+}
