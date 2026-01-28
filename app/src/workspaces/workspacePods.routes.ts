@@ -1,38 +1,63 @@
-import { Router } from "express"
-import { getRequestContext } from "../runtime/requestContext"
-import { listWorkspacePods } from "./workspacePods.service"
+import { Router, type Request, type Response } from "express";
+import { getRequestContext } from "../runtime/requestContext";
+import { listWorkspacePods } from "./workspacePods.service";
 
-function ctxOrThrow() {
-  const ctx = getRequestContext()
-  if (!ctx) throw new Error("request context missing")
-  return ctx
+type IdParams = {
+  id: string;
+};
+
+function pickString(v: unknown): string | null {
+  return typeof v === "string" && v.length > 0 ? v : null;
 }
 
-function ok<T>(res: any, body: T) {
-  res.status(200).json(body)
+function resolveOwnerId(): string | null {
+  const ctx = getRequestContext();
+
+  const bag = ctx as unknown as Record<string, unknown>;
+
+  return (
+    pickString(bag.ownerId) ??
+    pickString(bag.owner_id) ??
+    pickString(bag.actorId) ??
+    pickString(bag.actor_id) ??
+    pickString(bag.userId) ??
+    pickString(bag.user_id) ??
+    null
+  );
 }
 
-function badRequest(res: any, message: string) {
-  res.status(400).json({ error: message })
-}
+export const workspacePodsRouter = Router();
 
-function notFound(res: any) {
-  res.status(404).json({ error: "not found" })
-}
+workspacePodsRouter.get(
+  "/api/workspaces/:id/pods",
+  (req: Request<IdParams>, res: Response) => {
+    const workspaceIdRaw = req.params.id;
+    const ownerIdRaw = resolveOwnerId();
 
-export const workspacePodsRouter = Router({ mergeParams: true })
+    if (!ownerIdRaw) {
+      return res.status(401).json({
+        ok: false,
+        error: { code: "unauthorized", message: "missing owner context" },
+        time: new Date().toISOString(),
+        service: "pro-work"
+      });
+    }
 
-workspacePodsRouter.get("/", (req, res) => {
-  try {
-    const ctx = ctxOrThrow()
-    const workspaceId = req.params.id
-    const includeArchivedPods = req.query?.includeArchivedPods === "true"
+    type OwnerId = Parameters<typeof listWorkspacePods>[0];
+    type WorkspaceId = Parameters<typeof listWorkspacePods>[1];
 
-    const pods = listWorkspacePods(ctx.ownerId, workspaceId, { includeArchivedPods })
-    ok(res, pods)
-  } catch (e: any) {
-    const msg = e?.message ?? "error"
-    if (msg === "workspace not found") return notFound(res)
-    badRequest(res, msg)
+    const ownerId = ownerIdRaw as unknown as OwnerId;
+    const workspaceId = workspaceIdRaw as unknown as WorkspaceId;
+
+    const pods = listWorkspacePods(ownerId, workspaceId);
+
+    return res.status(200).json({
+      ok: true,
+      owner_id: ownerIdRaw,
+      workspace_id: workspaceIdRaw,
+      pods,
+      time: new Date().toISOString(),
+      service: "pro-work"
+    });
   }
-})
+);
