@@ -14,3 +14,8 @@ coverage
 !.env.example
 
 evidence
+
+exports/
+evidence/
+*.log
+.DS_Store
