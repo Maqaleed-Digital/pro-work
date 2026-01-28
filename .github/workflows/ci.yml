@@ -1,0 +1,99 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install
+        run: |
+          set -euo pipefail
+          if [ -f package-lock.json ]; then
+            npm ci
+          elif [ -f package.json ]; then
+            npm install
+          else
+            echo "No package.json found; CI has nothing to install."
+            exit 0
+          fi
+
+      - name: Show scripts
+        run: |
+          set -euo pipefail
+          if [ -f package.json ]; then
+            node -e "const p=require('./package.json'); console.log('scripts:', p.scripts || {});"
+          fi
+
+      - name: Lint (if script exists)
+        run: |
+          set -euo pipefail
+          if [ -f package.json ]; then
+            HAS=$(node -e "const p=require('./package.json'); console.log(p.scripts && p.scripts.lint ? 'yes' : 'no')")
+            if [ "$HAS" = "yes" ]; then
+              npm run lint
+            else
+              echo "No lint script; skipping."
+            fi
+          fi
+
+      - name: Typecheck (if script exists)
+        run: |
+          set -euo pipefail
+          if [ -f package.json ]; then
+            HAS=$(node -e "const p=require('./package.json'); console.log(p.scripts && (p.scripts.typecheck || p.scripts['check:types']) ? 'yes' : 'no')")
+            if [ "$HAS" = "yes" ]; then
+              if node -e "const p=require('./package.json'); process.exit(p.scripts && p.scripts.typecheck ? 0 : 1)"; then
+                npm run typecheck
+              else
+                npm run check:types
+              fi
+            else
+              echo "No typecheck script; skipping."
+            fi
+          fi
+
+      - name: Test (if script exists)
+        run: |
+          set -euo pipefail
+          if [ -f package.json ]; then
+            HAS=$(node -e "const p=require('./package.json'); console.log(p.scripts && p.scripts.test ? 'yes' : 'no')")
+            if [ "$HAS" = "yes" ]; then
+              npm test
+            else
+              echo "No test script; skipping."
+            fi
+          fi
+
+      - name: Upload workspace logs (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-workspace
+          path: |
+            .
+          if-no-files-found: ignore
+          retention-days: 7
