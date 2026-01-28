@@ -23,77 +23,87 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Detect Node project
+        id: detect
+        run: |
+          set -euo pipefail
+          if [ -f package.json ]; then
+            echo "is_node=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_node=no" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Node (only if Node project)
+        if: steps.detect.outputs.is_node == 'yes'
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: npm
 
-      - name: Install
+      - name: Install (only if Node project)
+        if: steps.detect.outputs.is_node == 'yes'
         run: |
           set -euo pipefail
           if [ -f package-lock.json ]; then
             npm ci
-          elif [ -f package.json ]; then
-            npm install
           else
-            echo "No package.json found; CI has nothing to install."
-            exit 0
+            npm install
           fi
 
-      - name: Show scripts
+      - name: Show scripts (only if Node project)
+        if: steps.detect.outputs.is_node == 'yes'
         run: |
           set -euo pipefail
-          if [ -f package.json ]; then
-            node -e "const p=require('./package.json'); console.log('scripts:', p.scripts || {});"
-          fi
+          node -e "const p=require('./package.json'); console.log('scripts:', p.scripts || {});"
 
       - name: Lint (if script exists)
+        if: steps.detect.outputs.is_node == 'yes'
         run: |
           set -euo pipefail
-          if [ -f package.json ]; then
-            HAS=$(node -e "const p=require('./package.json'); console.log(p.scripts && p.scripts.lint ? 'yes' : 'no')")
-            if [ "$HAS" = "yes" ]; then
-              npm run lint
-            else
-              echo "No lint script; skipping."
-            fi
+          HAS=$(node -e "const p=require('./package.json'); console.log(p.scripts && p.scripts.lint ? 'yes' : 'no')")
+          if [ "$HAS" = "yes" ]; then
+            npm run lint
+          else
+            echo "No lint script; skipping."
           fi
 
       - name: Typecheck (if script exists)
+        if: steps.detect.outputs.is_node == 'yes'
         run: |
           set -euo pipefail
-          if [ -f package.json ]; then
-            HAS=$(node -e "const p=require('./package.json'); console.log(p.scripts && (p.scripts.typecheck || p.scripts['check:types']) ? 'yes' : 'no')")
-            if [ "$HAS" = "yes" ]; then
-              if node -e "const p=require('./package.json'); process.exit(p.scripts && p.scripts.typecheck ? 0 : 1)"; then
-                npm run typecheck
-              else
-                npm run check:types
-              fi
+          HAS=$(node -e "const p=require('./package.json'); console.log(p.scripts && (p.scripts.typecheck || p.scripts['check:types']) ? 'yes' : 'no')")
+          if [ "$HAS" = "yes" ]; then
+            if node -e "const p=require('./package.json'); process.exit(p.scripts && p.scripts.typecheck ? 0 : 1)"; then
+              npm run typecheck
             else
-              echo "No typecheck script; skipping."
+              npm run check:types
             fi
+          else
+            echo "No typecheck script; skipping."
           fi
 
       - name: Test (if script exists)
+        if: steps.detect.outputs.is_node == 'yes'
         run: |
           set -euo pipefail
-          if [ -f package.json ]; then
-            HAS=$(node -e "const p=require('./package.json'); console.log(p.scripts && p.scripts.test ? 'yes' : 'no')")
-            if [ "$HAS" = "yes" ]; then
-              npm test
-            else
-              echo "No test script; skipping."
-            fi
+          HAS=$(node -e "const p=require('./package.json'); console.log(p.scripts && p.scripts.test ? 'yes' : 'no')")
+          if [ "$HAS" = "yes" ]; then
+            npm test
+          else
+            echo "No test script; skipping."
           fi
 
-      - name: Upload workspace logs (always)
+      - name: Non-Node repo note
+        if: steps.detect.outputs.is_node == 'no'
+        run: |
+          echo "No package.json detected. CI Node checks are not applicable. Passing."
+
+      - name: Upload workflow logs (always)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ci-workspace
+          name: ci-logs
           path: |
-            .
+            ${{ runner.temp }}
           if-no-files-found: ignore
           retention-days: 7
