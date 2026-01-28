@@ -16,6 +16,5 @@ coverage
 evidence
 
 exports/
-evidence/
 *.log
 .DS_Store
