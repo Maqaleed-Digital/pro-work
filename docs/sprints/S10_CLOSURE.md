@@ -9,4 +9,7 @@ Key outcomes:
 - Helper scripts added: ports:kill + dev:strict
 
 Evidence root:
-- /Users/waheebmahmoud/dev/pro-work/evidence/sprintS10/20260129T144541Z
+- /Users/waheebmahmoud/dev/pro-work/evidence/sprintS10/20260129T162740Z
+
+Recheck evidence root:
+- /Users/waheebmahmoud/dev/pro-work/evidence/sprintS10/recheck_20260129T163222Z
