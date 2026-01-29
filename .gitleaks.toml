@@ -1,0 +1,26 @@
+title = "pro-work gitleaks baseline"
+
+[allowlist]
+description = "Allow common false positives"
+paths = [
+  '''^docs/''',
+  '''^evidence/'''
+]
+
+[[rules]]
+id = "generic-api-key"
+description = "Generic API key patterns"
+regex = '''(?i)(api[_-]?key|secret|token|private[_-]?key)\s*[:=]\s*['"]?[0-9a-zA-Z_\-]{16,}['"]?'''
+tags = ["key", "token"]
+
+[[rules]]
+id = "aws-access-key"
+description = "AWS access key"
+regex = '''AKIA[0-9A-Z]{16}'''
+tags = ["aws"]
+
+[[rules]]
+id = "private-key-block"
+description = "Private key block"
+regex = '''-----BEGIN(.*?)PRIVATE KEY-----'''
+tags = ["key"]

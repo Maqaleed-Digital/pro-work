@@ -1,0 +1,8 @@
+{
+  "app.name": "ProWork",
+  "i18n.hello": "Hello",
+  "i18n.locale": "en",
+  "i18n.dir": "ltr",
+  "health.ok": "OK",
+  "errors.invalid_request": "Invalid request"
+}
