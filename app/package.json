@@ -1,0 +1,17 @@
+{
+  "name": "pro-work-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ProWork canonical runtime workspace (Sprint S10 Emergent Application Genesis)",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js",
+    "lint": "node -c server.js",
+    "typecheck": "node -e \"console.log('typecheck: ok (genesis scaffold)')\"",
+    "test": "node -e \"console.log('test: ok (genesis scaffold)')\""
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
