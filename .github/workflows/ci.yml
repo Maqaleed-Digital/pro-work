@@ -5,105 +5,120 @@ on:
   push:
     branches:
       - main
-      - master
-
-permissions:
-  contents: read
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build-test:
+  lint:
+    name: lint
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-
+    defaults:
+      run:
+        working-directory: app
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Detect Node project
-        id: detect
-        run: |
-          set -euo pipefail
-          if [ -f package.json ]; then
-            echo "is_node=yes" >> "$GITHUB_OUTPUT"
-          else
-            echo "is_node=no" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Setup Node (only if Node project)
-        if: steps.detect.outputs.is_node == 'yes'
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: 20
           cache: npm
+          cache-dependency-path: app/package-lock.json
 
-      - name: Install (only if Node project)
-        if: steps.detect.outputs.is_node == 'yes'
+      - name: Install
         run: |
-          set -euo pipefail
           if [ -f package-lock.json ]; then
             npm ci
           else
             npm install
           fi
 
-      - name: Show scripts (only if Node project)
-        if: steps.detect.outputs.is_node == 'yes'
-        run: |
-          set -euo pipefail
-          node -e "const p=require('./package.json'); console.log('scripts:', p.scripts || {});"
+      - name: Lint
+        run: npm run lint
 
-      - name: Lint (if script exists)
-        if: steps.detect.outputs.is_node == 'yes'
-        run: |
-          set -euo pipefail
-          HAS=$(node -e "const p=require('./package.json'); console.log(p.scripts && p.scripts.lint ? 'yes' : 'no')")
-          if [ "$HAS" = "yes" ]; then
-            npm run lint
-          else
-            echo "No lint script; skipping."
-          fi
+  typecheck:
+    name: typecheck
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Typecheck (if script exists)
-        if: steps.detect.outputs.is_node == 'yes'
-        run: |
-          set -euo pipefail
-          HAS=$(node -e "const p=require('./package.json'); console.log(p.scripts && (p.scripts.typecheck || p.scripts['check:types']) ? 'yes' : 'no')")
-          if [ "$HAS" = "yes" ]; then
-            if node -e "const p=require('./package.json'); process.exit(p.scripts && p.scripts.typecheck ? 0 : 1)"; then
-              npm run typecheck
-            else
-              npm run check:types
-            fi
-          else
-            echo "No typecheck script; skipping."
-          fi
-
-      - name: Test (if script exists)
-        if: steps.detect.outputs.is_node == 'yes'
-        run: |
-          set -euo pipefail
-          HAS=$(node -e "const p=require('./package.json'); console.log(p.scripts && p.scripts.test ? 'yes' : 'no')")
-          if [ "$HAS" = "yes" ]; then
-            npm test
-          else
-            echo "No test script; skipping."
-          fi
-
-      - name: Non-Node repo note
-        if: steps.detect.outputs.is_node == 'no'
-        run: |
-          echo "No package.json detected. CI Node checks are not applicable. Passing."
-
-      - name: Upload workflow logs (always)
-        if: always()
-        uses: actions/upload-artifact@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          name: ci-logs
-          path: |
-            ${{ runner.temp }}
-          if-no-files-found: ignore
-          retention-days: 7
+          node-version: 20
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      - name: Typecheck
+        run: npm run typecheck
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      - name: Test
+        run: npm test --silent
+
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      - name: Build (script not defined yet)
+        run: npm run typecheck
