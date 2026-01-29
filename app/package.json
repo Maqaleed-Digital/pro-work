@@ -7,6 +7,8 @@
   "scripts": {
     "dev": "node server.js",
     "start": "node server.js",
+    "dev:strict": "STRICT_PORT=1 node server.js",
+    "ports:kill": "bash ./scripts/ports_kill.sh",
     "lint": "node -c server.js",
     "typecheck": "node -e \"console.log('typecheck: ok (genesis scaffold)')\"",
     "test": "node -e \"console.log('test: ok (genesis scaffold)')\""
