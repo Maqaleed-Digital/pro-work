@@ -7,3 +7,4 @@ UNTRACKED app/.runtime
 UNTRACKED exports
 UNTRACKED evidence
 UNTRACKED .wip
+TRACKED app/scripts/ports_kill.sh
