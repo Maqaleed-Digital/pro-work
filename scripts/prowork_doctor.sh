@@ -1,6 +1,8 @@
 set -euo pipefail
 
-ROOT="/Users/waheebmahmoud/dev/pro-work"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
 REQ="${ROOT}/config/required_paths.txt"
 POL="${ROOT}/config/path_policies.txt"
 
