@@ -1,0 +1,21 @@
+name: prowork-doctor
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - sprint/**
+
+jobs:
+  doctor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: ProWork Doctor
+        shell: bash
+        run: |
+          chmod +x "scripts/prowork_doctor.sh"
+          bash "scripts/prowork_doctor.sh"

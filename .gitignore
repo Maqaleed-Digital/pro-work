@@ -1,0 +1,18 @@
+# --- ProWork mandatory ignores (S13 baseline) ---
+
+# Generated evidence & artifacts
+exports/
+evidence/
+.wip/
+
+# Runtime-generated app data
+app/.runtime/
+
+# Node artifacts
+node_modules/
+npm-debug.log*
+package-lock.json
+
+# OS / editor noise
+.DS_Store
+.vscode/
