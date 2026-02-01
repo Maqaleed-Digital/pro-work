@@ -1,0 +1,31 @@
+{
+  "version": "1.0.0",
+  "sprint": "S13",
+  "mode": "freeze",
+  "frozen_paths": [
+    "app/auth",
+    "app/rbac",
+    "app/audit",
+    "app/tenant",
+    "lib/auth",
+    "lib/rbac",
+    "lib/audit",
+    "lib/tenant",
+    "docs/governance"
+  ],
+  "override": {
+    "enabled": true,
+    "required_files_any": [
+      "governance/OVERRIDE.json"
+    ],
+    "required_fields": [
+      "reason",
+      "owner",
+      "date",
+      "scope",
+      "risk",
+      "rollback",
+      "evidence"
+    ]
+  }
+}

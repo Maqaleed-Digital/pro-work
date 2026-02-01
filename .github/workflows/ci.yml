@@ -1,0 +1,73 @@
+name: ci
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+jobs:
+  governance_enforce:
+    runs-on: ubuntu-latest
+    name: governance_enforce
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: setup-node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: governance enforce
+        run: |
+          chmod +x "scripts/governance_enforce.sh" || true
+          bash "./scripts/governance_enforce.sh"
+
+  lint:
+    runs-on: ubuntu-latest
+    name: lint
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: setup-node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: install
+        working-directory: app
+        run: npm ci
+      - name: lint
+        working-directory: app
+        run: npm run lint
+
+  typecheck:
+    runs-on: ubuntu-latest
+    name: typecheck
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: setup-node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: install
+        working-directory: app
+        run: npm ci
+      - name: typecheck
+        working-directory: app
+        run: npm run typecheck
+
+  test:
+    runs-on: ubuntu-latest
+    name: test
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: setup-node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: install
+        working-directory: app
+        run: npm ci
+      - name: test
+        working-directory: app
+        run: npm test
