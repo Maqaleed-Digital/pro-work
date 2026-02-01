@@ -177,6 +177,55 @@ function updateContractIntent(ci, patch) {
   return next
 }
 
+function normalizeLimit(v) {
+  const n = Number(v)
+  if (!Number.isFinite(n)) return 50
+  const i = Math.floor(n)
+  if (i <= 0) return 50
+  if (i > 200) return 200
+  return i
+}
+
+function listContractIntents(query) {
+  const allowed = new Set(["job_id", "proposal_id", "status", "limit", "cursor"])
+  for (const k of query.keys()) {
+    if (!allowed.has(k)) {
+      return { ok: false, error: { code: "VALIDATION_ERROR", message: `query.${k}: Unsupported query param` }, status: 422 }
+    }
+  }
+
+  const jobId = query.get("job_id")
+  const proposalId = query.get("proposal_id")
+  const status = query.get("status")
+  const limit = normalizeLimit(query.get("limit"))
+  const cursor = query.get("cursor")
+
+  let items = Array.from(store.contractIntents.values())
+
+  if (jobId && String(jobId).trim() !== "") {
+    items = items.filter(x => String(x.job_id) === String(jobId))
+  }
+  if (proposalId && String(proposalId).trim() !== "") {
+    items = items.filter(x => String(x.proposal_id) === String(proposalId))
+  }
+  if (status && String(status).trim() !== "") {
+    items = items.filter(x => String(x.status) === String(status))
+  }
+
+  items.sort((a, b) => {
+    const aa = String(a.created_at || "")
+    const bb = String(b.created_at || "")
+    if (aa === bb) return 0
+    return aa > bb ? -1 : 1
+  })
+
+  if (cursor && String(cursor).trim() !== "") {
+    items = items.filter(x => String(x.created_at || "") < String(cursor))
+  }
+
+  return { ok: true, data: items.slice(0, limit) }
+}
+
 function matchRoute(method, pathname) {
   const m = method.toUpperCase()
 
@@ -204,6 +253,11 @@ function matchRoute(method, pathname) {
   }
 
   if (m === "POST" && pathname === "/api/contracts/intent") return { name: "contracts.intent.create", params: {} }
+
+  if (m === "GET" && pathname === "/api/contracts/intent") return { name: "contracts.intent.list", params: {} }
+
+  const ciGetMatch = pathname.match(/^\/api\/contracts\/intent\/([^/]+)$/)
+  if (m === "GET" && ciGetMatch) return { name: "contracts.intent.get", params: { id: ciGetMatch[1] } }
 
   const ciSendMatch = pathname.match(/^\/api\/contracts\/intent\/([^/]+)\/send$/)
   if (m === "POST" && ciSendMatch) return { name: "contracts.intent.send", params: { id: ciSendMatch[1] } }
@@ -387,6 +441,18 @@ const server = http.createServer(async (req, res) => {
         terms_summary: body.terms_summary
       })
       return ok(res, ci, 201)
+    }
+
+    if (route.name === "contracts.intent.list") {
+      const out = listContractIntents(url.searchParams)
+      if (!out.ok) return fail(res, out.error.code, out.error.message, out.status || 422)
+      return ok(res, out.data, 200)
+    }
+
+    if (route.name === "contracts.intent.get") {
+      const ci = getContractIntent(route.params.id)
+      if (!ci) return fail(res, "NOT_FOUND", "Contract intent not found", 404)
+      return ok(res, ci, 200)
     }
 
     if (route.name === "contracts.intent.send") {
