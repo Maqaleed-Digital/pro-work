@@ -103,6 +103,13 @@ function getJob(id) {
   return store.jobs.get(id) || null
 }
 
+function updateJob(job, patch) {
+  const t = nowIso()
+  const next = { ...job, ...patch, updated_at: t }
+  store.jobs.set(next.id, next)
+  return next
+}
+
 function createProposal(jobId, input) {
   const id = genId("proposal")
   const t = nowIso()
@@ -131,6 +138,17 @@ function getProposal(id) {
   return store.proposals.get(id) || null
 }
 
+function updateProposal(proposal, patch) {
+  const t = nowIso()
+  const next = { ...proposal, ...patch, updated_at: t }
+  store.proposals.set(next.id, next)
+  const list = store.proposalsByJob.get(next.job_id) || []
+  const idx = list.findIndex(p => p.id === next.id)
+  if (idx >= 0) list[idx] = next
+  store.proposalsByJob.set(next.job_id, list)
+  return next
+}
+
 function createContractIntent(input) {
   const id = genId("contract_intent")
   const t = nowIso()
@@ -148,6 +166,17 @@ function createContractIntent(input) {
   return ci
 }
 
+function getContractIntent(id) {
+  return store.contractIntents.get(id) || null
+}
+
+function updateContractIntent(ci, patch) {
+  const t = nowIso()
+  const next = { ...ci, ...patch, updated_at: t }
+  store.contractIntents.set(next.id, next)
+  return next
+}
+
 function matchRoute(method, pathname) {
   const m = method.toUpperCase()
 
@@ -157,11 +186,30 @@ function matchRoute(method, pathname) {
   const jobIdMatch = pathname.match(/^\/api\/jobs\/([^/]+)$/)
   if (m === "GET" && jobIdMatch) return { name: "jobs.get", params: { job_id: jobIdMatch[1] } }
 
+  const jobCloseMatch = pathname.match(/^\/api\/jobs\/([^/]+)\/close$/)
+  if (m === "POST" && jobCloseMatch) return { name: "jobs.close", params: { job_id: jobCloseMatch[1] } }
+
   const proposalsMatch = pathname.match(/^\/api\/jobs\/([^/]+)\/proposals$/)
   if (m === "POST" && proposalsMatch) return { name: "proposals.create", params: { job_id: proposalsMatch[1] } }
   if (m === "GET" && proposalsMatch) return { name: "proposals.list", params: { job_id: proposalsMatch[1] } }
 
-  if (m === "POST" && pathname === "/api/contracts/intent") return { name: "contracts.intent", params: {} }
+  const proposalAcceptMatch = pathname.match(/^\/api\/jobs\/([^/]+)\/proposals\/([^/]+)\/accept$/)
+  if (m === "POST" && proposalAcceptMatch) {
+    return { name: "proposals.accept", params: { job_id: proposalAcceptMatch[1], proposal_id: proposalAcceptMatch[2] } }
+  }
+
+  const proposalRejectMatch = pathname.match(/^\/api\/jobs\/([^/]+)\/proposals\/([^/]+)\/reject$/)
+  if (m === "POST" && proposalRejectMatch) {
+    return { name: "proposals.reject", params: { job_id: proposalRejectMatch[1], proposal_id: proposalRejectMatch[2] } }
+  }
+
+  if (m === "POST" && pathname === "/api/contracts/intent") return { name: "contracts.intent.create", params: {} }
+
+  const ciSendMatch = pathname.match(/^\/api\/contracts\/intent\/([^/]+)\/send$/)
+  if (m === "POST" && ciSendMatch) return { name: "contracts.intent.send", params: { id: ciSendMatch[1] } }
+
+  const ciAcceptMatch = pathname.match(/^\/api\/contracts\/intent\/([^/]+)\/accept$/)
+  if (m === "POST" && ciAcceptMatch) return { name: "contracts.intent.accept", params: { id: ciAcceptMatch[1] } }
 
   return null
 }
@@ -178,6 +226,10 @@ function health(res) {
   ok(res, { service: "pro-work", health: "ok", time: nowIso() }, 200)
 }
 
+function invalidState(res, message) {
+  fail(res, "INVALID_STATE", message, 409)
+}
+
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host || HOST}`)
@@ -186,10 +238,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && pathname === "/health") return health(res)
 
     const route = matchRoute(req.method || "GET", pathname)
-    if (!route) {
-      if (pathname.startsWith("/api/")) return notFound(res)
-      return notFound(res)
-    }
+    if (!route) return notFound(res)
 
     if (route.name === "jobs.create") {
       const body = await readJson(req, res)
@@ -213,6 +262,17 @@ const server = http.createServer(async (req, res) => {
       const job = getJob(route.params.job_id)
       if (!job) return fail(res, "NOT_FOUND", "Job not found", 404)
       return ok(res, job, 200)
+    }
+
+    if (route.name === "jobs.close") {
+      await readJson(req, res).catch(() => null)
+      const job = getJob(route.params.job_id)
+      if (!job) return fail(res, "NOT_FOUND", "Job not found", 404)
+      if (job.status !== "open") {
+        return invalidState(res, `Cannot close job in '${job.status}' status. Job must be 'open'`)
+      }
+      const closed = updateJob(job, { status: "completed" })
+      return ok(res, closed, 200)
     }
 
     if (route.name === "proposals.create") {
@@ -244,7 +304,65 @@ const server = http.createServer(async (req, res) => {
       return ok(res, listProposals(jobId), 200)
     }
 
-    if (route.name === "contracts.intent") {
+    if (route.name === "proposals.accept") {
+      await readJson(req, res).catch(() => null)
+      const jobId = route.params.job_id
+      const proposalId = route.params.proposal_id
+
+      const job = getJob(jobId)
+      if (!job) return fail(res, "NOT_FOUND", "Job not found", 404)
+      if (job.status !== "open") {
+        return invalidState(res, `Cannot accept proposals for job in '${job.status}' status. Job must be 'open'`)
+      }
+
+      const proposal = getProposal(proposalId)
+      if (!proposal) return fail(res, "NOT_FOUND", "Proposal not found", 404)
+      if (proposal.job_id !== jobId) {
+        return fail(res, "VALIDATION_ERROR", "proposal_id does not belong to job_id", 422)
+      }
+      if (proposal.status !== "pending") {
+        return invalidState(res, `Cannot accept proposal in '${proposal.status}' status. Proposal must be 'pending'`)
+      }
+
+      const accepted = updateProposal(proposal, { status: "accepted" })
+
+      const all = listProposals(jobId)
+      for (const p of all) {
+        if (p.id !== accepted.id && p.status === "pending") {
+          updateProposal(p, { status: "rejected" })
+        }
+      }
+
+      updateJob(job, { status: "in_progress" })
+
+      return ok(res, accepted, 200)
+    }
+
+    if (route.name === "proposals.reject") {
+      await readJson(req, res).catch(() => null)
+      const jobId = route.params.job_id
+      const proposalId = route.params.proposal_id
+
+      const job = getJob(jobId)
+      if (!job) return fail(res, "NOT_FOUND", "Job not found", 404)
+      if (job.status !== "open") {
+        return invalidState(res, `Cannot reject proposals for job in '${job.status}' status. Job must be 'open'`)
+      }
+
+      const proposal = getProposal(proposalId)
+      if (!proposal) return fail(res, "NOT_FOUND", "Proposal not found", 404)
+      if (proposal.job_id !== jobId) {
+        return fail(res, "VALIDATION_ERROR", "proposal_id does not belong to job_id", 422)
+      }
+      if (proposal.status !== "pending") {
+        return invalidState(res, `Cannot reject proposal in '${proposal.status}' status. Proposal must be 'pending'`)
+      }
+
+      const rejected = updateProposal(proposal, { status: "rejected" })
+      return ok(res, rejected, 200)
+    }
+
+    if (route.name === "contracts.intent.create") {
       const body = await readJson(req, res)
       if (!body) return
 
@@ -269,6 +387,42 @@ const server = http.createServer(async (req, res) => {
         terms_summary: body.terms_summary
       })
       return ok(res, ci, 201)
+    }
+
+    if (route.name === "contracts.intent.send") {
+      await readJson(req, res).catch(() => null)
+      const ci = getContractIntent(route.params.id)
+      if (!ci) return fail(res, "NOT_FOUND", "Contract intent not found", 404)
+      if (ci.status !== "draft") {
+        return invalidState(res, `Cannot send contract intent in '${ci.status}' status. Must be 'draft'`)
+      }
+
+      const proposal = getProposal(ci.proposal_id)
+      if (!proposal) return fail(res, "NOT_FOUND", "Proposal not found", 404)
+      if (proposal.status !== "accepted") {
+        return invalidState(res, "Cannot send contract intent because proposal is not accepted")
+      }
+
+      const sent = updateContractIntent(ci, { status: "sent" })
+      return ok(res, sent, 200)
+    }
+
+    if (route.name === "contracts.intent.accept") {
+      await readJson(req, res).catch(() => null)
+      const ci = getContractIntent(route.params.id)
+      if (!ci) return fail(res, "NOT_FOUND", "Contract intent not found", 404)
+      if (ci.status !== "sent") {
+        return invalidState(res, `Cannot accept contract intent in '${ci.status}' status. Must be 'sent'`)
+      }
+
+      const proposal = getProposal(ci.proposal_id)
+      if (!proposal) return fail(res, "NOT_FOUND", "Proposal not found", 404)
+      if (proposal.status !== "accepted") {
+        return invalidState(res, "Cannot accept contract intent because proposal is not accepted")
+      }
+
+      const accepted = updateContractIntent(ci, { status: "accepted" })
+      return ok(res, accepted, 200)
     }
 
     return methodNotAllowed(res)
