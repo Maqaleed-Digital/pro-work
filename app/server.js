@@ -226,6 +226,86 @@ function listContractIntents(query) {
   return { ok: true, data: items.slice(0, limit) }
 }
 
+function allowedNextStates(status) {
+  const s = String(status || "")
+  if (s === "draft") return ["sent"]
+  if (s === "sent") return ["accepted"]
+  if (s === "accepted") return []
+  return []
+}
+
+function isKnownContractIntentState(status) {
+  const s = String(status || "")
+  return s === "draft" || s === "sent" || s === "accepted"
+}
+
+function buildContractIntentAudit(ci) {
+  const proposal = getProposal(ci.proposal_id)
+  const job = getJob(ci.job_id)
+
+  const knownState = isKnownContractIntentState(ci.status)
+
+  const invariants = []
+
+  const ruleProposalAcceptedRequired =
+    String(ci.status) === "sent" || String(ci.status) === "accepted"
+
+  invariants.push({
+    rule: "proposal.exists",
+    ok: Boolean(proposal),
+    details: proposal ? null : "proposal not found"
+  })
+
+  invariants.push({
+    rule: "job.exists",
+    ok: Boolean(job),
+    details: job ? null : "job not found"
+  })
+
+  invariants.push({
+    rule: "contract_intent.state.known",
+    ok: knownState,
+    details: knownState ? null : `unknown state '${String(ci.status)}'`
+  })
+
+  if (ruleProposalAcceptedRequired) {
+    invariants.push({
+      rule: "proposal.accepted_required_for_state",
+      ok: Boolean(proposal && proposal.status === "accepted"),
+      details: proposal ? `proposal.status='${proposal.status}'` : "proposal missing"
+    })
+  } else {
+    invariants.push({
+      rule: "proposal.accepted_required_for_state",
+      ok: true,
+      details: "not required for draft"
+    })
+  }
+
+  if (String(ci.status) === "sent" || String(ci.status) === "accepted") {
+    const okJob = Boolean(job && (job.status === "in_progress" || job.status === "completed"))
+    invariants.push({
+      rule: "job.status_aligned_for_state",
+      ok: okJob,
+      details: job ? `job.status='${job.status}'` : "job missing"
+    })
+  } else {
+    invariants.push({
+      rule: "job.status_aligned_for_state",
+      ok: true,
+      details: "not required for draft"
+    })
+  }
+
+  return {
+    id: ci.id,
+    current_state: String(ci.status),
+    allowed_next_states: allowedNextStates(ci.status),
+    invariants,
+    last_updated_at: ci.updated_at || ci.created_at || null
+  }
+}
+
 function matchRoute(method, pathname) {
   const m = method.toUpperCase()
 
@@ -255,6 +335,9 @@ function matchRoute(method, pathname) {
   if (m === "POST" && pathname === "/api/contracts/intent") return { name: "contracts.intent.create", params: {} }
 
   if (m === "GET" && pathname === "/api/contracts/intent") return { name: "contracts.intent.list", params: {} }
+
+  const ciAuditMatch = pathname.match(/^\/api\/contracts\/intent\/([^/]+)\/audit$/)
+  if (m === "GET" && ciAuditMatch) return { name: "contracts.intent.audit", params: { id: ciAuditMatch[1] } }
 
   const ciGetMatch = pathname.match(/^\/api\/contracts\/intent\/([^/]+)$/)
   if (m === "GET" && ciGetMatch) return { name: "contracts.intent.get", params: { id: ciGetMatch[1] } }
@@ -453,6 +536,13 @@ const server = http.createServer(async (req, res) => {
       const ci = getContractIntent(route.params.id)
       if (!ci) return fail(res, "NOT_FOUND", "Contract intent not found", 404)
       return ok(res, ci, 200)
+    }
+
+    if (route.name === "contracts.intent.audit") {
+      const ci = getContractIntent(route.params.id)
+      if (!ci) return fail(res, "NOT_FOUND", "Contract intent not found", 404)
+      const audit = buildContractIntentAudit(ci)
+      return ok(res, audit, 200)
     }
 
     if (route.name === "contracts.intent.send") {
