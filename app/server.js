@@ -329,10 +329,6 @@ function emitWosEvidenceEvent(input) {
   return evt
 }
 
-function listWosEvidenceEvents() {
-  return store.wosEvidenceEvents.slice()
-}
-
 function listWosEvidenceEventsQuery(query) {
   const allowed = new Set(["entity_id", "entity_type", "action", "actor", "limit", "cursor"])
   for (const k of query.keys()) {
@@ -652,8 +648,6 @@ function createManualWosEvidenceEvent(input) {
   if (!actor) return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.actor: Field required" }, status: 422 }
   if (!action) return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.action: Field required" }, status: 422 }
   if (!entityType) return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.entity_type: Field required" }, status: 422 }
-if (!entityType) return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.entity_type: Field required" }, status: 422 }
-
   if (!entityId) return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.entity_id: Field required" }, status: 422 }
 
   const evt = emitWosEvidenceEvent({
@@ -866,6 +860,7 @@ function matchRoute(method, pathname) {
   if (m === "PATCH" && wosWorkerGetMatch) return { name: "wos.workers.patch", params: { id: wosWorkerGetMatch[1] } }
 
   if (m === "GET" && pathname === "/api/wos/evidence-events") return { name: "wos.evidence.list", params: {} }
+  if (m === "GET" && pathname === "/wos/evidence-events") return { name: "wos.evidence.ui", params: {} }
   if (m === "POST" && pathname === "/api/wos/evidence-events") return { name: "wos.evidence.create", params: {} }
 
   return null
@@ -891,6 +886,267 @@ function actorFromReq(req) {
   const h = req.headers["x-actor"]
   const actor = h === undefined || h === null ? "" : String(h).trim()
   return actor || "user"
+}
+
+function serveEvidenceEventsUi(res) {
+  const html = `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ProWork — WOS Evidence Events</title>
+  <style>
+    body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; margin: 24px; }
+    h1 { margin: 0 0 8px 0; font-size: 20px; }
+    .muted { color: #666; font-size: 13px; margin-bottom: 16px; }
+    .card { border: 1px solid #ddd; border-radius: 10px; padding: 14px; margin-bottom: 14px; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; }
+    label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #444; }
+    input { font-size: 14px; padding: 8px 10px; border-radius: 8px; border: 1px solid #ccc; min-width: 210px; }
+    input.small { min-width: 120px; }
+    button { font-size: 14px; padding: 9px 12px; border-radius: 8px; border: 1px solid #222; background: #111; color: #fff; cursor: pointer; }
+    button.secondary { background: #fff; color: #111; border: 1px solid #bbb; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    th, td { border-bottom: 1px solid #eee; text-align: left; padding: 10px 8px; font-size: 13px; vertical-align: top; }
+    th { font-size: 12px; color: #444; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New"; font-size: 12px; }
+    .pill { display: inline-block; padding: 2px 8px; border: 1px solid #ddd; border-radius: 999px; font-size: 12px; color: #444; }
+    .error { color: #b00020; font-size: 13px; white-space: pre-wrap; }
+    .footer { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h1>WOS Evidence Events</h1>
+  <div class="muted">Filters + cursor pagination using <code>/api/wos/evidence-events</code></div>
+
+  <div class="card">
+    <div class="row">
+      <label>
+        Entity ID
+        <input id="entity_id" placeholder="wkr_..." />
+      </label>
+
+      <label>
+        Entity Type
+        <input id="entity_type" placeholder="wos.worker" />
+      </label>
+
+      <label>
+        Action
+        <input id="action" placeholder="wos.worker.activate" />
+      </label>
+
+      <label>
+        Actor
+        <input id="actor" placeholder="waheeb" />
+      </label>
+
+      <label>
+        Limit
+        <input id="limit" class="small" placeholder="50" />
+      </label>
+
+      <div style="display:flex; gap:10px;">
+        <button id="btn_apply">Apply</button>
+        <button id="btn_reset" class="secondary">Reset</button>
+      </div>
+    </div>
+
+    <div style="margin-top:10px;">
+      <div id="meta" class="muted"></div>
+      <div id="err" class="error"></div>
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 170px;">Timestamp</th>
+            <th style="width: 200px;">Action</th>
+            <th style="width: 140px;">Actor</th>
+            <th style="width: 150px;">Entity Type</th>
+            <th style="width: 280px;">Entity ID</th>
+            <th>Snapshot</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+
+      <div class="footer">
+        <div>
+          <span class="pill" id="cursor_pill">cursor: (none)</span>
+          <span class="pill" id="next_cursor_pill">next_cursor: (none)</span>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button id="btn_prev" class="secondary" disabled>Prev</button>
+          <button id="btn_next" disabled>Next</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const qs = (id) => document.getElementById(id)
+
+  const fields = {
+    entity_id: qs("entity_id"),
+    entity_type: qs("entity_type"),
+    action: qs("action"),
+    actor: qs("actor"),
+    limit: qs("limit"),
+  }
+
+  const meta = qs("meta")
+  const err = qs("err")
+  const rows = qs("rows")
+  const btnApply = qs("btn_apply")
+  const btnReset = qs("btn_reset")
+  const btnPrev = qs("btn_prev")
+  const btnNext = qs("btn_next")
+  const cursorPill = qs("cursor_pill")
+  const nextCursorPill = qs("next_cursor_pill")
+
+  const state = {
+    cursor: "",
+    next_cursor: "",
+    cursorStack: [],
+    lastQueryKey: ""
+  }
+
+  function buildParams(cursorOverride) {
+    const params = new URLSearchParams()
+    for (const k of Object.keys(fields)) {
+      const v = String(fields[k].value || "").trim()
+      if (!v) continue
+      params.set(k, v)
+    }
+    if (cursorOverride !== undefined && cursorOverride !== null && String(cursorOverride).trim() !== "") {
+      params.set("cursor", String(cursorOverride).trim())
+    }
+    return params
+  }
+
+  function queryKeyWithoutCursor() {
+    const p = buildParams("")
+    p.delete("cursor")
+    return p.toString()
+  }
+
+  function setBusy(isBusy) {
+    btnApply.disabled = isBusy
+    btnReset.disabled = isBusy
+    btnPrev.disabled = isBusy || state.cursorStack.length === 0
+    btnNext.disabled = isBusy || !state.next_cursor
+  }
+
+  function fmt(v) {
+    const s = String(v || "")
+    return s ? s : "(none)"
+  }
+
+  function escapeHtml(s) {
+    return String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+  }
+
+  function renderItems(items) {
+    rows.innerHTML = ""
+    for (const it of items) {
+      const tr = document.createElement("tr")
+      const snap = it.snapshot === null || it.snapshot === undefined ? "" : JSON.stringify(it.snapshot)
+      tr.innerHTML = \`
+        <td><code>\${escapeHtml(String(it.timestamp || ""))}</code></td>
+        <td><code>\${escapeHtml(String(it.action || ""))}</code></td>
+        <td>\${escapeHtml(String(it.actor || ""))}</td>
+        <td><code>\${escapeHtml(String(it.entity_type || ""))}</code></td>
+        <td><code>\${escapeHtml(String(it.entity_id || ""))}</code></td>
+        <td><code>\${escapeHtml(snap)}</code></td>
+      \`
+      rows.appendChild(tr)
+    }
+  }
+
+  async function load(cursorOverride) {
+    err.textContent = ""
+    const keyNoCursor = queryKeyWithoutCursor()
+
+    if (state.lastQueryKey && state.lastQueryKey !== keyNoCursor) {
+      state.cursorStack = []
+      state.cursor = ""
+      state.next_cursor = ""
+    }
+    state.lastQueryKey = keyNoCursor
+
+    const params = buildParams(cursorOverride)
+    const url = "/api/wos/evidence-events" + (params.toString() ? "?" + params.toString() : "")
+
+    setBusy(true)
+    meta.textContent = "Loading..."
+    try {
+      const resp = await fetch(url, { headers: { "cache-control": "no-store" } })
+      const json = await resp.json()
+      if (!json || json.ok !== true) {
+        const e = json && json.error ? json.error : { code: "UNKNOWN", message: "Unknown error" }
+        throw new Error(e.code + ": " + e.message)
+      }
+
+      const data = json.data || {}
+      const items = Array.isArray(data.items) ? data.items : []
+      state.cursor = String(params.get("cursor") || "")
+      state.next_cursor = data.next_cursor ? String(data.next_cursor) : ""
+
+      renderItems(items)
+
+      cursorPill.textContent = "cursor: " + fmt(state.cursor)
+      nextCursorPill.textContent = "next_cursor: " + fmt(state.next_cursor)
+
+      meta.textContent = "Items: " + items.length
+    } catch (e) {
+      err.textContent = String(e && e.message ? e.message : e)
+      meta.textContent = ""
+      renderItems([])
+      state.next_cursor = ""
+      nextCursorPill.textContent = "next_cursor: (none)"
+    } finally {
+      setBusy(false)
+      btnPrev.disabled = state.cursorStack.length === 0
+      btnNext.disabled = !state.next_cursor
+    }
+  }
+
+  btnApply.addEventListener("click", () => {
+    state.cursorStack = []
+    load("")
+  })
+
+  btnReset.addEventListener("click", () => {
+    for (const k of Object.keys(fields)) fields[k].value = ""
+    state.cursorStack = []
+    load("")
+  })
+
+  btnNext.addEventListener("click", () => {
+    if (!state.next_cursor) return
+    state.cursorStack.push(state.cursor)
+    load(state.next_cursor)
+  })
+
+  btnPrev.addEventListener("click", () => {
+    if (state.cursorStack.length === 0) return
+    const prev = state.cursorStack.pop()
+    load(prev || "")
+  })
+
+  load("")
+})()
+</script>
+
+</body>
+</html>`
+
+  res.writeHead(200, {
+    "content-type": "text/html; charset=utf-8",
+    "cache-control": "no-store"
+  })
+  res.end(html)
 }
 
 const server = http.createServer(async (req, res) => {
@@ -1172,6 +1428,11 @@ const server = http.createServer(async (req, res) => {
       const out = listWosEvidenceEventsQuery(url.searchParams)
       if (!out.ok) return fail(res, out.error.code, out.error.message, out.status || 422)
       return ok(res, out.data, 200)
+    }
+
+    if (route.name === "wos.evidence.ui") {
+      serveEvidenceEventsUi(res)
+      return
     }
 
     if (route.name === "wos.evidence.create") {
