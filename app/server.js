@@ -611,6 +611,91 @@ function createManualWosEvidenceEvent(input) {
   return { ok: true, data: evt }
 }
 
+function isKnownWorkerStatusForAudit(s) {
+  return s === "active" || s === "inactive" || s === "suspended"
+}
+
+function allowedNextWorkerStatusesForAudit(s) {
+  if (s === "active") return ["inactive", "suspended"]
+  if (s === "inactive") return ["active"]
+  if (s === "suspended") return ["active", "inactive"]
+  return []
+}
+
+function buildWorkerAudit(w) {
+  const status = String(w && w.status ? w.status : "")
+  const type = String(w && w.type ? w.type : "")
+  const email = w && Object.prototype.hasOwnProperty.call(w, "email") ? w.email : null
+  const skills = w && Object.prototype.hasOwnProperty.call(w, "skills") ? w.skills : null
+  const availability = w && Object.prototype.hasOwnProperty.call(w, "availability") ? w.availability : null
+
+  const invariants = []
+
+  invariants.push({
+    rule: "worker.exists",
+    ok: Boolean(w),
+    details: w ? null : "worker not found"
+  })
+
+  invariants.push({
+    rule: "worker.type.known",
+    ok: isWorkerType(type),
+    details: isWorkerType(type) ? null : `unknown type '${type}'`
+  })
+
+  invariants.push({
+    rule: "worker.status.known",
+    ok: isKnownWorkerStatusForAudit(status),
+    details: isKnownWorkerStatusForAudit(status) ? null : `unknown status '${status}'`
+  })
+
+  const emailOk = email === null || (typeof email === "string" && email.trim() !== "")
+  invariants.push({
+    rule: "worker.email.valid",
+    ok: emailOk,
+    details: emailOk ? null : "email must be null or non-empty string"
+  })
+
+  const skillsOk = Array.isArray(skills)
+  invariants.push({
+    rule: "worker.skills.valid",
+    ok: skillsOk,
+    details: skillsOk ? null : "skills must be an array"
+  })
+
+  let hpwOk = true
+  let hpwDetails = null
+  if (availability && typeof availability === "object" && !Array.isArray(availability)) {
+    const v = availability.hours_per_week
+    if (v === null || v === undefined) {
+      hpwOk = true
+    } else {
+      const n = Number(v)
+      hpwOk = Number.isFinite(n) && n >= 0 && n <= 168
+      if (!hpwOk) hpwDetails = "availability.hours_per_week must be between 0 and 168 or null"
+    }
+  } else if (availability === null || availability === undefined) {
+    hpwOk = true
+  } else {
+    hpwOk = false
+    hpwDetails = "availability must be an object or null"
+  }
+
+  invariants.push({
+    rule: "worker.availability.hours_per_week.valid",
+    ok: hpwOk,
+    details: hpwOk ? null : hpwDetails
+  })
+
+  return {
+    id: w.id,
+    current_status: status,
+    allowed_next_statuses: isKnownWorkerStatusForAudit(status) ? allowedNextWorkerStatusesForAudit(status) : [],
+    invariants,
+    last_updated_at: w.updated_at || w.created_at || null
+  }
+}
+
 function matchRoute(method, pathname) {
   const m = method.toUpperCase()
 
@@ -654,6 +739,9 @@ function matchRoute(method, pathname) {
 
   if (m === "POST" && pathname === "/api/wos/workers") return { name: "wos.workers.create", params: {} }
   if (m === "GET" && pathname === "/api/wos/workers") return { name: "wos.workers.list", params: {} }
+
+  const wosWorkerAuditMatch = pathname.match(/^\/api\/wos\/workers\/([^/]+)\/audit$/)
+  if (m === "GET" && wosWorkerAuditMatch) return { name: "wos.workers.audit", params: { id: wosWorkerAuditMatch[1] } }
 
   const wosWorkerGetMatch = pathname.match(/^\/api\/wos\/workers\/([^/]+)$/)
   if (m === "GET" && wosWorkerGetMatch) return { name: "wos.workers.get", params: { id: wosWorkerGetMatch[1] } }
@@ -914,6 +1002,13 @@ const server = http.createServer(async (req, res) => {
       const out = listWosWorkersQuery(url.searchParams)
       if (!out.ok) return fail(res, out.error.code, out.error.message, out.status || 422)
       return ok(res, out.data, 200)
+    }
+
+    if (route.name === "wos.workers.audit") {
+      const w = getWosWorker(route.params.id)
+      if (!w) return fail(res, "NOT_FOUND", "Worker not found", 404)
+      const audit = buildWorkerAudit(w)
+      return ok(res, audit, 200)
     }
 
     if (route.name === "wos.workers.get") {
