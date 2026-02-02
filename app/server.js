@@ -1,3 +1,5 @@
+"use strict"
+
 const http = require("http")
 const { URL } = require("url")
 const crypto = require("crypto")
@@ -75,7 +77,9 @@ const store = {
   jobs: new Map(),
   proposalsByJob: new Map(),
   proposals: new Map(),
-  contractIntents: new Map()
+  contractIntents: new Map(),
+  wosWorkers: new Map(),
+  wosEvidenceEvents: []
 }
 
 function createJob(input) {
@@ -306,6 +310,280 @@ function buildContractIntentAudit(ci) {
   }
 }
 
+function validateOptionalString(res, path, value) {
+  if (value === undefined || value === null) return null
+  const s = String(value).trim()
+  if (s === "") {
+    fail(res, "VALIDATION_ERROR", `${path}: Must be a non-empty string`, 422)
+    return null
+  }
+  return s
+}
+
+function validateOptionalArrayOfStrings(res, path, value) {
+  if (value === undefined || value === null) return null
+  if (!Array.isArray(value)) {
+    fail(res, "VALIDATION_ERROR", `${path}: Must be an array`, 422)
+    return null
+  }
+  const out = []
+  for (let i = 0; i < value.length; i++) {
+    const v = String(value[i] === undefined || value[i] === null ? "" : value[i]).trim()
+    if (v) out.push(v)
+  }
+  return out
+}
+
+function validateOptionalHoursPerWeek(res, path, value) {
+  if (value === undefined || value === null) return null
+  const n = validateNumber(res, path, value)
+  if (n === null) return null
+  if (n < 0 || n > 168) {
+    fail(res, "VALIDATION_ERROR", `${path}: Must be between 0 and 168`, 422)
+    return null
+  }
+  return n
+}
+
+function isWorkerType(v) {
+  return v === "FTE" || v === "FREELANCER"
+}
+
+function emitWosEvidenceEvent(input) {
+  const id = genId("ev")
+  const evt = {
+    id,
+    actor: String(input.actor || "system"),
+    action: String(input.action),
+    entity_type: String(input.entity_type),
+    entity_id: String(input.entity_id),
+    timestamp: nowIso(),
+    snapshot: input.snapshot === undefined ? null : input.snapshot
+  }
+  store.wosEvidenceEvents.push(evt)
+  return evt
+}
+
+function listWosEvidenceEvents() {
+  return store.wosEvidenceEvents.slice()
+}
+
+function createWosWorker(input, actor) {
+  const type = String(input.type || "").trim()
+  if (!isWorkerType(type)) {
+    return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.type: Must be 'FTE' or 'FREELANCER'" }, status: 422 }
+  }
+
+  const displayName = String(input.display_name || "").trim()
+  if (!displayName) {
+    return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.display_name: Field required" }, status: 422 }
+  }
+
+  const email = input.email === undefined || input.email === null ? null : String(input.email).trim()
+  if (email !== null && email === "") {
+    return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.email: Must be a non-empty string or null" }, status: 422 }
+  }
+
+  const skills = input.skills === undefined ? [] : validateOptionalArrayOfStrings({ writeHead() {}, end() {} }, "body.skills", input.skills)
+  if (skills === null && input.skills !== undefined) {
+    return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.skills: Must be an array" }, status: 422 }
+  }
+
+  const availability = input.availability === undefined || input.availability === null ? {} : input.availability
+  if (input.availability !== undefined && (typeof availability !== "object" || Array.isArray(availability))) {
+    return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.availability: Must be an object" }, status: 422 }
+  }
+
+  const hoursPerWeek = validateOptionalHoursPerWeek({ writeHead() {}, end() {} }, "body.availability.hours_per_week", availability.hours_per_week)
+  if (hoursPerWeek === null && availability.hours_per_week !== undefined && availability.hours_per_week !== null) {
+    return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.availability.hours_per_week: Must be a number between 0 and 168" }, status: 422 }
+  }
+
+  const allocationNote = availability.allocation_note === undefined || availability.allocation_note === null
+    ? null
+    : String(availability.allocation_note).trim()
+  if (allocationNote !== null && allocationNote === "") {
+    return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.availability.allocation_note: Must be a non-empty string or null" }, status: 422 }
+  }
+
+  const status = input.status === undefined || input.status === null ? "active" : String(input.status).trim()
+  if (!status) {
+    return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.status: Must be a non-empty string or null" }, status: 422 }
+  }
+
+  const id = genId("wkr")
+  const t = nowIso()
+  const worker = {
+    id,
+    type,
+    display_name: displayName,
+    email,
+    skills: Array.isArray(skills) ? skills : [],
+    availability: {
+      hours_per_week: hoursPerWeek === undefined ? null : hoursPerWeek,
+      allocation_note: allocationNote
+    },
+    status,
+    created_at: t,
+    updated_at: t
+  }
+
+  store.wosWorkers.set(id, worker)
+
+  emitWosEvidenceEvent({
+    actor,
+    action: "wos.worker.create",
+    entity_type: "wos.worker",
+    entity_id: id,
+    snapshot: worker
+  })
+
+  return { ok: true, data: worker }
+}
+
+function listWosWorkers() {
+  return Array.from(store.wosWorkers.values())
+}
+
+function getWosWorker(id) {
+  return store.wosWorkers.get(id) || null
+}
+
+function patchWosWorker(id, patch, actor) {
+  const current = getWosWorker(id)
+  if (!current) return { ok: false, error: { code: "NOT_FOUND", message: "Worker not found" }, status: 404 }
+
+  const next = { ...current }
+  let changed = false
+
+  if (patch.type !== undefined) {
+    const type = String(patch.type || "").trim()
+    if (!isWorkerType(type)) {
+      return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.type: Must be 'FTE' or 'FREELANCER'" }, status: 422 }
+    }
+    next.type = type
+    changed = true
+  }
+
+  if (patch.display_name !== undefined) {
+    const dn = String(patch.display_name || "").trim()
+    if (!dn) {
+      return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.display_name: Must be a non-empty string" }, status: 422 }
+    }
+    next.display_name = dn
+    changed = true
+  }
+
+  if (patch.email !== undefined) {
+    const email = patch.email === null ? null : String(patch.email).trim()
+    if (email !== null && email === "") {
+      return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.email: Must be a non-empty string or null" }, status: 422 }
+    }
+    next.email = email
+    changed = true
+  }
+
+  if (patch.skills !== undefined) {
+    if (!Array.isArray(patch.skills)) {
+      return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.skills: Must be an array" }, status: 422 }
+    }
+    const out = []
+    for (let i = 0; i < patch.skills.length; i++) {
+      const v = String(patch.skills[i] === undefined || patch.skills[i] === null ? "" : patch.skills[i]).trim()
+      if (v) out.push(v)
+    }
+    next.skills = out
+    changed = true
+  }
+
+  if (patch.availability !== undefined) {
+    if (patch.availability === null) {
+      next.availability = { hours_per_week: null, allocation_note: null }
+      changed = true
+    } else if (typeof patch.availability !== "object" || Array.isArray(patch.availability)) {
+      return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.availability: Must be an object or null" }, status: 422 }
+    } else {
+      const a = { ...(next.availability || { hours_per_week: null, allocation_note: null }) }
+      if (patch.availability.hours_per_week !== undefined) {
+        if (patch.availability.hours_per_week === null) {
+          a.hours_per_week = null
+        } else {
+          const n = Number(patch.availability.hours_per_week)
+          if (!Number.isFinite(n) || n < 0 || n > 168) {
+            return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.availability.hours_per_week: Must be between 0 and 168" }, status: 422 }
+          }
+          a.hours_per_week = n
+        }
+      }
+      if (patch.availability.allocation_note !== undefined) {
+        if (patch.availability.allocation_note === null) {
+          a.allocation_note = null
+        } else {
+          const s = String(patch.availability.allocation_note).trim()
+          if (!s) {
+            return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.availability.allocation_note: Must be a non-empty string or null" }, status: 422 }
+          }
+          a.allocation_note = s
+        }
+      }
+      next.availability = a
+      changed = true
+    }
+  }
+
+  if (patch.status !== undefined) {
+    const st = patch.status === null ? null : String(patch.status).trim()
+    if (st !== null && st === "") {
+      return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.status: Must be a non-empty string or null" }, status: 422 }
+    }
+    next.status = st === null ? next.status : st
+    changed = true
+  }
+
+  if (!changed) {
+    return { ok: true, data: current }
+  }
+
+  next.updated_at = nowIso()
+  store.wosWorkers.set(id, next)
+
+  emitWosEvidenceEvent({
+    actor,
+    action: "wos.worker.update",
+    entity_type: "wos.worker",
+    entity_id: id,
+    snapshot: next
+  })
+
+  return { ok: true, data: next }
+}
+
+function createManualWosEvidenceEvent(input) {
+  if (typeof input !== "object" || input === null) {
+    return { ok: false, error: { code: "VALIDATION_ERROR", message: "body: JSON object required" }, status: 422 }
+  }
+
+  const actor = String(input.actor || "").trim()
+  const action = String(input.action || "").trim()
+  const entityType = String(input.entity_type || "").trim()
+  const entityId = String(input.entity_id || "").trim()
+
+  if (!actor) return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.actor: Field required" }, status: 422 }
+  if (!action) return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.action: Field required" }, status: 422 }
+  if (!entityType) return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.entity_type: Field required" }, status: 422 }
+  if (!entityId) return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.entity_id: Field required" }, status: 422 }
+
+  const evt = emitWosEvidenceEvent({
+    actor,
+    action,
+    entity_type: entityType,
+    entity_id: entityId,
+    snapshot: input.snapshot === undefined ? null : input.snapshot
+  })
+
+  return { ok: true, data: evt }
+}
+
 function matchRoute(method, pathname) {
   const m = method.toUpperCase()
 
@@ -333,7 +611,6 @@ function matchRoute(method, pathname) {
   }
 
   if (m === "POST" && pathname === "/api/contracts/intent") return { name: "contracts.intent.create", params: {} }
-
   if (m === "GET" && pathname === "/api/contracts/intent") return { name: "contracts.intent.list", params: {} }
 
   const ciAuditMatch = pathname.match(/^\/api\/contracts\/intent\/([^/]+)\/audit$/)
@@ -347,6 +624,16 @@ function matchRoute(method, pathname) {
 
   const ciAcceptMatch = pathname.match(/^\/api\/contracts\/intent\/([^/]+)\/accept$/)
   if (m === "POST" && ciAcceptMatch) return { name: "contracts.intent.accept", params: { id: ciAcceptMatch[1] } }
+
+  if (m === "POST" && pathname === "/api/wos/workers") return { name: "wos.workers.create", params: {} }
+  if (m === "GET" && pathname === "/api/wos/workers") return { name: "wos.workers.list", params: {} }
+
+  const wosWorkerGetMatch = pathname.match(/^\/api\/wos\/workers\/([^/]+)$/)
+  if (m === "GET" && wosWorkerGetMatch) return { name: "wos.workers.get", params: { id: wosWorkerGetMatch[1] } }
+  if (m === "PATCH" && wosWorkerGetMatch) return { name: "wos.workers.patch", params: { id: wosWorkerGetMatch[1] } }
+
+  if (m === "GET" && pathname === "/api/wos/evidence-events") return { name: "wos.evidence.list", params: {} }
+  if (m === "POST" && pathname === "/api/wos/evidence-events") return { name: "wos.evidence.create", params: {} }
 
   return null
 }
@@ -365,6 +652,12 @@ function health(res) {
 
 function invalidState(res, message) {
   fail(res, "INVALID_STATE", message, 409)
+}
+
+function actorFromReq(req) {
+  const h = req.headers["x-actor"]
+  const actor = h === undefined || h === null ? "" : String(h).trim()
+  return actor || "user"
 }
 
 const server = http.createServer(async (req, res) => {
@@ -579,6 +872,46 @@ const server = http.createServer(async (req, res) => {
 
       const accepted = updateContractIntent(ci, { status: "accepted" })
       return ok(res, accepted, 200)
+    }
+
+    if (route.name === "wos.workers.create") {
+      const body = await readJson(req, res)
+      if (!body) return
+      const actor = actorFromReq(req)
+      const out = createWosWorker(body, actor)
+      if (!out.ok) return fail(res, out.error.code, out.error.message, out.status || 422)
+      return ok(res, out.data, 201)
+    }
+
+    if (route.name === "wos.workers.list") {
+      return ok(res, listWosWorkers(), 200)
+    }
+
+    if (route.name === "wos.workers.get") {
+      const w = getWosWorker(route.params.id)
+      if (!w) return fail(res, "NOT_FOUND", "Worker not found", 404)
+      return ok(res, w, 200)
+    }
+
+    if (route.name === "wos.workers.patch") {
+      const body = await readJson(req, res)
+      if (!body) return
+      const actor = actorFromReq(req)
+      const out = patchWosWorker(route.params.id, body, actor)
+      if (!out.ok) return fail(res, out.error.code, out.error.message, out.status || 422)
+      return ok(res, out.data, 200)
+    }
+
+    if (route.name === "wos.evidence.list") {
+      return ok(res, listWosEvidenceEvents(), 200)
+    }
+
+    if (route.name === "wos.evidence.create") {
+      const body = await readJson(req, res)
+      if (!body) return
+      const out = createManualWosEvidenceEvent(body)
+      if (!out.ok) return fail(res, out.error.code, out.error.message, out.status || 422)
+      return ok(res, out.data, 201)
     }
 
     return methodNotAllowed(res)
