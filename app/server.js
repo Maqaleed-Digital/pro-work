@@ -310,41 +310,6 @@ function buildContractIntentAudit(ci) {
   }
 }
 
-function validateOptionalString(res, path, value) {
-  if (value === undefined || value === null) return null
-  const s = String(value).trim()
-  if (s === "") {
-    fail(res, "VALIDATION_ERROR", `${path}: Must be a non-empty string`, 422)
-    return null
-  }
-  return s
-}
-
-function validateOptionalArrayOfStrings(res, path, value) {
-  if (value === undefined || value === null) return null
-  if (!Array.isArray(value)) {
-    fail(res, "VALIDATION_ERROR", `${path}: Must be an array`, 422)
-    return null
-  }
-  const out = []
-  for (let i = 0; i < value.length; i++) {
-    const v = String(value[i] === undefined || value[i] === null ? "" : value[i]).trim()
-    if (v) out.push(v)
-  }
-  return out
-}
-
-function validateOptionalHoursPerWeek(res, path, value) {
-  if (value === undefined || value === null) return null
-  const n = validateNumber(res, path, value)
-  if (n === null) return null
-  if (n < 0 || n > 168) {
-    fail(res, "VALIDATION_ERROR", `${path}: Must be between 0 and 168`, 422)
-    return null
-  }
-  return n
-}
-
 function isWorkerType(v) {
   return v === "FTE" || v === "FREELANCER"
 }
@@ -384,9 +349,16 @@ function createWosWorker(input, actor) {
     return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.email: Must be a non-empty string or null" }, status: 422 }
   }
 
-  const skills = input.skills === undefined ? [] : validateOptionalArrayOfStrings({ writeHead() {}, end() {} }, "body.skills", input.skills)
-  if (skills === null && input.skills !== undefined) {
+  if (input.skills !== undefined && !Array.isArray(input.skills)) {
     return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.skills: Must be an array" }, status: 422 }
+  }
+
+  const skills = []
+  if (Array.isArray(input.skills)) {
+    for (let i = 0; i < input.skills.length; i++) {
+      const v = String(input.skills[i] === undefined || input.skills[i] === null ? "" : input.skills[i]).trim()
+      if (v) skills.push(v)
+    }
   }
 
   const availability = input.availability === undefined || input.availability === null ? {} : input.availability
@@ -394,14 +366,19 @@ function createWosWorker(input, actor) {
     return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.availability: Must be an object" }, status: 422 }
   }
 
-  const hoursPerWeek = validateOptionalHoursPerWeek({ writeHead() {}, end() {} }, "body.availability.hours_per_week", availability.hours_per_week)
-  if (hoursPerWeek === null && availability.hours_per_week !== undefined && availability.hours_per_week !== null) {
-    return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.availability.hours_per_week: Must be a number between 0 and 168" }, status: 422 }
+  let hoursPerWeek = null
+  if (availability.hours_per_week !== undefined && availability.hours_per_week !== null) {
+    const n = Number(availability.hours_per_week)
+    if (!Number.isFinite(n) || n < 0 || n > 168) {
+      return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.availability.hours_per_week: Must be between 0 and 168" }, status: 422 }
+    }
+    hoursPerWeek = n
   }
 
-  const allocationNote = availability.allocation_note === undefined || availability.allocation_note === null
-    ? null
-    : String(availability.allocation_note).trim()
+  const allocationNote =
+    availability.allocation_note === undefined || availability.allocation_note === null
+      ? null
+      : String(availability.allocation_note).trim()
   if (allocationNote !== null && allocationNote === "") {
     return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.availability.allocation_note: Must be a non-empty string or null" }, status: 422 }
   }
@@ -418,9 +395,9 @@ function createWosWorker(input, actor) {
     type,
     display_name: displayName,
     email,
-    skills: Array.isArray(skills) ? skills : [],
+    skills,
     availability: {
-      hours_per_week: hoursPerWeek === undefined ? null : hoursPerWeek,
+      hours_per_week: hoursPerWeek,
       allocation_note: allocationNote
     },
     status,
@@ -439,10 +416,6 @@ function createWosWorker(input, actor) {
   })
 
   return { ok: true, data: worker }
-}
-
-function listWosWorkers() {
-  return Array.from(store.wosWorkers.values())
 }
 
 function getWosWorker(id) {
@@ -556,6 +529,60 @@ function patchWosWorker(id, patch, actor) {
   })
 
   return { ok: true, data: next }
+}
+
+function listWosWorkersQuery(query) {
+  const allowed = new Set(["type", "status", "skill", "limit", "cursor"])
+  for (const k of query.keys()) {
+    if (!allowed.has(k)) {
+      return { ok: false, error: { code: "VALIDATION_ERROR", message: `query.${k}: Unsupported query param` }, status: 422 }
+    }
+  }
+
+  const type = query.get("type")
+  const status = query.get("status")
+  const skill = query.get("skill")
+  const limit = normalizeLimit(query.get("limit"))
+  const cursor = query.get("cursor")
+
+  if (type && String(type).trim() !== "" && !isWorkerType(String(type))) {
+    return { ok: false, error: { code: "VALIDATION_ERROR", message: "query.type: Must be 'FTE' or 'FREELANCER'" }, status: 422 }
+  }
+
+  let items = Array.from(store.wosWorkers.values())
+
+  if (type && String(type).trim() !== "") {
+    items = items.filter(w => String(w.type) === String(type))
+  }
+  if (status && String(status).trim() !== "") {
+    items = items.filter(w => String(w.status) === String(status))
+  }
+  if (skill && String(skill).trim() !== "") {
+    items = items.filter(w => Array.isArray(w.skills) && w.skills.includes(String(skill)))
+  }
+
+  items.sort((a, b) => {
+    const aa = String(a.created_at || "")
+    const bb = String(b.created_at || "")
+    if (aa === bb) return 0
+    return aa > bb ? -1 : 1
+  })
+
+  if (cursor && String(cursor).trim() !== "") {
+    items = items.filter(w => String(w.created_at || "") < String(cursor))
+  }
+
+  const page = items.slice(0, limit)
+  const nextCursor = page.length > 0 ? String(page[page.length - 1].created_at || "") : ""
+  const hasMore = items.length > page.length
+
+  return {
+    ok: true,
+    data: {
+      items: page,
+      next_cursor: hasMore && nextCursor ? nextCursor : null
+    }
+  }
 }
 
 function createManualWosEvidenceEvent(input) {
@@ -884,7 +911,9 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (route.name === "wos.workers.list") {
-      return ok(res, listWosWorkers(), 200)
+      const out = listWosWorkersQuery(url.searchParams)
+      if (!out.ok) return fail(res, out.error.code, out.error.message, out.status || 422)
+      return ok(res, out.data, 200)
     }
 
     if (route.name === "wos.workers.get") {
