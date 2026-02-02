@@ -696,6 +696,59 @@ function buildWorkerAudit(w) {
   }
 }
 
+function isKnownWorkerStatusForTransitions(s) {
+  return s === "active" || s === "inactive" || s === "suspended"
+}
+
+function canTransitionWorkerStatus(fromStatus, toStatus) {
+  const from = String(fromStatus || "")
+  const to = String(toStatus || "")
+  if (!isKnownWorkerStatusForTransitions(from)) return false
+  if (!isKnownWorkerStatusForTransitions(to)) return false
+
+  if (from === "active") return to === "inactive" || to === "suspended"
+  if (from === "inactive") return to === "active"
+  if (from === "suspended") return to === "active" || to === "inactive"
+  return false
+}
+
+function transitionWorkerStatus(id, toStatus, actor, actionName) {
+  const w = getWosWorker(id)
+  if (!w) return { ok: false, error: { code: "NOT_FOUND", message: "Worker not found" }, status: 404 }
+
+  const from = String(w.status || "")
+  const to = String(toStatus || "")
+
+  if (!isKnownWorkerStatusForTransitions(from)) {
+    return { ok: false, error: { code: "INVALID_STATE", message: `Worker status '${from}' is not eligible for transitions` }, status: 409 }
+  }
+
+  if (!canTransitionWorkerStatus(from, to)) {
+    return {
+      ok: false,
+      error: { code: "INVALID_STATE", message: `Cannot transition worker status from '${from}' to '${to}'` },
+      status: 409
+    }
+  }
+
+  const next = { ...w, status: to, updated_at: nowIso() }
+  store.wosWorkers.set(id, next)
+
+  emitWosEvidenceEvent({
+    actor,
+    action: actionName,
+    entity_type: "wos.worker",
+    entity_id: id,
+    snapshot: {
+      from_status: from,
+      to_status: to,
+      worker: next
+    }
+  })
+
+  return { ok: true, data: next }
+}
+
 function matchRoute(method, pathname) {
   const m = method.toUpperCase()
 
@@ -742,6 +795,15 @@ function matchRoute(method, pathname) {
 
   const wosWorkerAuditMatch = pathname.match(/^\/api\/wos\/workers\/([^/]+)\/audit$/)
   if (m === "GET" && wosWorkerAuditMatch) return { name: "wos.workers.audit", params: { id: wosWorkerAuditMatch[1] } }
+
+  const wosWorkerActivateMatch = pathname.match(/^\/api\/wos\/workers\/([^/]+)\/activate$/)
+  if (m === "POST" && wosWorkerActivateMatch) return { name: "wos.workers.activate", params: { id: wosWorkerActivateMatch[1] } }
+
+  const wosWorkerDeactivateMatch = pathname.match(/^\/api\/wos\/workers\/([^/]+)\/deactivate$/)
+  if (m === "POST" && wosWorkerDeactivateMatch) return { name: "wos.workers.deactivate", params: { id: wosWorkerDeactivateMatch[1] } }
+
+  const wosWorkerSuspendMatch = pathname.match(/^\/api\/wos\/workers\/([^/]+)\/suspend$/)
+  if (m === "POST" && wosWorkerSuspendMatch) return { name: "wos.workers.suspend", params: { id: wosWorkerSuspendMatch[1] } }
 
   const wosWorkerGetMatch = pathname.match(/^\/api\/wos\/workers\/([^/]+)$/)
   if (m === "GET" && wosWorkerGetMatch) return { name: "wos.workers.get", params: { id: wosWorkerGetMatch[1] } }
@@ -1009,6 +1071,30 @@ const server = http.createServer(async (req, res) => {
       if (!w) return fail(res, "NOT_FOUND", "Worker not found", 404)
       const audit = buildWorkerAudit(w)
       return ok(res, audit, 200)
+    }
+
+    if (route.name === "wos.workers.activate") {
+      await readJson(req, res).catch(() => null)
+      const actor = actorFromReq(req)
+      const out = transitionWorkerStatus(route.params.id, "active", actor, "wos.worker.activate")
+      if (!out.ok) return fail(res, out.error.code, out.error.message, out.status || 422)
+      return ok(res, out.data, 200)
+    }
+
+    if (route.name === "wos.workers.deactivate") {
+      await readJson(req, res).catch(() => null)
+      const actor = actorFromReq(req)
+      const out = transitionWorkerStatus(route.params.id, "inactive", actor, "wos.worker.deactivate")
+      if (!out.ok) return fail(res, out.error.code, out.error.message, out.status || 422)
+      return ok(res, out.data, 200)
+    }
+
+    if (route.name === "wos.workers.suspend") {
+      await readJson(req, res).catch(() => null)
+      const actor = actorFromReq(req)
+      const out = transitionWorkerStatus(route.params.id, "suspended", actor, "wos.worker.suspend")
+      if (!out.ok) return fail(res, out.error.code, out.error.message, out.status || 422)
+      return ok(res, out.data, 200)
     }
 
     if (route.name === "wos.workers.get") {
