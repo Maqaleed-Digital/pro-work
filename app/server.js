@@ -333,6 +333,60 @@ function listWosEvidenceEvents() {
   return store.wosEvidenceEvents.slice()
 }
 
+function listWosEvidenceEventsQuery(query) {
+  const allowed = new Set(["entity_id", "entity_type", "action", "actor", "limit", "cursor"])
+  for (const k of query.keys()) {
+    if (!allowed.has(k)) {
+      return { ok: false, error: { code: "VALIDATION_ERROR", message: `query.${k}: Unsupported query param` }, status: 422 }
+    }
+  }
+
+  const entityId = query.get("entity_id")
+  const entityType = query.get("entity_type")
+  const action = query.get("action")
+  const actor = query.get("actor")
+  const limit = normalizeLimit(query.get("limit"))
+  const cursor = query.get("cursor")
+
+  let items = store.wosEvidenceEvents.slice()
+
+  if (entityId && String(entityId).trim() !== "") {
+    items = items.filter(e => String(e.entity_id) === String(entityId))
+  }
+  if (entityType && String(entityType).trim() !== "") {
+    items = items.filter(e => String(e.entity_type) === String(entityType))
+  }
+  if (action && String(action).trim() !== "") {
+    items = items.filter(e => String(e.action) === String(action))
+  }
+  if (actor && String(actor).trim() !== "") {
+    items = items.filter(e => String(e.actor) === String(actor))
+  }
+
+  items.sort((a, b) => {
+    const aa = String(a.timestamp || "")
+    const bb = String(b.timestamp || "")
+    if (aa === bb) return 0
+    return aa > bb ? -1 : 1
+  })
+
+  if (cursor && String(cursor).trim() !== "") {
+    items = items.filter(e => String(e.timestamp || "") < String(cursor))
+  }
+
+  const page = items.slice(0, limit)
+  const nextCursor = page.length > 0 ? String(page[page.length - 1].timestamp || "") : ""
+  const hasMore = items.length > page.length
+
+  return {
+    ok: true,
+    data: {
+      items: page,
+      next_cursor: hasMore && nextCursor ? nextCursor : null
+    }
+  }
+}
+
 function createWosWorker(input, actor) {
   const type = String(input.type || "").trim()
   if (!isWorkerType(type)) {
@@ -598,6 +652,8 @@ function createManualWosEvidenceEvent(input) {
   if (!actor) return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.actor: Field required" }, status: 422 }
   if (!action) return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.action: Field required" }, status: 422 }
   if (!entityType) return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.entity_type: Field required" }, status: 422 }
+if (!entityType) return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.entity_type: Field required" }, status: 422 }
+
   if (!entityId) return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.entity_id: Field required" }, status: 422 }
 
   const evt = emitWosEvidenceEvent({
@@ -1113,7 +1169,9 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (route.name === "wos.evidence.list") {
-      return ok(res, listWosEvidenceEvents(), 200)
+      const out = listWosEvidenceEventsQuery(url.searchParams)
+      if (!out.ok) return fail(res, out.error.code, out.error.message, out.status || 422)
+      return ok(res, out.data, 200)
     }
 
     if (route.name === "wos.evidence.create") {
