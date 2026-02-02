@@ -1,3 +1,5 @@
+"use strict"
+
 const http = require("http")
 const { URL } = require("url")
 const crypto = require("crypto")
@@ -75,7 +77,9 @@ const store = {
   jobs: new Map(),
   proposalsByJob: new Map(),
   proposals: new Map(),
-  contractIntents: new Map()
+  contractIntents: new Map(),
+  wosWorkers: new Map(),
+  wosEvidenceEvents: []
 }
 
 function createJob(input) {
@@ -306,6 +310,501 @@ function buildContractIntentAudit(ci) {
   }
 }
 
+function isWorkerType(v) {
+  return v === "FTE" || v === "FREELANCER"
+}
+
+function emitWosEvidenceEvent(input) {
+  const id = genId("ev")
+  const evt = {
+    id,
+    actor: String(input.actor || "system"),
+    action: String(input.action),
+    entity_type: String(input.entity_type),
+    entity_id: String(input.entity_id),
+    timestamp: nowIso(),
+    snapshot: input.snapshot === undefined ? null : input.snapshot
+  }
+  store.wosEvidenceEvents.push(evt)
+  return evt
+}
+
+function listWosEvidenceEvents() {
+  return store.wosEvidenceEvents.slice()
+}
+
+function listWosEvidenceEventsQuery(query) {
+  const allowed = new Set(["entity_id", "entity_type", "action", "actor", "limit", "cursor"])
+  for (const k of query.keys()) {
+    if (!allowed.has(k)) {
+      return { ok: false, error: { code: "VALIDATION_ERROR", message: `query.${k}: Unsupported query param` }, status: 422 }
+    }
+  }
+
+  const entityId = query.get("entity_id")
+  const entityType = query.get("entity_type")
+  const action = query.get("action")
+  const actor = query.get("actor")
+  const limit = normalizeLimit(query.get("limit"))
+  const cursor = query.get("cursor")
+
+  let items = store.wosEvidenceEvents.slice()
+
+  if (entityId && String(entityId).trim() !== "") {
+    items = items.filter(e => String(e.entity_id) === String(entityId))
+  }
+  if (entityType && String(entityType).trim() !== "") {
+    items = items.filter(e => String(e.entity_type) === String(entityType))
+  }
+  if (action && String(action).trim() !== "") {
+    items = items.filter(e => String(e.action) === String(action))
+  }
+  if (actor && String(actor).trim() !== "") {
+    items = items.filter(e => String(e.actor) === String(actor))
+  }
+
+  items.sort((a, b) => {
+    const aa = String(a.timestamp || "")
+    const bb = String(b.timestamp || "")
+    if (aa === bb) return 0
+    return aa > bb ? -1 : 1
+  })
+
+  if (cursor && String(cursor).trim() !== "") {
+    items = items.filter(e => String(e.timestamp || "") < String(cursor))
+  }
+
+  const page = items.slice(0, limit)
+  const nextCursor = page.length > 0 ? String(page[page.length - 1].timestamp || "") : ""
+  const hasMore = items.length > page.length
+
+  return {
+    ok: true,
+    data: {
+      items: page,
+      next_cursor: hasMore && nextCursor ? nextCursor : null
+    }
+  }
+}
+
+function createWosWorker(input, actor) {
+  const type = String(input.type || "").trim()
+  if (!isWorkerType(type)) {
+    return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.type: Must be 'FTE' or 'FREELANCER'" }, status: 422 }
+  }
+
+  const displayName = String(input.display_name || "").trim()
+  if (!displayName) {
+    return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.display_name: Field required" }, status: 422 }
+  }
+
+  const email = input.email === undefined || input.email === null ? null : String(input.email).trim()
+  if (email !== null && email === "") {
+    return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.email: Must be a non-empty string or null" }, status: 422 }
+  }
+
+  if (input.skills !== undefined && !Array.isArray(input.skills)) {
+    return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.skills: Must be an array" }, status: 422 }
+  }
+
+  const skills = []
+  if (Array.isArray(input.skills)) {
+    for (let i = 0; i < input.skills.length; i++) {
+      const v = String(input.skills[i] === undefined || input.skills[i] === null ? "" : input.skills[i]).trim()
+      if (v) skills.push(v)
+    }
+  }
+
+  const availability = input.availability === undefined || input.availability === null ? {} : input.availability
+  if (input.availability !== undefined && (typeof availability !== "object" || Array.isArray(availability))) {
+    return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.availability: Must be an object" }, status: 422 }
+  }
+
+  let hoursPerWeek = null
+  if (availability.hours_per_week !== undefined && availability.hours_per_week !== null) {
+    const n = Number(availability.hours_per_week)
+    if (!Number.isFinite(n) || n < 0 || n > 168) {
+      return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.availability.hours_per_week: Must be between 0 and 168" }, status: 422 }
+    }
+    hoursPerWeek = n
+  }
+
+  const allocationNote =
+    availability.allocation_note === undefined || availability.allocation_note === null
+      ? null
+      : String(availability.allocation_note).trim()
+  if (allocationNote !== null && allocationNote === "") {
+    return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.availability.allocation_note: Must be a non-empty string or null" }, status: 422 }
+  }
+
+  const status = input.status === undefined || input.status === null ? "active" : String(input.status).trim()
+  if (!status) {
+    return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.status: Must be a non-empty string or null" }, status: 422 }
+  }
+
+  const id = genId("wkr")
+  const t = nowIso()
+  const worker = {
+    id,
+    type,
+    display_name: displayName,
+    email,
+    skills,
+    availability: {
+      hours_per_week: hoursPerWeek,
+      allocation_note: allocationNote
+    },
+    status,
+    created_at: t,
+    updated_at: t
+  }
+
+  store.wosWorkers.set(id, worker)
+
+  emitWosEvidenceEvent({
+    actor,
+    action: "wos.worker.create",
+    entity_type: "wos.worker",
+    entity_id: id,
+    snapshot: worker
+  })
+
+  return { ok: true, data: worker }
+}
+
+function getWosWorker(id) {
+  return store.wosWorkers.get(id) || null
+}
+
+function patchWosWorker(id, patch, actor) {
+  const current = getWosWorker(id)
+  if (!current) return { ok: false, error: { code: "NOT_FOUND", message: "Worker not found" }, status: 404 }
+
+  const next = { ...current }
+  let changed = false
+
+  if (patch.type !== undefined) {
+    const type = String(patch.type || "").trim()
+    if (!isWorkerType(type)) {
+      return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.type: Must be 'FTE' or 'FREELANCER'" }, status: 422 }
+    }
+    next.type = type
+    changed = true
+  }
+
+  if (patch.display_name !== undefined) {
+    const dn = String(patch.display_name || "").trim()
+    if (!dn) {
+      return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.display_name: Must be a non-empty string" }, status: 422 }
+    }
+    next.display_name = dn
+    changed = true
+  }
+
+  if (patch.email !== undefined) {
+    const email = patch.email === null ? null : String(patch.email).trim()
+    if (email !== null && email === "") {
+      return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.email: Must be a non-empty string or null" }, status: 422 }
+    }
+    next.email = email
+    changed = true
+  }
+
+  if (patch.skills !== undefined) {
+    if (!Array.isArray(patch.skills)) {
+      return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.skills: Must be an array" }, status: 422 }
+    }
+    const out = []
+    for (let i = 0; i < patch.skills.length; i++) {
+      const v = String(patch.skills[i] === undefined || patch.skills[i] === null ? "" : patch.skills[i]).trim()
+      if (v) out.push(v)
+    }
+    next.skills = out
+    changed = true
+  }
+
+  if (patch.availability !== undefined) {
+    if (patch.availability === null) {
+      next.availability = { hours_per_week: null, allocation_note: null }
+      changed = true
+    } else if (typeof patch.availability !== "object" || Array.isArray(patch.availability)) {
+      return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.availability: Must be an object or null" }, status: 422 }
+    } else {
+      const a = { ...(next.availability || { hours_per_week: null, allocation_note: null }) }
+      if (patch.availability.hours_per_week !== undefined) {
+        if (patch.availability.hours_per_week === null) {
+          a.hours_per_week = null
+        } else {
+          const n = Number(patch.availability.hours_per_week)
+          if (!Number.isFinite(n) || n < 0 || n > 168) {
+            return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.availability.hours_per_week: Must be between 0 and 168" }, status: 422 }
+          }
+          a.hours_per_week = n
+        }
+      }
+      if (patch.availability.allocation_note !== undefined) {
+        if (patch.availability.allocation_note === null) {
+          a.allocation_note = null
+        } else {
+          const s = String(patch.availability.allocation_note).trim()
+          if (!s) {
+            return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.availability.allocation_note: Must be a non-empty string or null" }, status: 422 }
+          }
+          a.allocation_note = s
+        }
+      }
+      next.availability = a
+      changed = true
+    }
+  }
+
+  if (patch.status !== undefined) {
+    const st = patch.status === null ? null : String(patch.status).trim()
+    if (st !== null && st === "") {
+      return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.status: Must be a non-empty string or null" }, status: 422 }
+    }
+    next.status = st === null ? next.status : st
+    changed = true
+  }
+
+  if (!changed) {
+    return { ok: true, data: current }
+  }
+
+  next.updated_at = nowIso()
+  store.wosWorkers.set(id, next)
+
+  emitWosEvidenceEvent({
+    actor,
+    action: "wos.worker.update",
+    entity_type: "wos.worker",
+    entity_id: id,
+    snapshot: next
+  })
+
+  return { ok: true, data: next }
+}
+
+function listWosWorkersQuery(query) {
+  const allowed = new Set(["type", "status", "skill", "limit", "cursor"])
+  for (const k of query.keys()) {
+    if (!allowed.has(k)) {
+      return { ok: false, error: { code: "VALIDATION_ERROR", message: `query.${k}: Unsupported query param` }, status: 422 }
+    }
+  }
+
+  const type = query.get("type")
+  const status = query.get("status")
+  const skill = query.get("skill")
+  const limit = normalizeLimit(query.get("limit"))
+  const cursor = query.get("cursor")
+
+  if (type && String(type).trim() !== "" && !isWorkerType(String(type))) {
+    return { ok: false, error: { code: "VALIDATION_ERROR", message: "query.type: Must be 'FTE' or 'FREELANCER'" }, status: 422 }
+  }
+
+  let items = Array.from(store.wosWorkers.values())
+
+  if (type && String(type).trim() !== "") {
+    items = items.filter(w => String(w.type) === String(type))
+  }
+  if (status && String(status).trim() !== "") {
+    items = items.filter(w => String(w.status) === String(status))
+  }
+  if (skill && String(skill).trim() !== "") {
+    items = items.filter(w => Array.isArray(w.skills) && w.skills.includes(String(skill)))
+  }
+
+  items.sort((a, b) => {
+    const aa = String(a.created_at || "")
+    const bb = String(b.created_at || "")
+    if (aa === bb) return 0
+    return aa > bb ? -1 : 1
+  })
+
+  if (cursor && String(cursor).trim() !== "") {
+    items = items.filter(w => String(w.created_at || "") < String(cursor))
+  }
+
+  const page = items.slice(0, limit)
+  const nextCursor = page.length > 0 ? String(page[page.length - 1].created_at || "") : ""
+  const hasMore = items.length > page.length
+
+  return {
+    ok: true,
+    data: {
+      items: page,
+      next_cursor: hasMore && nextCursor ? nextCursor : null
+    }
+  }
+}
+
+function createManualWosEvidenceEvent(input) {
+  if (typeof input !== "object" || input === null) {
+    return { ok: false, error: { code: "VALIDATION_ERROR", message: "body: JSON object required" }, status: 422 }
+  }
+
+  const actor = String(input.actor || "").trim()
+  const action = String(input.action || "").trim()
+  const entityType = String(input.entity_type || "").trim()
+  const entityId = String(input.entity_id || "").trim()
+
+  if (!actor) return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.actor: Field required" }, status: 422 }
+  if (!action) return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.action: Field required" }, status: 422 }
+  if (!entityType) return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.entity_type: Field required" }, status: 422 }
+if (!entityType) return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.entity_type: Field required" }, status: 422 }
+
+  if (!entityId) return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.entity_id: Field required" }, status: 422 }
+
+  const evt = emitWosEvidenceEvent({
+    actor,
+    action,
+    entity_type: entityType,
+    entity_id: entityId,
+    snapshot: input.snapshot === undefined ? null : input.snapshot
+  })
+
+  return { ok: true, data: evt }
+}
+
+function isKnownWorkerStatusForAudit(s) {
+  return s === "active" || s === "inactive" || s === "suspended"
+}
+
+function allowedNextWorkerStatusesForAudit(s) {
+  if (s === "active") return ["inactive", "suspended"]
+  if (s === "inactive") return ["active"]
+  if (s === "suspended") return ["active", "inactive"]
+  return []
+}
+
+function buildWorkerAudit(w) {
+  const status = String(w && w.status ? w.status : "")
+  const type = String(w && w.type ? w.type : "")
+  const email = w && Object.prototype.hasOwnProperty.call(w, "email") ? w.email : null
+  const skills = w && Object.prototype.hasOwnProperty.call(w, "skills") ? w.skills : null
+  const availability = w && Object.prototype.hasOwnProperty.call(w, "availability") ? w.availability : null
+
+  const invariants = []
+
+  invariants.push({
+    rule: "worker.exists",
+    ok: Boolean(w),
+    details: w ? null : "worker not found"
+  })
+
+  invariants.push({
+    rule: "worker.type.known",
+    ok: isWorkerType(type),
+    details: isWorkerType(type) ? null : `unknown type '${type}'`
+  })
+
+  invariants.push({
+    rule: "worker.status.known",
+    ok: isKnownWorkerStatusForAudit(status),
+    details: isKnownWorkerStatusForAudit(status) ? null : `unknown status '${status}'`
+  })
+
+  const emailOk = email === null || (typeof email === "string" && email.trim() !== "")
+  invariants.push({
+    rule: "worker.email.valid",
+    ok: emailOk,
+    details: emailOk ? null : "email must be null or non-empty string"
+  })
+
+  const skillsOk = Array.isArray(skills)
+  invariants.push({
+    rule: "worker.skills.valid",
+    ok: skillsOk,
+    details: skillsOk ? null : "skills must be an array"
+  })
+
+  let hpwOk = true
+  let hpwDetails = null
+  if (availability && typeof availability === "object" && !Array.isArray(availability)) {
+    const v = availability.hours_per_week
+    if (v === null || v === undefined) {
+      hpwOk = true
+    } else {
+      const n = Number(v)
+      hpwOk = Number.isFinite(n) && n >= 0 && n <= 168
+      if (!hpwOk) hpwDetails = "availability.hours_per_week must be between 0 and 168 or null"
+    }
+  } else if (availability === null || availability === undefined) {
+    hpwOk = true
+  } else {
+    hpwOk = false
+    hpwDetails = "availability must be an object or null"
+  }
+
+  invariants.push({
+    rule: "worker.availability.hours_per_week.valid",
+    ok: hpwOk,
+    details: hpwOk ? null : hpwDetails
+  })
+
+  return {
+    id: w.id,
+    current_status: status,
+    allowed_next_statuses: isKnownWorkerStatusForAudit(status) ? allowedNextWorkerStatusesForAudit(status) : [],
+    invariants,
+    last_updated_at: w.updated_at || w.created_at || null
+  }
+}
+
+function isKnownWorkerStatusForTransitions(s) {
+  return s === "active" || s === "inactive" || s === "suspended"
+}
+
+function canTransitionWorkerStatus(fromStatus, toStatus) {
+  const from = String(fromStatus || "")
+  const to = String(toStatus || "")
+  if (!isKnownWorkerStatusForTransitions(from)) return false
+  if (!isKnownWorkerStatusForTransitions(to)) return false
+
+  if (from === "active") return to === "inactive" || to === "suspended"
+  if (from === "inactive") return to === "active"
+  if (from === "suspended") return to === "active" || to === "inactive"
+  return false
+}
+
+function transitionWorkerStatus(id, toStatus, actor, actionName) {
+  const w = getWosWorker(id)
+  if (!w) return { ok: false, error: { code: "NOT_FOUND", message: "Worker not found" }, status: 404 }
+
+  const from = String(w.status || "")
+  const to = String(toStatus || "")
+
+  if (!isKnownWorkerStatusForTransitions(from)) {
+    return { ok: false, error: { code: "INVALID_STATE", message: `Worker status '${from}' is not eligible for transitions` }, status: 409 }
+  }
+
+  if (!canTransitionWorkerStatus(from, to)) {
+    return {
+      ok: false,
+      error: { code: "INVALID_STATE", message: `Cannot transition worker status from '${from}' to '${to}'` },
+      status: 409
+    }
+  }
+
+  const next = { ...w, status: to, updated_at: nowIso() }
+  store.wosWorkers.set(id, next)
+
+  emitWosEvidenceEvent({
+    actor,
+    action: actionName,
+    entity_type: "wos.worker",
+    entity_id: id,
+    snapshot: {
+      from_status: from,
+      to_status: to,
+      worker: next
+    }
+  })
+
+  return { ok: true, data: next }
+}
+
 function matchRoute(method, pathname) {
   const m = method.toUpperCase()
 
@@ -333,7 +832,6 @@ function matchRoute(method, pathname) {
   }
 
   if (m === "POST" && pathname === "/api/contracts/intent") return { name: "contracts.intent.create", params: {} }
-
   if (m === "GET" && pathname === "/api/contracts/intent") return { name: "contracts.intent.list", params: {} }
 
   const ciAuditMatch = pathname.match(/^\/api\/contracts\/intent\/([^/]+)\/audit$/)
@@ -347,6 +845,28 @@ function matchRoute(method, pathname) {
 
   const ciAcceptMatch = pathname.match(/^\/api\/contracts\/intent\/([^/]+)\/accept$/)
   if (m === "POST" && ciAcceptMatch) return { name: "contracts.intent.accept", params: { id: ciAcceptMatch[1] } }
+
+  if (m === "POST" && pathname === "/api/wos/workers") return { name: "wos.workers.create", params: {} }
+  if (m === "GET" && pathname === "/api/wos/workers") return { name: "wos.workers.list", params: {} }
+
+  const wosWorkerAuditMatch = pathname.match(/^\/api\/wos\/workers\/([^/]+)\/audit$/)
+  if (m === "GET" && wosWorkerAuditMatch) return { name: "wos.workers.audit", params: { id: wosWorkerAuditMatch[1] } }
+
+  const wosWorkerActivateMatch = pathname.match(/^\/api\/wos\/workers\/([^/]+)\/activate$/)
+  if (m === "POST" && wosWorkerActivateMatch) return { name: "wos.workers.activate", params: { id: wosWorkerActivateMatch[1] } }
+
+  const wosWorkerDeactivateMatch = pathname.match(/^\/api\/wos\/workers\/([^/]+)\/deactivate$/)
+  if (m === "POST" && wosWorkerDeactivateMatch) return { name: "wos.workers.deactivate", params: { id: wosWorkerDeactivateMatch[1] } }
+
+  const wosWorkerSuspendMatch = pathname.match(/^\/api\/wos\/workers\/([^/]+)\/suspend$/)
+  if (m === "POST" && wosWorkerSuspendMatch) return { name: "wos.workers.suspend", params: { id: wosWorkerSuspendMatch[1] } }
+
+  const wosWorkerGetMatch = pathname.match(/^\/api\/wos\/workers\/([^/]+)$/)
+  if (m === "GET" && wosWorkerGetMatch) return { name: "wos.workers.get", params: { id: wosWorkerGetMatch[1] } }
+  if (m === "PATCH" && wosWorkerGetMatch) return { name: "wos.workers.patch", params: { id: wosWorkerGetMatch[1] } }
+
+  if (m === "GET" && pathname === "/api/wos/evidence-events") return { name: "wos.evidence.list", params: {} }
+  if (m === "POST" && pathname === "/api/wos/evidence-events") return { name: "wos.evidence.create", params: {} }
 
   return null
 }
@@ -365,6 +885,12 @@ function health(res) {
 
 function invalidState(res, message) {
   fail(res, "INVALID_STATE", message, 409)
+}
+
+function actorFromReq(req) {
+  const h = req.headers["x-actor"]
+  const actor = h === undefined || h === null ? "" : String(h).trim()
+  return actor || "user"
 }
 
 const server = http.createServer(async (req, res) => {
@@ -579,6 +1105,81 @@ const server = http.createServer(async (req, res) => {
 
       const accepted = updateContractIntent(ci, { status: "accepted" })
       return ok(res, accepted, 200)
+    }
+
+    if (route.name === "wos.workers.create") {
+      const body = await readJson(req, res)
+      if (!body) return
+      const actor = actorFromReq(req)
+      const out = createWosWorker(body, actor)
+      if (!out.ok) return fail(res, out.error.code, out.error.message, out.status || 422)
+      return ok(res, out.data, 201)
+    }
+
+    if (route.name === "wos.workers.list") {
+      const out = listWosWorkersQuery(url.searchParams)
+      if (!out.ok) return fail(res, out.error.code, out.error.message, out.status || 422)
+      return ok(res, out.data, 200)
+    }
+
+    if (route.name === "wos.workers.audit") {
+      const w = getWosWorker(route.params.id)
+      if (!w) return fail(res, "NOT_FOUND", "Worker not found", 404)
+      const audit = buildWorkerAudit(w)
+      return ok(res, audit, 200)
+    }
+
+    if (route.name === "wos.workers.activate") {
+      await readJson(req, res).catch(() => null)
+      const actor = actorFromReq(req)
+      const out = transitionWorkerStatus(route.params.id, "active", actor, "wos.worker.activate")
+      if (!out.ok) return fail(res, out.error.code, out.error.message, out.status || 422)
+      return ok(res, out.data, 200)
+    }
+
+    if (route.name === "wos.workers.deactivate") {
+      await readJson(req, res).catch(() => null)
+      const actor = actorFromReq(req)
+      const out = transitionWorkerStatus(route.params.id, "inactive", actor, "wos.worker.deactivate")
+      if (!out.ok) return fail(res, out.error.code, out.error.message, out.status || 422)
+      return ok(res, out.data, 200)
+    }
+
+    if (route.name === "wos.workers.suspend") {
+      await readJson(req, res).catch(() => null)
+      const actor = actorFromReq(req)
+      const out = transitionWorkerStatus(route.params.id, "suspended", actor, "wos.worker.suspend")
+      if (!out.ok) return fail(res, out.error.code, out.error.message, out.status || 422)
+      return ok(res, out.data, 200)
+    }
+
+    if (route.name === "wos.workers.get") {
+      const w = getWosWorker(route.params.id)
+      if (!w) return fail(res, "NOT_FOUND", "Worker not found", 404)
+      return ok(res, w, 200)
+    }
+
+    if (route.name === "wos.workers.patch") {
+      const body = await readJson(req, res)
+      if (!body) return
+      const actor = actorFromReq(req)
+      const out = patchWosWorker(route.params.id, body, actor)
+      if (!out.ok) return fail(res, out.error.code, out.error.message, out.status || 422)
+      return ok(res, out.data, 200)
+    }
+
+    if (route.name === "wos.evidence.list") {
+      const out = listWosEvidenceEventsQuery(url.searchParams)
+      if (!out.ok) return fail(res, out.error.code, out.error.message, out.status || 422)
+      return ok(res, out.data, 200)
+    }
+
+    if (route.name === "wos.evidence.create") {
+      const body = await readJson(req, res)
+      if (!body) return
+      const out = createManualWosEvidenceEvent(body)
+      if (!out.ok) return fail(res, out.error.code, out.error.message, out.status || 422)
+      return ok(res, out.data, 201)
     }
 
     return methodNotAllowed(res)
