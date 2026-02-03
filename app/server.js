@@ -7,6 +7,10 @@ const crypto = require("crypto")
 const HOST = process.env.APP_HOST || "127.0.0.1"
 const PORT = Number(process.env.APP_PORT || "3010")
 
+const BOOT_ID = crypto.randomUUID()
+const STARTED_AT_ISO = nowIso()
+const PID = process.pid
+
 function nowIso() {
   return new Date().toISOString()
 }
@@ -880,7 +884,7 @@ function methodNotAllowed(res) {
 }
 
 function health(res) {
-  ok(res, { service: "pro-work", health: "ok", time: nowIso() }, 200)
+  ok(res, { service: "pro-work", health: "ok", time: nowIso(), boot_id: BOOT_ID, started_at: STARTED_AT_ISO, pid: PID }, 200)
 }
 
 function invalidState(res, message) {
