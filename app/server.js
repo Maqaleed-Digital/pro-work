@@ -863,6 +863,11 @@ function matchRoute(method, pathname) {
   if (m === "GET" && pathname === "/wos/evidence-events") return { name: "wos.evidence.ui", params: {} }
   if (m === "POST" && pathname === "/api/wos/evidence-events") return { name: "wos.evidence.create", params: {} }
 
+  if (m === "GET" && pathname === "/api/admin/stats") return { name: "admin.stats", params: {} }
+  if (m === "GET" && pathname === "/api/admin/governance") return { name: "admin.governance", params: {} }
+  if (m === "GET" && pathname === "/api/admin/workers") return { name: "admin.workers.list", params: {} }
+  if (m === "GET" && pathname === "/api/admin/pods") return { name: "admin.pods.list", params: {} }
+
   return null
 }
 
@@ -886,6 +891,119 @@ function actorFromReq(req) {
   const h = req.headers["x-actor"]
   const actor = h === undefined || h === null ? "" : String(h).trim()
   return actor || "user"
+}
+
+function roleFromReq(req) {
+  const h = req.headers["x-role"]
+  const role = h === undefined || h === null ? "" : String(h).trim()
+  return role || "guest"
+}
+
+function requireAdmin(req, res) {
+  const role = roleFromReq(req)
+  if (role !== "admin") {
+    fail(res, "FORBIDDEN", "Admin only", 403)
+    return false
+  }
+  return true
+}
+
+function listAdminWorkers(query) {
+  const allowed = new Set(["status", "worker_type"])
+  for (const k of query.keys()) {
+    if (!allowed.has(k)) {
+      return { ok: false, error: { code: "VALIDATION_ERROR", message: `query.${k}: Unsupported query param` }, status: 422 }
+    }
+  }
+
+  const status = query.get("status")
+  const workerType = query.get("worker_type")
+
+  let items = Array.from(store.wosWorkers.values())
+
+  if (workerType && String(workerType).trim() !== "") {
+    const t = String(workerType).trim()
+    if (!isWorkerType(t)) {
+      return { ok: false, error: { code: "VALIDATION_ERROR", message: "query.worker_type: Must be 'FTE' or 'FREELANCER'" }, status: 422 }
+    }
+    items = items.filter(w => String(w.type) === t)
+  }
+
+  if (status && String(status).trim() !== "") {
+    const s = String(status).trim()
+    items = items.filter(w => String(w.status) === s)
+  }
+
+  items.sort((a, b) => {
+    const aa = String(a.created_at || "")
+    const bb = String(b.created_at || "")
+    if (aa === bb) return 0
+    return aa > bb ? -1 : 1
+  })
+
+  const shaped = items.map(w => {
+    return {
+      id: w.id,
+      name: String(w.display_name || ""),
+      email: w.email === null || w.email === undefined ? null : String(w.email),
+      worker_type: String(w.type || ""),
+      title: null,
+      status: String(w.status || ""),
+      assigned_pod: null,
+      created_at: w.created_at || null,
+      updated_at: w.updated_at || null
+    }
+  })
+
+  return { ok: true, data: shaped }
+}
+
+function adminStatsSnapshot() {
+  const workers = Array.from(store.wosWorkers.values())
+  const fte = workers.filter(w => String(w.type) === "FTE").length
+  const freelancer = workers.filter(w => String(w.type) === "FREELANCER").length
+
+  const evidenceTotal = store.wosEvidenceEvents.length
+  const recent = store.wosEvidenceEvents
+    .slice()
+    .sort((a, b) => {
+      const aa = String(a.timestamp || "")
+      const bb = String(b.timestamp || "")
+      if (aa === bb) return 0
+      return aa > bb ? -1 : 1
+    })
+    .slice(0, 10)
+
+  return {
+    workers: { total: workers.length, fte, freelancer },
+    pods: { total: 0, by_state: {} },
+    evidence: { total: evidenceTotal, recent },
+    governance: { status: "pass", checks_passed: 1, checks_total: 1 }
+  }
+}
+
+function adminGovernanceSnapshot() {
+  return {
+    last_doctor_run: {
+      status: "pass",
+      passed: 1,
+      total: 1,
+      timestamp: nowIso()
+    },
+    ci_status: {
+      status: "pass",
+      branch: "local",
+      last_run: nowIso(),
+      note: "Local placeholder. Use GitHub Actions for authoritative CI status."
+    },
+    checks: [
+      { name: "admin_api_shapes", status: "pass", message: "Admin endpoints are reachable and return stable shapes" }
+    ],
+    notes: [
+      "S21: Replace X-Role mock with real auth later.",
+      "S21+: Add persistence for pods and admin data if required."
+    ]
+  }
 }
 
 function serveEvidenceEventsUi(res) {
@@ -1441,6 +1559,28 @@ const server = http.createServer(async (req, res) => {
       const out = createManualWosEvidenceEvent(body)
       if (!out.ok) return fail(res, out.error.code, out.error.message, out.status || 422)
       return ok(res, out.data, 201)
+    }
+
+    if (route.name === "admin.stats") {
+      if (!requireAdmin(req, res)) return
+      return ok(res, adminStatsSnapshot(), 200)
+    }
+
+    if (route.name === "admin.governance") {
+      if (!requireAdmin(req, res)) return
+      return ok(res, adminGovernanceSnapshot(), 200)
+    }
+
+    if (route.name === "admin.workers.list") {
+      if (!requireAdmin(req, res)) return
+      const out = listAdminWorkers(url.searchParams)
+      if (!out.ok) return fail(res, out.error.code, out.error.message, out.status || 422)
+      return ok(res, out.data, 200)
+    }
+
+    if (route.name === "admin.pods.list") {
+      if (!requireAdmin(req, res)) return
+      return ok(res, [], 200)
     }
 
     return methodNotAllowed(res)
