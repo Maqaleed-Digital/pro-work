@@ -2,10 +2,17 @@ name: prowork-doctor
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened]
   push:
     branches:
       - main
-      - sprint/**
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   doctor:
