@@ -11,6 +11,14 @@ const BOOT_ID = crypto.randomUUID()
 const STARTED_AT_ISO = nowIso()
 const PID = process.pid
 
+function bootMeta() {
+  return {
+    boot_id: BOOT_ID,
+    started_at: STARTED_AT_ISO,
+    pid: PID
+  }
+}
+
 function nowIso() {
   return new Date().toISOString()
 }
@@ -884,7 +892,7 @@ function methodNotAllowed(res) {
 }
 
 function health(res) {
-  ok(res, { service: "pro-work", health: "ok", time: nowIso(), boot_id: BOOT_ID, started_at: STARTED_AT_ISO, pid: PID }, 200)
+  ok(res, { service: "pro-work", health: "ok", time: nowIso(), ...bootMeta() }, 200)
 }
 
 function invalidState(res, message) {
@@ -1567,12 +1575,12 @@ const server = http.createServer(async (req, res) => {
 
     if (route.name === "admin.stats") {
       if (!requireAdmin(req, res)) return
-      return ok(res, adminStatsSnapshot(), 200)
+      return ok(res, { ...bootMeta(), ...adminStatsSnapshot() }, 200)
     }
 
     if (route.name === "admin.governance") {
       if (!requireAdmin(req, res)) return
-      return ok(res, adminGovernanceSnapshot(), 200)
+      return ok(res, { ...bootMeta(), ...adminGovernanceSnapshot() }, 200)
     }
 
     if (route.name === "admin.workers.list") {
