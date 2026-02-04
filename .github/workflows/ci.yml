@@ -2,28 +2,40 @@ name: ci
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
-  workflow_dispatch:
+  push:
+    branches:
+      - main
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-permissions:
-  contents: read
-
 jobs:
-  governance_enforce:
+  app:
     runs-on: ubuntu-latest
-    name: governance_enforce
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: app
     steps:
-      - name: checkout
+      - name: Checkout
         uses: actions/checkout@v4
-      - name: setup-node
+
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
-      - name: governance enforce
-        run: |
-          chmod +x "scripts/governance_enforce.sh" || true
-          bash "./scripts/governance_enforce.sh"
+          node-version: "18"
+          cache: "npm"
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
