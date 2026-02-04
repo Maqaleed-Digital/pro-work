@@ -3,6 +3,7 @@
 const http = require("http")
 const { URL } = require("url")
 const crypto = require("crypto")
+const Admin = require("./lib/admin")
 
 const HOST = process.env.APP_HOST || "127.0.0.1"
 const PORT = Number(process.env.APP_PORT || "3010")
@@ -39,6 +40,12 @@ function fail(res, code, message, statusCode = 400) {
     "cache-control": "no-store"
   })
   res.end(body)
+}
+
+function failFromAdmin(res, adminErr) {
+  const status = Number(adminErr && adminErr.status ? adminErr.status : 500)
+  const e = adminErr && adminErr.error ? adminErr.error : { code: "ADMIN_ERROR", message: "admin error" }
+  fail(res, e.code || "ADMIN_ERROR", e.message || "admin error", status)
 }
 
 async function readJson(req, res) {
@@ -880,6 +887,9 @@ function matchRoute(method, pathname) {
   if (m === "GET" && pathname === "/api/admin/workers") return { name: "admin.workers.list", params: {} }
   if (m === "GET" && pathname === "/api/admin/pods") return { name: "admin.pods.list", params: {} }
 
+  if (m === "GET" && pathname === "/api/admin/principals") return { name: "admin.principals.list", params: {} }
+  if (m === "POST" && pathname === "/api/admin/principals") return { name: "admin.principals.create", params: {} }
+
   return null
 }
 
@@ -903,21 +913,6 @@ function actorFromReq(req) {
   const h = req.headers["x-actor"]
   const actor = h === undefined || h === null ? "" : String(h).trim()
   return actor || "user"
-}
-
-function roleFromReq(req) {
-  const h = req.headers["x-role"]
-  const role = h === undefined || h === null ? "" : String(h).trim()
-  return role || "guest"
-}
-
-function requireAdmin(req, res) {
-  const role = roleFromReq(req)
-  if (role !== "admin") {
-    fail(res, "FORBIDDEN", "Admin only", 403)
-    return false
-  }
-  return true
 }
 
 function listAdminWorkers(query) {
@@ -1574,25 +1569,45 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (route.name === "admin.stats") {
-      if (!requireAdmin(req, res)) return
-      return ok(res, { ...bootMeta(), ...adminStatsSnapshot() }, 200)
+      const auth = Admin.requirePermission(req, "admin.stats.read")
+      if (!auth.ok) return failFromAdmin(res, auth)
+      return ok(res, { ...bootMeta(), admin: { id: auth.principal.id, name: auth.principal.name, role: auth.principal.role }, ...adminStatsSnapshot() }, 200)
     }
 
     if (route.name === "admin.governance") {
-      if (!requireAdmin(req, res)) return
-      return ok(res, { ...bootMeta(), ...adminGovernanceSnapshot() }, 200)
+      const auth = Admin.requirePermission(req, "admin.governance.read")
+      if (!auth.ok) return failFromAdmin(res, auth)
+      return ok(res, { ...bootMeta(), admin: { id: auth.principal.id, name: auth.principal.name, role: auth.principal.role }, ...adminGovernanceSnapshot() }, 200)
     }
 
     if (route.name === "admin.workers.list") {
-      if (!requireAdmin(req, res)) return
+      const auth = Admin.requirePermission(req, "admin.workers.read")
+      if (!auth.ok) return failFromAdmin(res, auth)
       const out = listAdminWorkers(url.searchParams)
       if (!out.ok) return fail(res, out.error.code, out.error.message, out.status || 422)
-      return ok(res, out.data, 200)
+      return ok(res, { ...bootMeta(), admin: { id: auth.principal.id, name: auth.principal.name, role: auth.principal.role }, workers: out.data }, 200)
     }
 
     if (route.name === "admin.pods.list") {
-      if (!requireAdmin(req, res)) return
-      return ok(res, [], 200)
+      const auth = Admin.requirePermission(req, "admin.pods.read")
+      if (!auth.ok) return failFromAdmin(res, auth)
+      return ok(res, { ...bootMeta(), admin: { id: auth.principal.id, name: auth.principal.name, role: auth.principal.role }, pods: [] }, 200)
+    }
+
+    if (route.name === "admin.principals.list") {
+      const auth = Admin.requirePermission(req, "admin.read")
+      if (!auth.ok) return failFromAdmin(res, auth)
+      return ok(res, { ...bootMeta(), admin: { id: auth.principal.id, name: auth.principal.name, role: auth.principal.role }, principals: Admin.listPrincipalsSafe(auth.db), roles: auth.db.roles }, 200)
+    }
+
+    if (route.name === "admin.principals.create") {
+      const auth = Admin.requirePermission(req, "*")
+      if (!auth.ok) return failFromAdmin(res, auth)
+      const body = await readJson(req, res)
+      if (!body) return
+      const created = Admin.createPrincipal(auth.db, auth.dbPath, body)
+      if (!created.ok) return failFromAdmin(res, created)
+      return ok(res, { ...bootMeta(), admin: { id: auth.principal.id, name: auth.principal.name, role: auth.principal.role }, principal: created.principal, token: created.token }, 201)
     }
 
     return methodNotAllowed(res)
