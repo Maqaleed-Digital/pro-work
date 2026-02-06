@@ -1,19 +1,52 @@
 {
-  "version": 1,
-  "updated_at": "1970-01-01T00:00:00.000Z",
-  "principals": [],
+  "principals": [
+    {
+      "id": "adm_seed_superadmin",
+      "name": "seed-superadmin",
+      "role": "superadmin",
+      "status": "active",
+      "token": "sk-seed-superadmin-001",
+      "created_at": "2026-02-06T00:00:00.000Z",
+      "updated_at": "2026-02-06T00:00:00.000Z"
+    },
+    {
+      "id": "adm_seed_ops",
+      "name": "seed-ops",
+      "role": "ops",
+      "status": "active",
+      "token": "sk-seed-ops-001",
+      "created_at": "2026-02-06T00:00:00.000Z",
+      "updated_at": "2026-02-06T00:00:00.000Z"
+    },
+    {
+      "id": "adm_seed_auditor",
+      "name": "seed-auditor",
+      "role": "auditor",
+      "status": "active",
+      "token": "sk-seed-auditor-001",
+      "created_at": "2026-02-06T00:00:00.000Z",
+      "updated_at": "2026-02-06T00:00:00.000Z"
+    }
+  ],
   "roles": {
     "superadmin": {
       "description": "Full access",
       "permissions": ["*"]
     },
     "ops": {
-      "description": "Operational admin access (operator)",
-      "permissions": ["admin.read", "admin.stats.read", "admin.workers.read"]
+      "description": "Operational admin access",
+      "permissions": [
+        "admin.stats.read",
+        "admin.governance.read",
+        "admin.workers.read",
+        "admin.pods.read"
+      ]
     },
     "auditor": {
-      "description": "Read-only access (viewer) — stats only",
-      "permissions": ["admin.read", "admin.stats.read"]
+      "description": "Read-only audit access (stats only for S22 conformance)",
+      "permissions": [
+        "admin.stats.read"
+      ]
     }
   }
 }
