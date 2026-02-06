@@ -5,6 +5,7 @@ PRINCIPALS_FILE="${PRINCIPALS_FILE:-${ROOT}/app/data/admin_principals.json}"
 API="${API:-http://127.0.0.1:3010}"
 
 echo "API=${API}"
+echo "PRINCIPALS_FILE=${PRINCIPALS_FILE}"
 
 read_role_token() {
   local role="$1"
@@ -29,20 +30,27 @@ process.stdout.write(String(arr.length));
 '
 }
 
-http_code() {
+http_raw() {
   local method="$1"
   local url="$2"
   local auth="${3:-}"
   local body="${4:-}"
+
   if [ -n "${body}" ]; then
     if [ -n "${auth}" ]; then
-      curl -sS -i -X "${method}" "${url}" -H "Authorization: Bearer ${auth}" -H "content-type: application/json" -d "${body}"
+      curl -sS -i -X "${method}" "${url}" \
+        -H "Authorization: Bearer ${auth}" \
+        -H "content-type: application/json" \
+        -d "${body}"
     else
-      curl -sS -i -X "${method}" "${url}" -H "content-type: application/json" -d "${body}"
+      curl -sS -i -X "${method}" "${url}" \
+        -H "content-type: application/json" \
+        -d "${body}"
     fi
   else
     if [ -n "${auth}" ]; then
-      curl -sS -i -X "${method}" "${url}" -H "Authorization: Bearer ${auth}"
+      curl -sS -i -X "${method}" "${url}" \
+        -H "Authorization: Bearer ${auth}"
     else
       curl -sS -i -X "${method}" "${url}"
     fi
@@ -53,10 +61,26 @@ extract_http_status() {
   awk 'BEGIN{c=""} /^HTTP\//{c=$2} END{print c}'
 }
 
+print_head() {
+  sed -n '1,18p' | cat
+}
+
+assert_status() {
+  local label="$1"
+  local expect="$2"
+  local got="$3"
+  if [ "${got}" != "${expect}" ]; then
+    echo "FAIL: ${label} expected HTTP ${expect} but got HTTP ${got}"
+    exit 1
+  fi
+  echo "PASS: ${label} HTTP ${got}"
+}
+
 ensure_seeded() {
   local n
   n="$(read_principals_count)"
   if [ "${n}" != "0" ]; then
+    echo "SEED: principals present (count=${n})"
     return 0
   fi
 
@@ -69,11 +93,11 @@ ensure_seeded() {
 
   echo "SEED: principals empty, bootstrapping superadmin via /api/admin/bootstrap/superadmin"
 
-  local resp
-  resp="$(http_code "POST" "${API}/api/admin/bootstrap/superadmin" "${bootstrap}" "{\"name\":\"bootstrap-superadmin\"}")"
-  echo "${resp}" | sed -n '1,18p' | cat
-  local st
+  local resp st
+  resp="$(http_raw "POST" "${API}/api/admin/bootstrap/superadmin" "${bootstrap}" "{\"name\":\"bootstrap-superadmin\"}")"
+  echo "${resp}" | print_head
   st="$(echo "${resp}" | extract_http_status)"
+
   if [ "${st}" != "201" ] && [ "${st}" != "409" ]; then
     echo "ERROR: bootstrap failed with HTTP ${st}"
     exit 1
@@ -88,10 +112,22 @@ ensure_seeded() {
   fi
 
   echo "SEED: creating ops principal"
-  http_code "POST" "${API}/api/admin/principals" "${super}" "{\"name\":\"seed-ops\",\"role\":\"ops\"}" | sed -n '1,18p' | cat
+  resp="$(http_raw "POST" "${API}/api/admin/principals" "${super}" "{\"name\":\"seed-ops\",\"role\":\"ops\"}")"
+  echo "${resp}" | print_head
+  st="$(echo "${resp}" | extract_http_status)"
+  if [ "${st}" != "201" ] && [ "${st}" != "409" ]; then
+    echo "ERROR: seed ops failed with HTTP ${st}"
+    exit 1
+  fi
 
   echo "SEED: creating auditor principal"
-  http_code "POST" "${API}/api/admin/principals" "${super}" "{\"name\":\"seed-auditor\",\"role\":\"auditor\"}" | sed -n '1,18p' | cat
+  resp="$(http_raw "POST" "${API}/api/admin/principals" "${super}" "{\"name\":\"seed-auditor\",\"role\":\"auditor\"}")"
+  echo "${resp}" | print_head
+  st="$(echo "${resp}" | extract_http_status)"
+  if [ "${st}" != "201" ] && [ "${st}" != "409" ]; then
+    echo "ERROR: seed auditor failed with HTTP ${st}"
+    exit 1
+  fi
 
   echo "SEED: done"
 }
@@ -110,26 +146,52 @@ if [ -z "${SUPER}" ] || [ -z "${OPERATOR}" ] || [ -z "${VIEWER}" ]; then
   exit 1
 fi
 
-echo "TEST1 no token /stats"
-http_code "GET" "${API}/api/admin/stats" "" "" | sed -n '1,18p' | cat
+echo "TEST1 no token /stats (expect 401)"
+resp="$(http_raw "GET" "${API}/api/admin/stats" "" "")"
+echo "${resp}" | print_head
+st="$(echo "${resp}" | extract_http_status)"
+assert_status "TEST1" "401" "${st}"
 
-echo "TEST2 invalid token /stats"
-http_code "GET" "${API}/api/admin/stats" "invalid-token" "" | sed -n '1,18p' | cat
+echo "TEST2 invalid token /stats (expect 403)"
+resp="$(http_raw "GET" "${API}/api/admin/stats" "invalid-token" "")"
+echo "${resp}" | print_head
+st="$(echo "${resp}" | extract_http_status)"
+assert_status "TEST2" "403" "${st}"
 
-echo "TEST3 superadmin /stats"
-http_code "GET" "${API}/api/admin/stats" "${SUPER}" "" | sed -n '1,18p' | cat
+echo "TEST3 superadmin /stats (expect 200)"
+resp="$(http_raw "GET" "${API}/api/admin/stats" "${SUPER}" "")"
+echo "${resp}" | print_head
+st="$(echo "${resp}" | extract_http_status)"
+assert_status "TEST3" "200" "${st}"
 
 echo "TEST4 auditor /workers (expect 403)"
-http_code "GET" "${API}/api/admin/workers" "${VIEWER}" "" | sed -n '1,18p' | cat
+resp="$(http_raw "GET" "${API}/api/admin/workers" "${VIEWER}" "")"
+echo "${resp}" | print_head
+st="$(echo "${resp}" | extract_http_status)"
+assert_status "TEST4" "403" "${st}"
 
 echo "TEST5 ops /workers (expect 200)"
-http_code "GET" "${API}/api/admin/workers" "${OPERATOR}" "" | sed -n '1,18p' | cat
+resp="$(http_raw "GET" "${API}/api/admin/workers" "${OPERATOR}" "")"
+echo "${resp}" | print_head
+st="$(echo "${resp}" | extract_http_status)"
+assert_status "TEST5" "200" "${st}"
 
 echo "TEST6 ops /principals (expect 403)"
-http_code "GET" "${API}/api/admin/principals" "${OPERATOR}" "" | sed -n '1,18p' | cat
+resp="$(http_raw "GET" "${API}/api/admin/principals" "${OPERATOR}" "")"
+echo "${resp}" | print_head
+st="$(echo "${resp}" | extract_http_status)"
+assert_status "TEST6" "403" "${st}"
 
 echo "TEST7 superadmin /principals (expect 200)"
-http_code "GET" "${API}/api/admin/principals" "${SUPER}" "" | sed -n '1,18p' | cat
+resp="$(http_raw "GET" "${API}/api/admin/principals" "${SUPER}" "")"
+echo "${resp}" | print_head
+st="$(echo "${resp}" | extract_http_status)"
+assert_status "TEST7" "200" "${st}"
 
 echo "TEST8 create principal (expect 201)"
-http_code "POST" "${API}/api/admin/principals" "${SUPER}" "{\"name\":\"conformance-${RANDOM}\",\"role\":\"ops\"}" | sed -n '1,18p' | cat
+resp="$(http_raw "POST" "${API}/api/admin/principals" "${SUPER}" "{\"name\":\"conformance-${RANDOM}\",\"role\":\"ops\"}")"
+echo "${resp}" | print_head
+st="$(echo "${resp}" | extract_http_status)"
+assert_status "TEST8" "201" "${st}"
+
+echo "ALL TESTS PASSED"
