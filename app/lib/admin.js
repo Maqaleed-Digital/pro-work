@@ -8,12 +8,24 @@ function nowIso() {
   return new Date().toISOString()
 }
 
-function err(status, code, message) {
-  return { ok: false, status, error: { code, message } }
-}
-
 function ok(data) {
   return { ok: true, data }
+}
+
+function err(status, code, message) {
+  return {
+    ok: false,
+    status: Number(status) || 500,
+    error: {
+      code: String(code || "ADMIN_ERROR"),
+      message: String(message || "admin error")
+    }
+  }
+}
+
+function principalsFilePath() {
+  const root = path.resolve(__dirname, "..")
+  return path.join(root, "data", "admin_principals.json")
 }
 
 function readJsonFile(filePath) {
@@ -25,204 +37,229 @@ function writeJsonFile(filePath, obj) {
   fs.writeFileSync(filePath, JSON.stringify(obj, null, 2) + "\n", "utf8")
 }
 
-function principalsFilePath() {
-  const root = path.resolve(__dirname, "..")
-  return path.join(root, "data", "admin_principals.json")
-}
-
-function loadPrincipals() {
-  const p = principalsFilePath()
-  const j = readJsonFile(p)
-
+function normalizeDb(j) {
   const principals = Array.isArray(j)
     ? j
-    : Array.isArray(j.principals)
+    : Array.isArray(j && j.principals)
       ? j.principals
-      : Array.isArray(j.items)
+      : Array.isArray(j && j.items)
         ? j.items
         : []
 
-  const roles = j && typeof j === "object" && j.roles && typeof j.roles === "object" ? j.roles : {}
+  const roles =
+    j && typeof j === "object" && !Array.isArray(j) && j.roles && typeof j.roles === "object"
+      ? j.roles
+      : {}
 
-  return { file: p, principals, roles, raw: j }
+  return { principals, roles }
 }
 
-function savePrincipals(nextRaw) {
-  const p = principalsFilePath()
-  writeJsonFile(p, nextRaw)
-  return p
-}
-
-function parseBearer(req) {
-  const h = req && req.headers ? req.headers.authorization || req.headers.Authorization : null
-  if (!h) return null
-  const v = String(h).trim()
-  if (!v) return null
-  if (!v.toLowerCase().startsWith("bearer ")) return { badScheme: true }
-  const token = v.slice(7).trim()
-  if (!token) return null
-  return { token }
-}
-
-function resolvePrincipalByToken(token) {
-  const { principals, roles } = loadPrincipals()
-  const hit = principals.find(p => p && String(p.token || "") === String(token))
-  if (!hit) return null
-  const roleName = String(hit.role || "")
-  const role = roles && roles[roleName] ? roles[roleName] : null
-  const perms = role && Array.isArray(role.permissions) ? role.permissions.map(String) : []
-  return {
-    id: String(hit.id || ""),
-    name: String(hit.name || ""),
-    role: roleName,
-    status: String(hit.status || "active"),
-    token: String(hit.token || ""),
-    permissions: perms
+function loadDbFromPath(dbPath) {
+  try {
+    const j = readJsonFile(dbPath)
+    const norm = normalizeDb(j)
+    return ok({ db: { principals: norm.principals, roles: norm.roles }, raw: j })
+  } catch (e) {
+    return err(500, "ADMIN_CONFIG_ERROR", `failed to read admin principals file: ${dbPath}`)
   }
 }
 
-function hasPermission(principal, perm) {
-  if (!principal) return false
-  const perms = Array.isArray(principal.permissions) ? principal.permissions : []
+function parseAuthorization(req) {
+  const h = req && req.headers ? (req.headers.authorization || req.headers.Authorization) : null
+  const v = h === undefined || h === null ? "" : String(h).trim()
+  if (!v) return err(401, "UNAUTHORIZED", "missing Authorization header")
+
+  const parts = v.split(/\s+/)
+  if (parts.length !== 2) return err(401, "UNAUTHORIZED", "invalid Authorization header")
+  if (String(parts[0]).toLowerCase() !== "bearer") return err(401, "UNAUTHORIZED", "Authorization must be Bearer token")
+
+  const token = String(parts[1] || "").trim()
+  if (!token) return err(401, "UNAUTHORIZED", "missing bearer token")
+  return ok({ token })
+}
+
+function permissionsForRole(db, roleName) {
+  const r = db && db.roles ? db.roles[roleName] : null
+  const perms = r && Array.isArray(r.permissions) ? r.permissions.map(x => String(x)) : []
+  return perms
+}
+
+function hasPermission(perms, required) {
+  const req = String(required || "")
+  if (!req) return true
   if (perms.includes("*")) return true
-  return perms.includes(String(perm))
+  return perms.includes(req)
 }
 
-function requireAuth(req) {
-  const parsed = parseBearer(req)
-  if (parsed && parsed.badScheme) {
-    return err(401, "UNAUTHORIZED", "Authorization must be Bearer token")
+function findPrincipalByToken(db, token) {
+  const t = String(token)
+  const principals = db && Array.isArray(db.principals) ? db.principals : []
+  const hit = principals.find(p => p && String(p.token || "") === t)
+  if (!hit) return null
+  if (String(hit.status || "active") !== "active") return null
+  return hit
+}
+
+function requirePermission(req, requiredPermission) {
+  const auth = parseAuthorization(req)
+  if (!auth.ok) return auth
+
+  const dbPath = principalsFilePath()
+  const loaded = loadDbFromPath(dbPath)
+  if (!loaded.ok) return loaded
+
+  const db = loaded.data.db
+  const principal = findPrincipalByToken(db, auth.data.token)
+  if (!principal) return err(401, "UNAUTHORIZED", "invalid token")
+
+  const roleName = String(principal.role || "")
+  const perms = permissionsForRole(db, roleName)
+
+  if (!hasPermission(perms, requiredPermission)) {
+    return err(403, "FORBIDDEN", "forbidden")
   }
-  if (!parsed || !parsed.token) {
-    return err(401, "UNAUTHORIZED", "Missing Authorization Bearer token")
+
+  return {
+    ok: true,
+    principal: {
+      id: String(principal.id || ""),
+      name: String(principal.name || ""),
+      role: roleName,
+      status: String(principal.status || "active")
+    },
+    db,
+    dbPath
   }
-
-  const principal = resolvePrincipalByToken(parsed.token)
-  if (!principal) return err(401, "UNAUTHORIZED", "Invalid token")
-
-  if (String(principal.status) !== "active") {
-    return err(403, "FORBIDDEN", "Principal inactive")
-  }
-
-  return ok({ principal })
 }
 
-function requirePermission(req, permission) {
-  const a = requireAuth(req)
-  if (!a.ok) return a
-
-  const principal = a.data.principal
-  if (!hasPermission(principal, permission)) {
-    return err(403, "FORBIDDEN", `Missing permission: ${String(permission)}`)
-  }
-
-  return ok({ principal })
-}
-
-function listWorkers(_query) {
-  return ok([])
-}
-
-function listPods(_query) {
-  return ok([])
-}
-
-function statsSnapshot() {
-  return ok({
-    workers: { total: 0, fte: 0, freelancer: 0 },
-    pods: { total: 0, by_state: {} },
-    evidence: { total: 0, recent: [] },
-    governance: { status: "pass", checks_passed: 1, checks_total: 1 }
+function listPrincipalsSafe(db) {
+  const principals = db && Array.isArray(db.principals) ? db.principals : []
+  return principals.map(p => {
+    return {
+      id: String(p.id || ""),
+      name: String(p.name || ""),
+      role: String(p.role || ""),
+      status: String(p.status || "active"),
+      created_at: p.created_at || null,
+      updated_at: p.updated_at || null
+    }
   })
 }
 
-function governanceSnapshot() {
-  return ok({
-    last_doctor_run: { status: "pass", passed: 1, total: 1, timestamp: nowIso() },
-    ci_status: { status: "unknown", branch: "local", last_run: nowIso(), note: "Use GitHub Actions for CI status" },
-    checks: [{ name: "admin_rbac", status: "pass", message: "RBAC enforcement active" }],
-    notes: ["S22/S23: contract-first RBAC conformance"]
-  })
+function createPrincipal(db, dbPath, body) {
+  try {
+    const name = body && body.name !== undefined ? String(body.name).trim() : ""
+    const role = body && body.role !== undefined ? String(body.role).trim() : ""
+    const token = body && body.token !== undefined ? String(body.token).trim() : ""
+    const status = body && body.status !== undefined ? String(body.status).trim() : "active"
+
+    if (!name) return err(422, "VALIDATION_ERROR", "body.name: Field required")
+    if (!role) return err(422, "VALIDATION_ERROR", "body.role: Field required")
+    if (!token) return err(422, "VALIDATION_ERROR", "body.token: Field required")
+    if (!db || !db.roles || !db.roles[role]) return err(422, "VALIDATION_ERROR", "body.role: Unknown role")
+
+    const principals = Array.isArray(db.principals) ? db.principals : []
+    if (principals.some(x => x && String(x.token || "") === token)) return err(409, "CONFLICT", "token already exists")
+
+    const t = nowIso()
+    const created = {
+      id: `adm_${crypto.randomUUID()}`,
+      name,
+      role,
+      status,
+      token,
+      created_at: t,
+      updated_at: t
+    }
+
+    const nextDb = { ...db, principals: principals.concat([created]) }
+
+    const loaded = loadDbFromPath(dbPath)
+    if (!loaded.ok) return loaded
+
+    const raw = loaded.data.raw
+    let nextRaw
+    if (Array.isArray(raw)) {
+      nextRaw = nextDb.principals
+    } else if (raw && typeof raw === "object") {
+      nextRaw = { ...raw, principals: nextDb.principals }
+    } else {
+      nextRaw = { principals: nextDb.principals, roles: nextDb.roles }
+    }
+
+    writeJsonFile(dbPath, nextRaw)
+
+    return ok({
+      id: created.id,
+      name: created.name,
+      role: created.role,
+      status: created.status,
+      created_at: created.created_at,
+      updated_at: created.updated_at
+    })
+  } catch (e) {
+    return err(500, "ADMIN_INTERNAL_ERROR", "failed to create principal")
+  }
 }
 
-function listPrincipals() {
-  const { principals, raw } = loadPrincipals()
-  const shaped = principals.map(p => ({
-    id: String(p.id || ""),
-    name: String(p.name || ""),
-    role: String(p.role || ""),
-    status: String(p.status || "active"),
-    token: String(p.token || ""),
-    created_at: p.created_at || null,
-    updated_at: p.updated_at || null
-  }))
-  return ok({ items: shaped, roles: raw.roles || {} })
-}
+function bootstrapSuperadmin(req, expectedBootstrapToken) {
+  const got = req && req.headers ? String(req.headers["x-admin-bootstrap-token"] || "").trim() : ""
+  const expected = String(expectedBootstrapToken || "").trim()
 
-function createPrincipal(body) {
-  if (!body || typeof body !== "object") return err(422, "VALIDATION_ERROR", "body: JSON object required")
-  const name = String(body.name || "").trim()
-  const role = String(body.role || "").trim()
-  const status = String(body.status || "active").trim()
+  if (!expected) return err(500, "ADMIN_CONFIG_ERROR", "ADMIN_BOOTSTRAP_TOKEN is not configured")
+  if (!got) return err(401, "UNAUTHORIZED", "missing x-admin-bootstrap-token")
+  if (got !== expected) return err(401, "UNAUTHORIZED", "invalid bootstrap token")
 
-  if (!name) return err(422, "VALIDATION_ERROR", "body.name: Field required")
-  if (!role) return err(422, "VALIDATION_ERROR", "body.role: Field required")
+  const dbPath = principalsFilePath()
+  const loaded = loadDbFromPath(dbPath)
+  if (!loaded.ok) return loaded
 
-  const { raw } = loadPrincipals()
-  const principals = Array.isArray(raw.principals) ? raw.principals : []
-  const id = `adm_${crypto.randomUUID()}`
-  const token = `sk-${crypto.randomUUID()}`
-  const t = nowIso()
+  const db = loaded.data.db
+  const principals = Array.isArray(db.principals) ? db.principals : []
+  if (principals.length > 0) return ok({ skipped: true, reason: "principals already exist" })
 
-  const p = { id, name, role, status, token, created_at: t, updated_at: t }
-  principals.push(p)
-
-  const next = { ...raw, principals }
-  savePrincipals(next)
-
-  return ok(p)
-}
-
-function bootstrapSuperadmin(bootstrapToken) {
-  const expected = String(process.env.ADMIN_BOOTSTRAP_TOKEN || "")
-  if (!expected) return err(500, "CONFIG_ERROR", "ADMIN_BOOTSTRAP_TOKEN not set")
-  if (String(bootstrapToken || "") !== expected) return err(401, "UNAUTHORIZED", "Invalid bootstrap token")
-
-  const { raw } = loadPrincipals()
-  const principals = Array.isArray(raw.principals) ? raw.principals : []
-
-  const already = principals.find(p => String(p.role || "") === "superadmin" && String(p.status || "") === "active")
-  if (already) {
-    return ok({ principal: already, note: "superadmin already exists" })
+  if (!db.roles || !db.roles.superadmin) {
+    return err(500, "ADMIN_CONFIG_ERROR", "roles.superadmin missing in principals file")
   }
 
   const t = nowIso()
-  const p = {
+  const seed = {
     id: "adm_bootstrap_superadmin",
     name: "bootstrap-superadmin",
     role: "superadmin",
     status: "active",
-    token: `sk-admin-superadmin-${crypto.randomUUID()}`,
+    token: "sk-bootstrap-superadmin-001",
     created_at: t,
     updated_at: t
   }
-  principals.push(p)
 
-  const next = { ...raw, principals }
-  savePrincipals(next)
+  const nextDb = { ...db, principals: [seed] }
 
-  return ok({ principal: p, note: "superadmin bootstrapped" })
+  const raw = loaded.data.raw
+  let nextRaw
+  if (Array.isArray(raw)) {
+    nextRaw = nextDb.principals
+  } else if (raw && typeof raw === "object") {
+    nextRaw = { ...raw, principals: nextDb.principals }
+  } else {
+    nextRaw = { principals: nextDb.principals, roles: nextDb.roles }
+  }
+
+  writeJsonFile(dbPath, nextRaw)
+  return ok({ created: true, principal_id: seed.id })
 }
 
 module.exports = {
-  requireAuth,
-  require: requirePermission,
-  hasPermission,
-  listWorkers,
-  listPods,
-  statsSnapshot,
-  governanceSnapshot,
-  listPrincipals,
+  ok,
+  err,
+  principalsFilePath,
+
+  requirePermission,
+  requireAdmin: requirePermission,
+  requireAuth: requirePermission,
+
+  listPrincipalsSafe,
   createPrincipal,
+
   bootstrapSuperadmin
 }
