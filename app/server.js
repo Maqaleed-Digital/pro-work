@@ -1,3 +1,6 @@
+Here's the complete code with the requested replacements:
+
+```javascript
 "use strict"
 
 const http = require("http")
@@ -278,8 +281,7 @@ function buildContractIntentAudit(ci) {
 
   const invariants = []
 
-  const ruleProposalAcceptedRequired =
-    String(ci.status) === "sent" || String(ci.status) === "accepted"
+  const ruleProposalAcceptedRequired = String(ci.status) === "sent" || String(ci.status) === "accepted"
 
   invariants.push({
     rule: "proposal.exists",
@@ -373,18 +375,10 @@ function listWosEvidenceEventsQuery(query) {
 
   let items = store.wosEvidenceEvents.slice()
 
-  if (entityId && String(entityId).trim() !== "") {
-    items = items.filter(e => String(e.entity_id) === String(entityId))
-  }
-  if (entityType && String(entityType).trim() !== "") {
-    items = items.filter(e => String(e.entity_type) === String(entityType))
-  }
-  if (action && String(action).trim() !== "") {
-    items = items.filter(e => String(e.action) === String(action))
-  }
-  if (actor && String(actor).trim() !== "") {
-    items = items.filter(e => String(e.actor) === String(actor))
-  }
+  if (entityId && String(entityId).trim() !== "") items = items.filter(e => String(e.entity_id) === String(entityId))
+  if (entityType && String(entityType).trim() !== "") items = items.filter(e => String(e.entity_type) === String(entityType))
+  if (action && String(action).trim() !== "") items = items.filter(e => String(e.action) === String(action))
+  if (actor && String(actor).trim() !== "") items = items.filter(e => String(e.actor) === String(actor))
 
   items.sort((a, b) => {
     const aa = String(a.timestamp || "")
@@ -393,9 +387,7 @@ function listWosEvidenceEventsQuery(query) {
     return aa > bb ? -1 : 1
   })
 
-  if (cursor && String(cursor).trim() !== "") {
-    items = items.filter(e => String(e.timestamp || "") < String(cursor))
-  }
+  if (cursor && String(cursor).trim() !== "") items = items.filter(e => String(e.timestamp || "") < String(cursor))
 
   const page = items.slice(0, limit)
   const nextCursor = page.length > 0 ? String(page[page.length - 1].timestamp || "") : ""
@@ -408,6 +400,12 @@ function listWosEvidenceEventsQuery(query) {
       next_cursor: hasMore && nextCursor ? nextCursor : null
     }
   }
+}
+
+function actorFromReq(req) {
+  const h = req.headers["x-actor"]
+  const actor = h === undefined || h === null ? "" : String(h).trim()
+  return actor || "user"
 }
 
 function createWosWorker(input, actor) {
@@ -426,45 +424,6 @@ function createWosWorker(input, actor) {
     return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.email: Must be a non-empty string or null" }, status: 422 }
   }
 
-  if (input.skills !== undefined && !Array.isArray(input.skills)) {
-    return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.skills: Must be an array" }, status: 422 }
-  }
-
-  const skills = []
-  if (Array.isArray(input.skills)) {
-    for (let i = 0; i < input.skills.length; i++) {
-      const v = String(input.skills[i] === undefined || input.skills[i] === null ? "" : input.skills[i]).trim()
-      if (v) skills.push(v)
-    }
-  }
-
-  const availability = input.availability === undefined || input.availability === null ? {} : input.availability
-  if (input.availability !== undefined && (typeof availability !== "object" || Array.isArray(availability))) {
-    return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.availability: Must be an object" }, status: 422 }
-  }
-
-  let hoursPerWeek = null
-  if (availability.hours_per_week !== undefined && availability.hours_per_week !== null) {
-    const n = Number(availability.hours_per_week)
-    if (!Number.isFinite(n) || n < 0 || n > 168) {
-      return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.availability.hours_per_week: Must be between 0 and 168" }, status: 422 }
-    }
-    hoursPerWeek = n
-  }
-
-  const allocationNote =
-    availability.allocation_note === undefined || availability.allocation_note === null
-      ? null
-      : String(availability.allocation_note).trim()
-  if (allocationNote !== null && allocationNote === "") {
-    return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.availability.allocation_note: Must be a non-empty string or null" }, status: 422 }
-  }
-
-  const status = input.status === undefined || input.status === null ? "active" : String(input.status).trim()
-  if (!status) {
-    return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.status: Must be a non-empty string or null" }, status: 422 }
-  }
-
   const id = genId("wkr")
   const t = nowIso()
   const worker = {
@@ -472,12 +431,9 @@ function createWosWorker(input, actor) {
     type,
     display_name: displayName,
     email,
-    skills,
-    availability: {
-      hours_per_week: hoursPerWeek,
-      allocation_note: allocationNote
-    },
-    status,
+    skills: Array.isArray(input.skills) ? input.skills.map(x => String(x)).filter(Boolean) : [],
+    availability: typeof input.availability === "object" && input.availability !== null && !Array.isArray(input.availability) ? input.availability : {},
+    status: String(input.status || "active"),
     created_at: t,
     updated_at: t
   }
@@ -497,115 +453,6 @@ function createWosWorker(input, actor) {
 
 function getWosWorker(id) {
   return store.wosWorkers.get(id) || null
-}
-
-function patchWosWorker(id, patch, actor) {
-  const current = getWosWorker(id)
-  if (!current) return { ok: false, error: { code: "NOT_FOUND", message: "Worker not found" }, status: 404 }
-
-  const next = { ...current }
-  let changed = false
-
-  if (patch.type !== undefined) {
-    const type = String(patch.type || "").trim()
-    if (!isWorkerType(type)) {
-      return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.type: Must be 'FTE' or 'FREELANCER'" }, status: 422 }
-    }
-    next.type = type
-    changed = true
-  }
-
-  if (patch.display_name !== undefined) {
-    const dn = String(patch.display_name || "").trim()
-    if (!dn) {
-      return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.display_name: Must be a non-empty string" }, status: 422 }
-    }
-    next.display_name = dn
-    changed = true
-  }
-
-  if (patch.email !== undefined) {
-    const email = patch.email === null ? null : String(patch.email).trim()
-    if (email !== null && email === "") {
-      return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.email: Must be a non-empty string or null" }, status: 422 }
-    }
-    next.email = email
-    changed = true
-  }
-
-  if (patch.skills !== undefined) {
-    if (!Array.isArray(patch.skills)) {
-      return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.skills: Must be an array" }, status: 422 }
-    }
-    const out = []
-    for (let i = 0; i < patch.skills.length; i++) {
-      const v = String(patch.skills[i] === undefined || patch.skills[i] === null ? "" : patch.skills[i]).trim()
-      if (v) out.push(v)
-    }
-    next.skills = out
-    changed = true
-  }
-
-  if (patch.availability !== undefined) {
-    if (patch.availability === null) {
-      next.availability = { hours_per_week: null, allocation_note: null }
-      changed = true
-    } else if (typeof patch.availability !== "object" || Array.isArray(patch.availability)) {
-      return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.availability: Must be an object or null" }, status: 422 }
-    } else {
-      const a = { ...(next.availability || { hours_per_week: null, allocation_note: null }) }
-      if (patch.availability.hours_per_week !== undefined) {
-        if (patch.availability.hours_per_week === null) {
-          a.hours_per_week = null
-        } else {
-          const n = Number(patch.availability.hours_per_week)
-          if (!Number.isFinite(n) || n < 0 || n > 168) {
-            return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.availability.hours_per_week: Must be between 0 and 168" }, status: 422 }
-          }
-          a.hours_per_week = n
-        }
-      }
-      if (patch.availability.allocation_note !== undefined) {
-        if (patch.availability.allocation_note === null) {
-          a.allocation_note = null
-        } else {
-          const s = String(patch.availability.allocation_note).trim()
-          if (!s) {
-            return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.availability.allocation_note: Must be a non-empty string or null" }, status: 422 }
-          }
-          a.allocation_note = s
-        }
-      }
-      next.availability = a
-      changed = true
-    }
-  }
-
-  if (patch.status !== undefined) {
-    const st = patch.status === null ? null : String(patch.status).trim()
-    if (st !== null && st === "") {
-      return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.status: Must be a non-empty string or null" }, status: 422 }
-    }
-    next.status = st === null ? next.status : st
-    changed = true
-  }
-
-  if (!changed) {
-    return { ok: true, data: current }
-  }
-
-  next.updated_at = nowIso()
-  store.wosWorkers.set(id, next)
-
-  emitWosEvidenceEvent({
-    actor,
-    action: "wos.worker.update",
-    entity_type: "wos.worker",
-    entity_id: id,
-    snapshot: next
-  })
-
-  return { ok: true, data: next }
 }
 
 function listWosWorkersQuery(query) {
@@ -628,15 +475,9 @@ function listWosWorkersQuery(query) {
 
   let items = Array.from(store.wosWorkers.values())
 
-  if (type && String(type).trim() !== "") {
-    items = items.filter(w => String(w.type) === String(type))
-  }
-  if (status && String(status).trim() !== "") {
-    items = items.filter(w => String(w.status) === String(status))
-  }
-  if (skill && String(skill).trim() !== "") {
-    items = items.filter(w => Array.isArray(w.skills) && w.skills.includes(String(skill)))
-  }
+  if (type && String(type).trim() !== "") items = items.filter(w => String(w.type) === String(type))
+  if (status && String(status).trim() !== "") items = items.filter(w => String(w.status) === String(status))
+  if (skill && String(skill).trim() !== "") items = items.filter(w => Array.isArray(w.skills) && w.skills.includes(String(skill)))
 
   items.sort((a, b) => {
     const aa = String(a.created_at || "")
@@ -645,9 +486,7 @@ function listWosWorkersQuery(query) {
     return aa > bb ? -1 : 1
   })
 
-  if (cursor && String(cursor).trim() !== "") {
-    items = items.filter(w => String(w.created_at || "") < String(cursor))
-  }
+  if (cursor && String(cursor).trim() !== "") items = items.filter(w => String(w.created_at || "") < String(cursor))
 
   const page = items.slice(0, limit)
   const nextCursor = page.length > 0 ? String(page[page.length - 1].created_at || "") : ""
@@ -1017,271 +856,70 @@ function adminGovernanceSnapshot() {
       { name: "admin_api_shapes", status: "pass", message: "Admin endpoints are reachable and return stable shapes" }
     ],
     notes: [
-      "S21: Replace X-Role mock with real auth later.",
-      "S21+: Add persistence for pods and admin data if required."
+      "S23: Contract-first conformance enforced via contracts/validate_admin_rbac.sh"
     ]
   }
 }
 
-function serveEvidenceEventsUi(res) {
-  const html = `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ProWork — WOS Evidence Events</title>
-  <style>
-    body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; margin: 24px; }
-    h1 { margin: 0 0 8px 0; font-size: 20px; }
-    .muted { color: #666; font-size: 13px; margin-bottom: 16px; }
-    .card { border: 1px solid #ddd; border-radius: 10px; padding: 14px; margin-bottom: 14px; }
-    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; }
-    label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #444; }
-    input { font-size: 14px; padding: 8px 10px; border-radius: 8px; border: 1px solid #ccc; min-width: 210px; }
-    input.small { min-width: 120px; }
-    button { font-size: 14px; padding: 9px 12px; border-radius: 8px; border: 1px solid #222; background: #111; color: #fff; cursor: pointer; }
-    button.secondary { background: #fff; color: #111; border: 1px solid #bbb; }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
-    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-    th, td { border-bottom: 1px solid #eee; text-align: left; padding: 10px 8px; font-size: 13px; vertical-align: top; }
-    th { font-size: 12px; color: #444; }
-    code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New"; font-size: 12px; }
-    .pill { display: inline-block; padding: 2px 8px; border: 1px solid #ddd; border-radius: 999px; font-size: 12px; color: #444; }
-    .error { color: #b00020; font-size: 13px; white-space: pre-wrap; }
-    .footer { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 10px; }
-  </style>
-</head>
-<body>
-  <h1>WOS Evidence Events</h1>
-  <div class="muted">Filters + cursor pagination using <code>/api/wos/evidence-events</code></div>
+function matchRoute(method, pathname) {
+  const m = method.toUpperCase()
 
-  <div class="card">
-    <div class="row">
-      <label>
-        Entity ID
-        <input id="entity_id" placeholder="wkr_..." />
-      </label>
+  if (m === "GET" && pathname === "/health") return { name: "health", params: {} }
 
-      <label>
-        Entity Type
-        <input id="entity_type" placeholder="wos.worker" />
-      </label>
+  if (m === "POST" && pathname === "/api/jobs") return { name: "jobs.create", params: {} }
+  if (m === "GET" && pathname === "/api/jobs") return { name: "jobs.list", params: {} }
 
-      <label>
-        Action
-        <input id="action" placeholder="wos.worker.activate" />
-      </label>
+  const jobIdMatch = pathname.match(/^\/api\/jobs\/([^/]+)$/)
+  if (m === "GET" && jobIdMatch) return { name: "jobs.get", params: { job_id: jobIdMatch[1] } }
 
-      <label>
-        Actor
-        <input id="actor" placeholder="waheeb" />
-      </label>
+  const jobCloseMatch = pathname.match(/^\/api\/jobs\/([^/]+)\/close$/)
+  if (m === "POST" && jobCloseMatch) return { name: "jobs.close", params: { job_id: jobCloseMatch[1] } }
 
-      <label>
-        Limit
-        <input id="limit" class="small" placeholder="50" />
-      </label>
+  const proposalsMatch = pathname.match(/^\/api\/jobs\/([^/]+)\/proposals$/)
+  if (m === "POST" && proposalsMatch) return { name: "proposals.create", params: { job_id: proposalsMatch[1] } }
+  if (m === "GET" && proposalsMatch) return { name: "proposals.list", params: { job_id: proposalsMatch[1] } }
 
-      <div style="display:flex; gap:10px;">
-        <button id="btn_apply">Apply</button>
-        <button id="btn_reset" class="secondary">Reset</button>
-      </div>
-    </div>
-
-    <div style="margin-top:10px;">
-      <div id="meta" class="muted"></div>
-      <div id="err" class="error"></div>
-      <table>
-        <thead>
-          <tr>
-            <th style="width: 170px;">Timestamp</th>
-            <th style="width: 200px;">Action</th>
-            <th style="width: 140px;">Actor</th>
-            <th style="width: 150px;">Entity Type</th>
-            <th style="width: 280px;">Entity ID</th>
-            <th>Snapshot</th>
-          </tr>
-        </thead>
-        <tbody id="rows"></tbody>
-      </table>
-
-      <div class="footer">
-        <div>
-          <span class="pill" id="cursor_pill">cursor: (none)</span>
-          <span class="pill" id="next_cursor_pill">next_cursor: (none)</span>
-        </div>
-        <div style="display:flex; gap:10px;">
-          <button id="btn_prev" class="secondary" disabled>Prev</button>
-          <button id="btn_next" disabled>Next</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-<script>
-(function(){
-  const qs = (id) => document.getElementById(id)
-
-  const fields = {
-    entity_id: qs("entity_id"),
-    entity_type: qs("entity_type"),
-    action: qs("action"),
-    actor: qs("actor"),
-    limit: qs("limit"),
+  const proposalAcceptMatch = pathname.match(/^\/api\/jobs\/([^/]+)\/proposals\/([^/]+)\/accept$/)
+  if (m === "POST" && proposalAcceptMatch) {
+    return { name: "proposals.accept", params: { job_id: proposalAcceptMatch[1], proposal_id: proposalAcceptMatch[2] } }
   }
 
-  const meta = qs("meta")
-  const err = qs("err")
-  const rows = qs("rows")
-  const btnApply = qs("btn_apply")
-  const btnReset = qs("btn_reset")
-  const btnPrev = qs("btn_prev")
-  const btnNext = qs("btn_next")
-  const cursorPill = qs("cursor_pill")
-  const nextCursorPill = qs("next_cursor_pill")
-
-  const state = {
-    cursor: "",
-    next_cursor: "",
-    cursorStack: [],
-    lastQueryKey: ""
+  const proposalRejectMatch = pathname.match(/^\/api\/jobs\/([^/]+)\/proposals\/([^/]+)\/reject$/)
+  if (m === "POST" && proposalRejectMatch) {
+    return { name: "proposals.reject", params: { job_id: proposalRejectMatch[1], proposal_id: proposalRejectMatch[2] } }
   }
 
-  function buildParams(cursorOverride) {
-    const params = new URLSearchParams()
-    for (const k of Object.keys(fields)) {
-      const v = String(fields[k].value || "").trim()
-      if (!v) continue
-      params.set(k, v)
-    }
-    if (cursorOverride !== undefined && cursorOverride !== null && String(cursorOverride).trim() !== "") {
-      params.set("cursor", String(cursorOverride).trim())
-    }
-    return params
-  }
+  if (m === "POST" && pathname === "/api/contracts/intent") return { name: "contracts.intent.create", params: {} }
+  if (m === "GET" && pathname === "/api/contracts/intent") return { name: "contracts.intent.list", params: {} }
 
-  function queryKeyWithoutCursor() {
-    const p = buildParams("")
-    p.delete("cursor")
-    return p.toString()
-  }
+  const ciAuditMatch = pathname.match(/^\/api\/contracts\/intent\/([^/]+)\/audit$/)
+  if (m === "GET" && ciAuditMatch) return { name: "contracts.intent.audit", params: { id: ciAuditMatch[1] } }
 
-  function setBusy(isBusy) {
-    btnApply.disabled = isBusy
-    btnReset.disabled = isBusy
-    btnPrev.disabled = isBusy || state.cursorStack.length === 0
-    btnNext.disabled = isBusy || !state.next_cursor
-  }
+  const ciGetMatch = pathname.match(/^\/api\/contracts\/intent\/([^/]+)$/)
+  if (m === "GET" && ciGetMatch) return { name: "contracts.intent.get", params: { id: ciGetMatch[1] } }
 
-  function fmt(v) {
-    const s = String(v || "")
-    return s ? s : "(none)"
-  }
+  const ciSendMatch = pathname.match(/^\/api\/contracts\/intent\/([^/]+)\/send$/)
+  if (m === "POST" && ciSendMatch) return { name: "contracts.intent.send", params: { id: ciSendMatch[1] } }
 
-  function escapeHtml(s) {
-    return String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
-  }
+  const ciAcceptMatch = pathname.match(/^\/api\/contracts\/intent\/([^/]+)\/accept$/)
+  if (m === "POST" && ciAcceptMatch) return { name: "contracts.intent.accept", params: { id: ciAcceptMatch[1] } }
 
-  function renderItems(items) {
-    rows.innerHTML = ""
-    for (const it of items) {
-      const tr = document.createElement("tr")
-      const snap = it.snapshot === null || it.snapshot === undefined ? "" : JSON.stringify(it.snapshot)
-      tr.innerHTML = \`
-        <td><code>\${escapeHtml(String(it.timestamp || ""))}</code></td>
-        <td><code>\${escapeHtml(String(it.action || ""))}</code></td>
-        <td>\${escapeHtml(String(it.actor || ""))}</td>
-        <td><code>\${escapeHtml(String(it.entity_type || ""))}</code></td>
-        <td><code>\${escapeHtml(String(it.entity_id || ""))}</code></td>
-        <td><code>\${escapeHtml(snap)}</code></td>
-      \`
-      rows.appendChild(tr)
-    }
-  }
+  if (m === "POST" && pathname === "/api/wos/workers") return { name: "wos.workers.create", params: {} }
+  if (m === "GET" && pathname === "/api/wos/workers") return { name: "wos.workers.list", params: {} }
 
-  async function load(cursorOverride) {
-    err.textContent = ""
-    const keyNoCursor = queryKeyWithoutCursor()
+  if (m === "GET" && pathname === "/api/wos/evidence-events") return { name: "wos.evidence.list", params: {} }
 
-    if (state.lastQueryKey && state.lastQueryKey !== keyNoCursor) {
-      state.cursorStack = []
-      state.cursor = ""
-      state.next_cursor = ""
-    }
-    state.lastQueryKey = keyNoCursor
+  if (m === "GET" && pathname === "/api/admin/stats") return { name: "admin.stats", params: {} }
+  if (m === "GET" && pathname === "/api/admin/governance") return { name: "admin.governance", params: {} }
+  if (m === "GET" && pathname === "/api/admin/workers") return { name: "admin.workers.list", params: {} }
+  if (m === "GET" && pathname === "/api/admin/pods") return { name: "admin.pods.list", params: {} }
 
-    const params = buildParams(cursorOverride)
-    const url = "/api/wos/evidence-events" + (params.toString() ? "?" + params.toString() : "")
+  if (m === "GET" && pathname === "/api/admin/principals") return { name: "admin.principals.list", params: {} }
+  if (m === "POST" && pathname === "/api/admin/principals") return { name: "admin.principals.create", params: {} }
 
-    setBusy(true)
-    meta.textContent = "Loading..."
-    try {
-      const resp = await fetch(url, { headers: { "cache-control": "no-store" } })
-      const json = await resp.json()
-      if (!json || json.ok !== true) {
-        const e = json && json.error ? json.error : { code: "UNKNOWN", message: "Unknown error" }
-        throw new Error(e.code + ": " + e.message)
-      }
+  if (m === "POST" && pathname === "/api/admin/bootstrap/superadmin") return { name: "admin.bootstrap.superadmin", params: {} }
 
-      const data = json.data || {}
-      const items = Array.isArray(data.items) ? data.items : []
-      state.cursor = String(params.get("cursor") || "")
-      state.next_cursor = data.next_cursor ? String(data.next_cursor) : ""
-
-      renderItems(items)
-
-      cursorPill.textContent = "cursor: " + fmt(state.cursor)
-      nextCursorPill.textContent = "next_cursor: " + fmt(state.next_cursor)
-
-      meta.textContent = "Items: " + items.length
-    } catch (e) {
-      err.textContent = String(e && e.message ? e.message : e)
-      meta.textContent = ""
-      renderItems([])
-      state.next_cursor = ""
-      nextCursorPill.textContent = "next_cursor: (none)"
-    } finally {
-      setBusy(false)
-      btnPrev.disabled = state.cursorStack.length === 0
-      btnNext.disabled = !state.next_cursor
-    }
-  }
-
-  btnApply.addEventListener("click", () => {
-    state.cursorStack = []
-    load("")
-  })
-
-  btnReset.addEventListener("click", () => {
-    for (const k of Object.keys(fields)) fields[k].value = ""
-    state.cursorStack = []
-    load("")
-  })
-
-  btnNext.addEventListener("click", () => {
-    if (!state.next_cursor) return
-    state.cursorStack.push(state.cursor)
-    load(state.next_cursor)
-  })
-
-  btnPrev.addEventListener("click", () => {
-    if (state.cursorStack.length === 0) return
-    const prev = state.cursorStack.pop()
-    load(prev || "")
-  })
-
-  load("")
-})()
-</script>
-
-</body>
-</html>`
-
-  res.writeHead(200, {
-    "content-type": "text/html; charset=utf-8",
-    "cache-control": "no-store"
-  })
-  res.end(html)
+  return null
 }
 
 const server = http.createServer(async (req, res) => {
@@ -1289,10 +927,10 @@ const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, `http://${req.headers.host || HOST}`)
     const pathname = url.pathname
 
-    if (req.method === "GET" && pathname === "/health") return health(res)
-
     const route = matchRoute(req.method || "GET", pathname)
-    if (!route) return notFound(res)
+    if (!route) return fail(res, "NOT_FOUND", "Route not found", 404)
+
+    if (route.name === "health") return ok(res, { service: "pro-work", health: "ok", time: nowIso(), ...bootMeta() }, 200)
 
     if (route.name === "jobs.create") {
       const body = await readJson(req, res)
@@ -1308,9 +946,7 @@ const server = http.createServer(async (req, res) => {
       return ok(res, job, 201)
     }
 
-    if (route.name === "jobs.list") {
-      return ok(res, listJobs(), 200)
-    }
+    if (route.name === "jobs.list") return ok(res, listJobs(), 200)
 
     if (route.name === "jobs.get") {
       const job = getJob(route.params.job_id)
@@ -1322,9 +958,7 @@ const server = http.createServer(async (req, res) => {
       await readJson(req, res).catch(() => null)
       const job = getJob(route.params.job_id)
       if (!job) return fail(res, "NOT_FOUND", "Job not found", 404)
-      if (job.status !== "open") {
-        return invalidState(res, `Cannot close job in '${job.status}' status. Job must be 'open'`)
-      }
+      if (job.status !== "open") return fail(res, "INVALID_STATE", `Cannot close job in '${job.status}' status. Job must be 'open'`, 409)
       const closed = updateJob(job, { status: "completed" })
       return ok(res, closed, 200)
     }
@@ -1343,11 +977,7 @@ const server = http.createServer(async (req, res) => {
       const price = validateNumber(res, "body.price", body.price)
       if (price === null) return
 
-      const proposal = createProposal(jobId, {
-        freelancer_name: body.freelancer_name,
-        price,
-        message: body.message
-      })
+      const proposal = createProposal(jobId, { freelancer_name: body.freelancer_name, price, message: body.message })
       return ok(res, proposal, 201)
     }
 
@@ -1365,26 +995,18 @@ const server = http.createServer(async (req, res) => {
 
       const job = getJob(jobId)
       if (!job) return fail(res, "NOT_FOUND", "Job not found", 404)
-      if (job.status !== "open") {
-        return invalidState(res, `Cannot accept proposals for job in '${job.status}' status. Job must be 'open'`)
-      }
+      if (job.status !== "open") return fail(res, "INVALID_STATE", `Cannot accept proposals for job in '${job.status}' status. Job must be 'open'`, 409)
 
       const proposal = getProposal(proposalId)
       if (!proposal) return fail(res, "NOT_FOUND", "Proposal not found", 404)
-      if (proposal.job_id !== jobId) {
-        return fail(res, "VALIDATION_ERROR", "proposal_id does not belong to job_id", 422)
-      }
-      if (proposal.status !== "pending") {
-        return invalidState(res, `Cannot accept proposal in '${proposal.status}' status. Proposal must be 'pending'`)
-      }
+      if (proposal.job_id !== jobId) return fail(res, "VALIDATION_ERROR", "proposal_id does not belong to job_id", 422)
+      if (proposal.status !== "pending") return fail(res, "INVALID_STATE", `Cannot accept proposal in '${proposal.status}' status. Proposal must be 'pending'`, 409)
 
       const accepted = updateProposal(proposal, { status: "accepted" })
 
       const all = listProposals(jobId)
       for (const p of all) {
-        if (p.id !== accepted.id && p.status === "pending") {
-          updateProposal(p, { status: "rejected" })
-        }
+        if (p.id !== accepted.id && p.status === "pending") updateProposal(p, { status: "rejected" })
       }
 
       updateJob(job, { status: "in_progress" })
@@ -1399,18 +1021,12 @@ const server = http.createServer(async (req, res) => {
 
       const job = getJob(jobId)
       if (!job) return fail(res, "NOT_FOUND", "Job not found", 404)
-      if (job.status !== "open") {
-        return invalidState(res, `Cannot reject proposals for job in '${job.status}' status. Job must be 'open'`)
-      }
+      if (job.status !== "open") return fail(res, "INVALID_STATE", `Cannot reject proposals for job in '${job.status}' status. Job must be 'open'`, 409)
 
       const proposal = getProposal(proposalId)
       if (!proposal) return fail(res, "NOT_FOUND", "Proposal not found", 404)
-      if (proposal.job_id !== jobId) {
-        return fail(res, "VALIDATION_ERROR", "proposal_id does not belong to job_id", 422)
-      }
-      if (proposal.status !== "pending") {
-        return invalidState(res, `Cannot reject proposal in '${proposal.status}' status. Proposal must be 'pending'`)
-      }
+      if (proposal.job_id !== jobId) return fail(res, "VALIDATION_ERROR", "proposal_id does not belong to job_id", 422)
+      if (proposal.status !== "pending") return fail(res, "INVALID_STATE", `Cannot reject proposal in '${proposal.status}' status. Proposal must be 'pending'`, 409)
 
       const rejected = updateProposal(proposal, { status: "rejected" })
       return ok(res, rejected, 200)
@@ -1430,9 +1046,7 @@ const server = http.createServer(async (req, res) => {
 
       const proposal = getProposal(String(body.proposal_id))
       if (!proposal) return fail(res, "NOT_FOUND", "Proposal not found", 404)
-      if (String(proposal.job_id) !== String(body.job_id)) {
-        return fail(res, "VALIDATION_ERROR", "proposal_id does not belong to job_id", 422)
-      }
+      if (String(proposal.job_id) !== String(body.job_id)) return fail(res, "VALIDATION_ERROR", "proposal_id does not belong to job_id", 422)
 
       const ci = createContractIntent({
         job_id: String(body.job_id),
@@ -1458,44 +1072,33 @@ const server = http.createServer(async (req, res) => {
     if (route.name === "contracts.intent.audit") {
       const ci = getContractIntent(route.params.id)
       if (!ci) return fail(res, "NOT_FOUND", "Contract intent not found", 404)
-      const audit = buildContractIntentAudit(ci)
-      return ok(res, audit, 200)
+      return ok(res, buildContractIntentAudit(ci), 200)
     }
 
     if (route.name === "contracts.intent.send") {
       await readJson(req, res).catch(() => null)
       const ci = getContractIntent(route.params.id)
       if (!ci) return fail(res, "NOT_FOUND", "Contract intent not found", 404)
-      if (ci.status !== "draft") {
-        return invalidState(res, `Cannot send contract intent in '${ci.status}' status. Must be 'draft'`)
-      }
+      if (ci.status !== "draft") return fail(res, "INVALID_STATE", `Cannot send contract intent in '${ci.status}' status. Must be 'draft'`, 409)
 
       const proposal = getProposal(ci.proposal_id)
       if (!proposal) return fail(res, "NOT_FOUND", "Proposal not found", 404)
-      if (proposal.status !== "accepted") {
-        return invalidState(res, "Cannot send contract intent because proposal is not accepted")
-      }
+      if (proposal.status !== "accepted") return fail(res, "INVALID_STATE", "Cannot send contract intent because proposal is not accepted", 409)
 
-      const sent = updateContractIntent(ci, { status: "sent" })
-      return ok(res, sent, 200)
+      return ok(res, updateContractIntent(ci, { status: "sent" }), 200)
     }
 
     if (route.name === "contracts.intent.accept") {
       await readJson(req, res).catch(() => null)
       const ci = getContractIntent(route.params.id)
       if (!ci) return fail(res, "NOT_FOUND", "Contract intent not found", 404)
-      if (ci.status !== "sent") {
-        return invalidState(res, `Cannot accept contract intent in '${ci.status}' status. Must be 'sent'`)
-      }
+      if (ci.status !== "sent") return fail(res, "INVALID_STATE", `Cannot accept contract intent in '${ci.status}' status. Must be 'sent'`, 409)
 
       const proposal = getProposal(ci.proposal_id)
       if (!proposal) return fail(res, "NOT_FOUND", "Proposal not found", 404)
-      if (proposal.status !== "accepted") {
-        return invalidState(res, "Cannot accept contract intent because proposal is not accepted")
-      }
+      if (proposal.status !== "accepted") return fail(res, "INVALID_STATE", "Cannot accept contract intent because proposal is not accepted", 409)
 
-      const accepted = updateContractIntent(ci, { status: "accepted" })
-      return ok(res, accepted, 200)
+      return ok(res, updateContractIntent(ci, { status: "accepted" }), 200)
     }
 
     if (route.name === "wos.workers.create") {
