@@ -36,11 +36,10 @@ components:
               type: string
             message:
               type: string
-
 paths:
   /api/admin/bootstrap/superadmin:
     post:
-      summary: Bootstrap superadmin if principals are empty (requires ADMIN_BOOTSTRAP_TOKEN)
+      summary: Bootstrap superadmin if principals are empty
       security:
         - bearerAuth: []
       requestBody:
@@ -55,13 +54,13 @@ paths:
                   type: string
       responses:
         "201":
-          description: Created (bootstrapped)
+          description: Created
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiOk"
         "409":
-          description: Conflict (already bootstrapped / principals exist)
+          description: Already bootstrapped
           content:
             application/json:
               schema:
@@ -72,16 +71,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErr"
-        "403":
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiErr"
-
   /api/admin/stats:
     get:
-      summary: Admin stats (requires admin.stats.read)
+      summary: Admin stats
       security:
         - bearerAuth: []
       responses:
@@ -103,10 +95,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErr"
-
   /api/admin/governance:
     get:
-      summary: Admin governance (requires admin.governance.read)
+      summary: Admin governance
       security:
         - bearerAuth: []
       responses:
@@ -128,10 +119,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErr"
-
   /api/admin/workers:
     get:
-      summary: Admin workers list (requires admin.workers.read)
+      summary: Admin workers list
       security:
         - bearerAuth: []
       responses:
@@ -153,10 +143,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErr"
-
   /api/admin/pods:
     get:
-      summary: Admin pods list (requires admin.pods.read)
+      summary: Admin pods list
       security:
         - bearerAuth: []
       responses:
@@ -178,10 +167,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErr"
-
   /api/admin/principals:
     get:
-      summary: List principals (superadmin only; requires admin.principals.read)
+      summary: List principals (superadmin only)
       security:
         - bearerAuth: []
       responses:
@@ -203,9 +191,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErr"
-
     post:
-      summary: Create principal (superadmin only; requires admin.principals.write)
+      summary: Create principal (superadmin only)
       security:
         - bearerAuth: []
       requestBody:

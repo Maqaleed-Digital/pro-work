@@ -4,172 +4,190 @@ const fs = require("fs")
 const path = require("path")
 const crypto = require("crypto")
 
-const DEFAULT_DB_PATH = path.join(__dirname, "..", "data", "admin_principals.json")
-
 function nowIso() {
   return new Date().toISOString()
 }
 
-function sha256Hex(s) {
-  return crypto.createHash("sha256").update(String(s), "utf8").digest("hex")
-}
+function loadDb(dbPath) {
+  const raw = fs.readFileSync(dbPath, "utf8")
+  const j = JSON.parse(raw)
 
-function readJsonFile(p) {
-  const raw = fs.readFileSync(p, "utf8")
-  return JSON.parse(raw)
-}
+  const principals =
+    Array.isArray(j) ? j : Array.isArray(j.principals) ? j.principals : Array.isArray(j.items) ? j.items : []
 
-function writeJsonFileAtomic(p, obj) {
-  const tmp = `${p}.tmp`
-  fs.writeFileSync(tmp, JSON.stringify(obj, null, 2) + "\n", "utf8")
-  fs.renameSync(tmp, p)
-}
+  const roles = j && typeof j === "object" && j.roles && typeof j.roles === "object" ? j.roles : {}
 
-function resolveDbPath() {
-  return process.env.ADMIN_DB_PATH || DEFAULT_DB_PATH
-}
+  const version = j && typeof j === "object" && Number.isFinite(Number(j.version)) ? Number(j.version) : 1
+  const updated_at = j && typeof j === "object" && typeof j.updated_at === "string" ? j.updated_at : "1970-01-01T00:00:00.000Z"
 
-function loadDb() {
-  const dbPath = resolveDbPath()
-  let db = null
-  try {
-    db = readJsonFile(dbPath)
-  } catch (e) {
-    return { ok: false, dbPath, status: 500, error: { code: "ADMIN_DB_UNAVAILABLE", message: "admin db read failed" } }
-  }
-
-  if (!db || typeof db !== "object" || !db.roles || !Array.isArray(db.principals)) {
-    return { ok: false, dbPath, status: 500, error: { code: "ADMIN_DB_INVALID", message: "admin db schema invalid" } }
-  }
-
-  return { ok: true, dbPath, db }
+  return { version, updated_at, principals, roles }
 }
 
 function saveDb(dbPath, db) {
-  db.updated_at = nowIso()
-  writeJsonFileAtomic(dbPath, db)
-}
-
-function parseBearer(req) {
-  const h = String(req.headers["authorization"] || "").trim()
-  const m = /^Bearer\s+(.+)$/i.exec(h)
-  return m ? m[1] : null
-}
-
-function ensureBootstrap(db, dbPath) {
-  const bootstrapToken = String(process.env.ADMIN_BOOTSTRAP_TOKEN || "").trim()
-  if (!bootstrapToken) return { ok: true, created: false }
-
-  const tokenHash = sha256Hex(bootstrapToken)
-  const exists = db.principals.some(p => p && p.token_hash === tokenHash)
-  if (exists) return { ok: true, created: false }
-
-  const principal = {
-    id: crypto.randomUUID(),
-    name: "bootstrap-superadmin",
-    role: "superadmin",
-    created_at: nowIso(),
-    token_hash: tokenHash
+  const out = {
+    version: db.version || 1,
+    updated_at: nowIso(),
+    principals: Array.isArray(db.principals) ? db.principals : [],
+    roles: db.roles && typeof db.roles === "object" ? db.roles : {}
   }
-  db.principals.push(principal)
-  saveDb(dbPath, db)
-  return { ok: true, created: true, principal_id: principal.id }
+  fs.mkdirSync(path.dirname(dbPath), { recursive: true })
+  fs.writeFileSync(dbPath, JSON.stringify(out, null, 2) + "\n", "utf8")
+  return out
 }
 
-function permissionsFor(db, principal) {
-  const roleName = principal.role || "auditor"
-  const role = db.roles[roleName]
-  const perms = role && Array.isArray(role.permissions) ? role.permissions : []
+function err(status, code, message) {
+  return { ok: false, status, error: { code, message } }
+}
+
+function parseAuth(req) {
+  const h = req && req.headers ? req.headers.authorization || req.headers.Authorization : null
+  const s = h === undefined || h === null ? "" : String(h).trim()
+  if (!s) return { ok: false, kind: "missing" }
+  const parts = s.split(/\s+/)
+  if (parts.length < 2) return { ok: false, kind: "bad_scheme" }
+  const scheme = String(parts[0] || "")
+  const token = String(parts.slice(1).join(" ") || "").trim()
+  if (scheme.toLowerCase() !== "bearer") return { ok: false, kind: "bad_scheme" }
+  if (!token) return { ok: false, kind: "missing" }
+  return { ok: true, token }
+}
+
+function rolePerms(db, role) {
+  const r = db.roles && db.roles[role] ? db.roles[role] : null
+  const perms = r && Array.isArray(r.permissions) ? r.permissions.map(x => String(x)) : []
   return perms
 }
 
-function hasPermission(db, principal, requiredPermission) {
-  if (!requiredPermission) return true
-  const perms = permissionsFor(db, principal)
+function principalHas(db, principal, perm) {
+  const role = String(principal && principal.role ? principal.role : "")
+  const perms = rolePerms(db, role)
+
   if (perms.includes("*")) return true
-  return perms.includes(requiredPermission)
+  if (perm === "*" && !perms.includes("*")) return false
+
+  return perms.includes(String(perm))
 }
 
-function authenticate(req) {
-  const loaded = loadDb()
-  if (!loaded.ok) return loaded
-
-  const { db, dbPath } = loaded
-  ensureBootstrap(db, dbPath)
-
-  const token = parseBearer(req)
-  if (!token) {
-    return { ok: false, status: 401, error: { code: "ADMIN_AUTH_REQUIRED", message: "Authorization Bearer token required" } }
-  }
-
-  const tokenHash = sha256Hex(token)
-  const principal = db.principals.find(p => p && p.token_hash === tokenHash) || null
-  if (!principal) {
-    return { ok: false, status: 403, error: { code: "ADMIN_AUTH_INVALID", message: "Invalid admin token" } }
-  }
-
-  return { ok: true, status: 200, principal, db, dbPath }
-}
-
-function requirePermission(req, permission) {
-  const auth = authenticate(req)
-  if (!auth.ok) return auth
-
-  if (!hasPermission(auth.db, auth.principal, permission)) {
-    return {
-      ok: false,
-      status: 403,
-      error: { code: "ADMIN_FORBIDDEN", message: "Forbidden", required_permission: permission }
-    }
-  }
-
-  return auth
+function findPrincipalByToken(db, token) {
+  const arr = Array.isArray(db.principals) ? db.principals : []
+  return arr.find(p => String(p && p.token ? p.token : "") === String(token)) || null
 }
 
 function listPrincipalsSafe(db) {
-  return db.principals.map(p => ({
-    id: p.id,
-    name: p.name,
-    role: p.role,
-    created_at: p.created_at
+  const arr = Array.isArray(db.principals) ? db.principals : []
+  return arr.map(p => ({
+    id: String(p.id || ""),
+    name: String(p.name || ""),
+    role: String(p.role || ""),
+    status: String(p.status || ""),
+    created_at: p.created_at || null,
+    updated_at: p.updated_at || null
   }))
 }
 
-function createPrincipal(db, dbPath, input) {
-  if (typeof input !== "object" || input === null) {
-    return { ok: false, status: 422, error: { code: "VALIDATION_ERROR", message: "body: JSON object required" } }
+function requirePermission(req, permission, opts) {
+  const o = opts && typeof opts === "object" ? opts : {}
+  const dbPath =
+    typeof o.dbPath === "string" && o.dbPath.trim()
+      ? o.dbPath
+      : path.join(process.cwd(), "data", "admin_principals.json")
+
+  let db
+  try {
+    db = loadDb(dbPath)
+  } catch (e) {
+    return err(500, "ADMIN_DB_ERROR", "Admin principals store is not readable")
   }
 
+  const auth = parseAuth(req)
+  if (!auth.ok) {
+    return err(401, "ADMIN_AUTH_REQUIRED", "Authorization Bearer token required")
+  }
+
+  const principal = findPrincipalByToken(db, auth.token)
+  if (!principal) {
+    return err(401, "ADMIN_AUTH_INVALID", "Invalid admin token")
+  }
+
+  if (String(principal.status || "active") !== "active") {
+    return err(403, "FORBIDDEN", "Principal is not active")
+  }
+
+  if (!principalHas(db, principal, permission)) {
+    return err(403, "FORBIDDEN", "Insufficient permissions")
+  }
+
+  return { ok: true, principal, db, dbPath }
+}
+
+function bootstrapSuperadmin(req, dbPath, name) {
+  let db
+  try {
+    db = loadDb(dbPath)
+  } catch {
+    return err(500, "ADMIN_DB_ERROR", "Admin principals store is not readable")
+  }
+
+  const n = Array.isArray(db.principals) ? db.principals.length : 0
+  if (n > 0) return err(409, "ALREADY_BOOTSTRAPPED", "Principals already exist")
+
+  const t = nowIso()
+  const id = `adm_${crypto.randomUUID()}`
+  const token = `sk-${crypto.createHash("sha256").update(crypto.randomBytes(32)).digest("hex").slice(0, 48)}`
+
+  const p = {
+    id,
+    name: String(name || "bootstrap-superadmin"),
+    role: "superadmin",
+    status: "active",
+    token,
+    created_at: t,
+    updated_at: t
+  }
+
+  db.principals = [p]
+  db = saveDb(dbPath, db)
+
+  return { ok: true, principal: { id: p.id, name: p.name, role: p.role, status: p.status }, token, db }
+}
+
+function createPrincipal(db, dbPath, input) {
+  if (!input || typeof input !== "object") return err(422, "VALIDATION_ERROR", "body: JSON object required")
   const name = String(input.name || "").trim()
   const role = String(input.role || "").trim()
 
-  if (!name) return { ok: false, status: 422, error: { code: "VALIDATION_ERROR", message: "body.name: Field required" } }
-  if (!role) return { ok: false, status: 422, error: { code: "VALIDATION_ERROR", message: "body.role: Field required" } }
-  if (!db.roles[role]) return { ok: false, status: 422, error: { code: "VALIDATION_ERROR", message: "body.role: Unknown role" } }
+  if (!name) return err(422, "VALIDATION_ERROR", "body.name: Field required")
+  if (!role) return err(422, "VALIDATION_ERROR", "body.role: Field required")
 
-  const token = crypto.randomBytes(24).toString("hex")
-  const principal = {
-    id: crypto.randomUUID(),
+  const roles = db.roles && typeof db.roles === "object" ? db.roles : {}
+  if (!roles[role]) return err(422, "VALIDATION_ERROR", "body.role: Unknown role")
+
+  const t = nowIso()
+  const id = `adm_${crypto.randomUUID()}`
+  const token = `sk-${crypto.createHash("sha256").update(crypto.randomBytes(32)).digest("hex").slice(0, 48)}`
+
+  const p = {
+    id,
     name,
     role,
-    created_at: nowIso(),
-    token_hash: sha256Hex(token)
+    status: "active",
+    token,
+    created_at: t,
+    updated_at: t
   }
 
-  db.principals.push(principal)
-  saveDb(dbPath, db)
+  const arr = Array.isArray(db.principals) ? db.principals.slice() : []
+  arr.push(p)
 
-  return {
-    ok: true,
-    status: 201,
-    principal: { id: principal.id, name: principal.name, role: principal.role, created_at: principal.created_at },
-    token
-  }
+  const next = { ...db, principals: arr }
+  saveDb(dbPath, next)
+
+  return { ok: true, principal: { id: p.id, name: p.name, role: p.role, status: p.status }, token }
 }
 
 module.exports = {
   requirePermission,
-  authenticate,
   listPrincipalsSafe,
-  createPrincipal
+  createPrincipal,
+  bootstrapSuperadmin
 }

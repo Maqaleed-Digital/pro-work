@@ -8,12 +8,12 @@
       "permissions": ["*"]
     },
     "ops": {
-      "description": "Operational admin access",
-      "permissions": ["admin.read", "admin.stats.read", "admin.governance.read", "admin.workers.read", "admin.pods.read"]
+      "description": "Operational admin access (operator)",
+      "permissions": ["admin.read", "admin.stats.read", "admin.workers.read"]
     },
     "auditor": {
-      "description": "Read-only audit access",
-      "permissions": ["admin.read", "admin.governance.read"]
+      "description": "Read-only access (viewer) — stats only",
+      "permissions": ["admin.read", "admin.stats.read"]
     }
   }
 }
