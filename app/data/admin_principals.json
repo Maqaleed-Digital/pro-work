@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "updated_at": "1970-01-01T00:00:00.000Z",
+  "principals": [],
+  "roles": {
+    "superadmin": {
+      "description": "Full access",
+      "permissions": ["*"]
+    },
+    "ops": {
+      "description": "Operational admin access",
+      "permissions": ["admin.read", "admin.stats.read", "admin.governance.read", "admin.workers.read", "admin.pods.read"]
+    },
+    "auditor": {
+      "description": "Read-only audit access",
+      "permissions": ["admin.read", "admin.governance.read"]
+    }
+  }
+}
