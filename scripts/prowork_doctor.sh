@@ -17,17 +17,17 @@ echo "Target: $BASE"
 echo ""
 
 echo "version:"
-curl -s "${AUTH_HEADER[@]}" "$BASE/api/admin/version" | head -c 200
+curl -s "${AUTH_HEADER[@]+"${AUTH_HEADER[@]}"}" "$BASE/api/admin/version" | head -c 200
 echo ""
 echo ""
 
 echo "health:"
-curl -s "${AUTH_HEADER[@]}" "$BASE/api/admin/health" | head -c 200
+curl -s "${AUTH_HEADER[@]+"${AUTH_HEADER[@]}"}" "$BASE/api/admin/health" | head -c 200
 echo ""
 echo ""
 
 echo "scheduler:"
-curl -s "${AUTH_HEADER[@]}" "$BASE/api/admin/scheduler/status" | head -c 200
+curl -s "${AUTH_HEADER[@]+"${AUTH_HEADER[@]}"}" "$BASE/api/admin/scheduler/status" | head -c 200
 echo ""
 echo ""
 
