@@ -896,6 +896,8 @@ function matchRoute(method, pathname) {
   if (m === "GET" && pathname === "/api/admin/assignments") return { name: "admin.assignments.list", params: {} }
   if (m === "GET" && pathname === "/api/admin/evidence") return { name: "admin.evidence.list", params: {} }
   if (m === "GET" && pathname === "/api/admin/pods") return { name: "admin.pods.list", params: {} }
+  if (m === "GET" && pathname === "/api/admin/scheduler/preview") return { name: "admin.scheduler.preview", params: {} }
+  if (m === "POST" && pathname === "/api/admin/scheduler/run") return { name: "admin.scheduler.run", params: {} }
 
   if (m === "GET" && pathname === "/api/admin/principals") return { name: "admin.principals.list", params: {} }
   if (m === "POST" && pathname === "/api/admin/principals") return { name: "admin.principals.create", params: {} }
@@ -1625,7 +1627,120 @@ const server = http.createServer(async (req, res) => {
       return ok(res, { items, count: items.length })
     }
 
-    if (route.name === "admin.evidence.list") {
+    
+/* =========================================================
+S25-B-WOS-SCHEDULER
+Deterministic WOS scheduler (preview + run)
+========================================================= */
+
+function wosSchedulerNowIso() {
+  return new Date().toISOString()
+}
+
+function wosSchedulerGetCapacityMax(pod) {
+  try {
+    const cap = pod && pod.capacity ? pod.capacity : null
+    const max = cap && Object.prototype.hasOwnProperty.call(cap, "max_workers") ? cap.max_workers : null
+    const n = Number.parseInt(String(max ?? ""), 10)
+    if (Number.isNaN(n)) return null
+    if (n <= 0) return null
+    return n
+  } catch (_) {
+    return null
+  }
+}
+
+function wosSchedulerActiveAssignmentCount(podId) {
+  if (!store.wosAssignments) return 0
+  let c = 0
+  for (const asn of store.wosAssignments.values()) {
+    if (!asn) continue
+    if (String(asn.pod_id || "") !== String(podId || "")) continue
+    if (String(asn.state || "") === "active") c++
+  }
+  return c
+}
+
+function wosSchedulerEligiblePods() {
+  if (!store.wosPods) return []
+  const pods = Array.from(store.wosPods.values())
+    .filter(p => p && String(p.state || "") === "active")
+    .slice()
+  pods.sort((a, b) => {
+    const ac = String(a.created_at || "")
+    const bc = String(b.created_at || "")
+    if (ac !== bc) return ac < bc ? -1 : 1
+    return String(a.id || "").localeCompare(String(b.id || ""))
+  })
+  return pods
+}
+
+function wosSchedulerEligibleWorkers() {
+  if (!store.wosWorkers) return []
+  const workers = Array.from(store.wosWorkers.values())
+    .filter(w => w && String(w.status || "") === "active" && (w.assigned_pod === null || w.assigned_pod === undefined))
+    .slice()
+  workers.sort((a, b) => {
+    const ac = String(a.created_at || "")
+    const bc = String(b.created_at || "")
+    if (ac !== bc) return ac < bc ? -1 : 1
+    return String(a.id || "").localeCompare(String(b.id || ""))
+  })
+  return workers
+}
+
+function wosSchedulerPlan(limit) {
+  const cap = Number.isInteger(limit) && limit > 0 ? limit : 50
+  const pods = wosSchedulerEligiblePods()
+  const workers = wosSchedulerEligibleWorkers()
+
+  const planned = []
+  if (!pods.length || !workers.length) {
+    return { planned, stats: { eligible_pods: pods.length, unassigned_workers: workers.length } }
+  }
+
+  let podRoundRobin = 0
+  for (const w of workers) {
+    if (planned.length >= cap) break
+
+    let chosen = null
+    let tries = 0
+    while (tries < pods.length) {
+      const p = pods[podRoundRobin % pods.length]
+      podRoundRobin++
+      tries++
+
+      const maxCap = wosSchedulerGetCapacityMax(p)
+      const currentCount = wosSchedulerActiveAssignmentCount(p.id)
+
+      if (maxCap !== null && currentCount >= maxCap) continue
+
+      chosen = p
+      break
+    }
+
+    if (!chosen) break
+
+    planned.push({
+      worker_id: w.id,
+      worker_display_name: w.display_name || w.name || w.id,
+      pod_id: chosen.id,
+      pod_name: chosen.name,
+      role: "member"
+    })
+  }
+
+  return {
+    planned,
+    stats: {
+      eligible_pods: pods.length,
+      unassigned_workers: workers.length,
+      planned_count: planned.length
+    }
+  }
+}
+
+if (route.name === "admin.evidence.list") {
       const ap = Admin.authenticate(req)
       if (!ap.ok) return failFromAdmin(res, ap)
 
@@ -1637,6 +1752,76 @@ const server = http.createServer(async (req, res) => {
 
       return ok(res, { items: capped, count: store.wosEvidenceEvents.length, returned: capped.length })
     }
+    if (route.name === "admin.scheduler.preview") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, "admin:workers:read")) return
+
+      const plan = wosSchedulerPlan(100)
+      return ok(res, plan)
+    }
+
+    if (route.name === "admin.scheduler.run") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, "admin:workers:read")) return
+
+      const body = await readJson(req, res)
+      if (!body) return
+
+      const dryRun = body.dry_run === true
+      const plan = wosSchedulerPlan(body.limit || 50)
+
+      if (dryRun || !plan.planned.length) {
+        return ok(res, { dry_run: true, ...plan })
+      }
+
+      const ts = wosSchedulerNowIso()
+      const results = []
+      for (const slot of plan.planned) {
+        const assignmentId = "asn_" + crypto.randomUUID()
+        const evtId = "ev_" + crypto.randomUUID()
+
+        const assignment = {
+          id: assignmentId,
+          worker_id: slot.worker_id,
+          pod_id: slot.pod_id,
+          role: slot.role,
+          state: "active",
+          created_at: ts,
+          created_by: "wos_scheduler"
+        }
+
+        const worker = store.wosWorkers ? store.wosWorkers.get(slot.worker_id) : null
+        if (worker) {
+          const nextWorker = { ...worker, assigned_pod: { pod_id: slot.pod_id, role: slot.role, assigned_at: ts, assignment_id: assignmentId } }
+          store.wosWorkers.set(slot.worker_id, nextWorker)
+        }
+
+        if (store.wosAssignments) store.wosAssignments.set(assignmentId, assignment)
+
+        store.wosEvidenceEvents.push({
+          id: evtId,
+          at: ts,
+          action: "wos.scheduler.assign",
+          entity_type: "wos.assignment",
+          entity_id: assignmentId,
+          snapshot: { assignment, slot }
+        })
+
+        results.push(assignment)
+      }
+
+      if (typeof wosPersist !== "undefined") wosPersist.markDirty()
+
+      return ok(res, {
+        dry_run: false,
+        assigned: results.length,
+        assignments: results,
+        stats: plan.stats
+      }, 201)
+    }
+
 
 
     if (route.name === "admin.principals.list") {
