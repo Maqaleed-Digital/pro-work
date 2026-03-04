@@ -16,3 +16,5 @@ package-lock.json
 # OS / editor noise
 .DS_Store
 .vscode/
+
+app/server.js.bak.*
