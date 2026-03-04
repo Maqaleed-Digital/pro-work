@@ -3,8 +3,12 @@
 const http = require("http")
 const { URL } = require("url")
 const crypto = require("crypto")
+const path = require("path")
+const fs = require("fs")
 const Admin = require("./lib/admin")
 const AdminPerms = require("./lib/admin_permissions")
+
+const UI_DIST = path.join(__dirname, "frontend", "dist")
 
 const HOST = process.env.APP_HOST || "127.0.0.1"
 const PORT = Number(process.env.APP_PORT || "3010")
@@ -929,6 +933,17 @@ function wosSchedulerCtlStopTimer() {
   wosSchedulerCtl.interval_ms = null
 }
 
+function serveStatic(res, filePath, contentType) {
+  try {
+    const data = fs.readFileSync(filePath)
+    res.writeHead(200, { "Content-Type": contentType })
+    res.end(data)
+  } catch (err) {
+    res.writeHead(404)
+    res.end("Not found")
+  }
+}
+
 function wosSchedulerCtlSnapshot() {
   return {
     enabled: Boolean(wosSchedulerCtl.enabled),
@@ -943,6 +958,18 @@ const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host || HOST}`)
     const pathname = url.pathname
+
+    // S28: Admin UI static serve
+    if (req.method === "GET" && pathname === "/admin") {
+      return serveStatic(res, path.join(UI_DIST, "index.html"), "text/html")
+    }
+
+    if (req.method === "GET" && pathname.startsWith("/admin/assets/")) {
+      const assetPath = path.join(UI_DIST, pathname.replace("/admin/", ""))
+      const ext = path.extname(assetPath)
+      const types = { ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png" }
+      return serveStatic(res, assetPath, types[ext] || "application/octet-stream")
+    }
 
     const route = matchRoute(req.method || "GET", pathname)
     if (!route) return fail(res, "NOT_FOUND", "Route not found", 404)
