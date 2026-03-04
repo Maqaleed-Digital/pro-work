@@ -4,6 +4,7 @@ const http = require("http")
 const { URL } = require("url")
 const crypto = require("crypto")
 const Admin = require("./lib/admin")
+const AdminPerms = require("./lib/admin_permissions")
 
 const HOST = process.env.APP_HOST || "127.0.0.1"
 const PORT = Number(process.env.APP_PORT || "3010")
@@ -47,6 +48,13 @@ function failFromAdmin(res, adminErr) {
   const e = adminErr && adminErr.error ? adminErr.error : { code: "ADMIN_ERROR", message: "admin error" }
   fail(res, e.code || "ADMIN_ERROR", e.message || "admin error", status)
 }
+
+
+function requireAdminPerm(res, principal, perm) {
+  if (AdminPerms.hasPerm(principal, perm)) return true
+  return failFromAdmin(res, AdminPerms.deny(perm))
+}
+
 
 async function readJson(req, res) {
   const ct = String(req.headers["content-type"] || "").toLowerCase()
@@ -1569,40 +1577,58 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (route.name === "admin.stats") {
-      const auth = Admin.requirePermission(req, "admin.stats.read")
-      if (!auth.ok) return failFromAdmin(res, auth)
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, "admin:stats:read")) return
+      // S24-C-RBAC
+      const auth = ap  // S24-C: authenticated by guard above
       return ok(res, { ...bootMeta(), admin: { id: auth.principal.id, name: auth.principal.name, role: auth.principal.role }, ...adminStatsSnapshot() }, 200)
     }
 
     if (route.name === "admin.governance") {
-      const auth = Admin.requirePermission(req, "admin.governance.read")
-      if (!auth.ok) return failFromAdmin(res, auth)
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, "admin:governance:read")) return
+      // S24-C-RBAC
+      const auth = ap  // S24-C: authenticated by guard above
       return ok(res, { ...bootMeta(), admin: { id: auth.principal.id, name: auth.principal.name, role: auth.principal.role }, ...adminGovernanceSnapshot() }, 200)
     }
 
     if (route.name === "admin.workers.list") {
-      const auth = Admin.requirePermission(req, "admin.workers.read")
-      if (!auth.ok) return failFromAdmin(res, auth)
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, "admin:workers:read")) return
+      // S24-C-RBAC
+      const auth = ap  // S24-C: authenticated by guard above
       const out = listAdminWorkers(url.searchParams)
       if (!out.ok) return fail(res, out.error.code, out.error.message, out.status || 422)
       return ok(res, { ...bootMeta(), admin: { id: auth.principal.id, name: auth.principal.name, role: auth.principal.role }, workers: out.data }, 200)
     }
 
     if (route.name === "admin.pods.list") {
-      const auth = Admin.requirePermission(req, "admin.pods.read")
-      if (!auth.ok) return failFromAdmin(res, auth)
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, "admin:pods:read")) return
+      // S24-C-RBAC
+      const auth = ap  // S24-C: authenticated by guard above
       return ok(res, { ...bootMeta(), admin: { id: auth.principal.id, name: auth.principal.name, role: auth.principal.role }, pods: [] }, 200)
     }
 
     if (route.name === "admin.principals.list") {
-      const auth = Admin.requirePermission(req, "admin.read")
-      if (!auth.ok) return failFromAdmin(res, auth)
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, "admin:principals:read")) return
+      // S24-C-RBAC
+      const auth = ap  // S24-C: authenticated by guard above
       return ok(res, { ...bootMeta(), admin: { id: auth.principal.id, name: auth.principal.name, role: auth.principal.role }, principals: Admin.listPrincipalsSafe(auth.db), roles: auth.db.roles }, 200)
     }
 
     if (route.name === "admin.principals.create") {
-      const auth = Admin.requirePermission(req, "*")
-      if (!auth.ok) return failFromAdmin(res, auth)
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, "admin:principals:write")) return
+      // S24-C-RBAC
+      const auth = ap  // S24-C: authenticated by guard above
       const body = await readJson(req, res)
       if (!body) return
       const created = Admin.createPrincipal(auth.db, auth.dbPath, body)
