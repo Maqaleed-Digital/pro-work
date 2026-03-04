@@ -893,6 +893,8 @@ function matchRoute(method, pathname) {
   if (m === "GET" && pathname === "/api/admin/stats") return { name: "admin.stats", params: {} }
   if (m === "GET" && pathname === "/api/admin/governance") return { name: "admin.governance", params: {} }
   if (m === "GET" && pathname === "/api/admin/workers") return { name: "admin.workers.list", params: {} }
+  if (m === "GET" && pathname === "/api/admin/assignments") return { name: "admin.assignments.list", params: {} }
+  if (m === "GET" && pathname === "/api/admin/evidence") return { name: "admin.evidence.list", params: {} }
   if (m === "GET" && pathname === "/api/admin/pods") return { name: "admin.pods.list", params: {} }
 
   if (m === "GET" && pathname === "/api/admin/principals") return { name: "admin.principals.list", params: {} }
@@ -1613,6 +1615,29 @@ const server = http.createServer(async (req, res) => {
       const auth = ap  // S24-C: authenticated by guard above
       return ok(res, { ...bootMeta(), admin: { id: auth.principal.id, name: auth.principal.name, role: auth.principal.role }, pods: [] }, 200)
     }
+    if (route.name === "admin.assignments.list") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+
+      if (!requireAdminPerm(res, ap.principal, "admin:workers:read")) return
+
+      const items = store.wosAssignments ? Array.from(store.wosAssignments.values()) : []
+      return ok(res, { items, count: items.length })
+    }
+
+    if (route.name === "admin.evidence.list") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+
+      if (!requireAdminPerm(res, ap.principal, "admin:governance:read")) return
+
+      const items = store.wosEvidenceEvents.slice()
+      items.reverse()
+      const capped = items.slice(0, 200)
+
+      return ok(res, { items: capped, count: store.wosEvidenceEvents.length, returned: capped.length })
+    }
+
 
     if (route.name === "admin.principals.list") {
       const ap = Admin.authenticate(req)
