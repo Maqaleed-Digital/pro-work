@@ -41,6 +41,31 @@ export async function apiGet(path) {
   return handleResp(await fetch(path, { method: "GET", headers: authHeaders() }))
 }
 
+// apiGetJson(path, { limit: 50, cursor: "..." }) → appends non-empty params as ?key=value
+export async function apiGetJson(path, params) {
+  let url = path
+  if (params && typeof params === "object") {
+    const qs = new URLSearchParams()
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== null && v !== undefined && String(v).trim() !== "") qs.set(k, String(v))
+    })
+    const s = qs.toString()
+    if (s) url = path + "?" + s
+  }
+  return apiGet(url)
+}
+
+// downloadJson("export.json", data) → triggers browser file download
+export function downloadJson(filename, obj) {
+  const blob = new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" })
+  const url  = URL.createObjectURL(blob)
+  const a    = document.createElement("a")
+  a.href     = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 export async function apiPost(path, body) {
   return handleResp(await fetch(path, {
     method: "POST",
