@@ -100,6 +100,33 @@ function findPrincipalByToken(db, token) {
   return hit
 }
 
+function authenticate(req) {
+  const auth = parseAuthorization(req)
+  if (!auth.ok) return auth
+
+  const dbPath = principalsFilePath()
+  const loaded = loadDbFromPath(dbPath)
+  if (!loaded.ok) return loaded
+
+  const db = loaded.data.db
+  const principal = findPrincipalByToken(db, auth.data.token)
+  if (!principal) return err(401, "UNAUTHORIZED", "invalid token")
+
+  const roleName = String(principal.role || "")
+
+  return {
+    ok: true,
+    principal: {
+      id: String(principal.id || ""),
+      name: String(principal.name || ""),
+      role: roleName,
+      status: String(principal.status || "active")
+    },
+    db,
+    dbPath
+  }
+}
+
 function requirePermission(req, requiredPermission) {
   const auth = parseAuthorization(req)
   if (!auth.ok) return auth
@@ -254,6 +281,7 @@ module.exports = {
   err,
   principalsFilePath,
 
+  authenticate,
   requirePermission,
   requireAdmin: requirePermission,
   requireAuth: requirePermission,
