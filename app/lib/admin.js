@@ -104,6 +104,21 @@ function authenticate(req) {
   const auth = parseAuthorization(req)
   if (!auth.ok) return auth
 
+  // Bootstrap token passthrough: if ADMIN_BOOTSTRAP_TOKEN is set and matches,
+  // grant synthetic superadmin access without requiring a DB principal.
+  const bootToken = String(process.env.ADMIN_BOOTSTRAP_TOKEN || "").trim()
+  if (bootToken && auth.data.token === bootToken) {
+    const dbPath = principalsFilePath()
+    const loaded = loadDbFromPath(dbPath)
+    const db = loaded.ok ? loaded.data.db : { principals: [], roles: {} }
+    return {
+      ok: true,
+      principal: { id: "bootstrap", name: "Bootstrap Superadmin", role: "superadmin", status: "active" },
+      db,
+      dbPath
+    }
+  }
+
   const dbPath = principalsFilePath()
   const loaded = loadDbFromPath(dbPath)
   if (!loaded.ok) return loaded
