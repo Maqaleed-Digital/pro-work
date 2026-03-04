@@ -733,10 +733,16 @@ function matchRoute(method, pathname) {
   if (m === "GET" && pathname === "/api/admin/evidence") return { name: "admin.evidence.list", params: {} }
   if (m === "GET" && pathname === "/api/admin/pods") return { name: "admin.pods.list", params: {} }
   if (m === "GET" && pathname === "/api/admin/scheduler/preview") return { name: "admin.scheduler.preview", params: {} }
+  if (m === "GET" && pathname === "/api/admin/scheduler/status") return { name: "admin.scheduler.status", params: {} }
+  if (m === "POST" && pathname === "/api/admin/scheduler/run-once") return { name: "admin.scheduler.run_once", params: {} }
+  if (m === "POST" && pathname === "/api/admin/scheduler/interval/start") return { name: "admin.scheduler.interval.start", params: {} }
+  if (m === "POST" && pathname === "/api/admin/scheduler/interval/stop") return { name: "admin.scheduler.interval.stop", params: {} }
   if (m === "POST" && pathname === "/api/admin/scheduler/run") return { name: "admin.scheduler.run", params: {} }
 
   if (m === "GET" && pathname === "/api/admin/principals") return { name: "admin.principals.list", params: {} }
   if (m === "POST" && pathname === "/api/admin/principals") return { name: "admin.principals.create", params: {} }
+
+  if (m === "POST" && pathname === "/api/admin/bootstrap/superadmin") return { name: "admin.bootstrap.superadmin", params: {} }
 
   return null
 }
@@ -860,65 +866,43 @@ function adminGovernanceSnapshot() {
   }
 }
 
-function matchRoute(method, pathname) {
-  const m = method.toUpperCase()
+/* =========================================================
+S25-C-WOS-SCHEDULER_AUTOMATION
+Operational controls: status + interval start/stop + run-once
+========================================================= */
 
-  if (m === "GET" && pathname === "/health") return { name: "health", params: {} }
+const wosSchedulerCtl = {
+  enabled: false,
+  interval_ms: null,
+  timer: null,
+  running: false,
+  last_run: null,
+  last_error: null
+}
 
-  if (m === "POST" && pathname === "/api/jobs") return { name: "jobs.create", params: {} }
-  if (m === "GET" && pathname === "/api/jobs") return { name: "jobs.list", params: {} }
+function wosSchedulerClampInt(v, def, min, max) {
+  const n = Number.parseInt(String(v ?? ""), 10)
+  if (Number.isNaN(n)) return def
+  return Math.min(Math.max(n, min), max)
+}
 
-  const jobIdMatch = pathname.match(/^\/api\/jobs\/([^/]+)$/)
-  if (m === "GET" && jobIdMatch) return { name: "jobs.get", params: { job_id: jobIdMatch[1] } }
-
-  const jobCloseMatch = pathname.match(/^\/api\/jobs\/([^/]+)\/close$/)
-  if (m === "POST" && jobCloseMatch) return { name: "jobs.close", params: { job_id: jobCloseMatch[1] } }
-
-  const proposalsMatch = pathname.match(/^\/api\/jobs\/([^/]+)\/proposals$/)
-  if (m === "POST" && proposalsMatch) return { name: "proposals.create", params: { job_id: proposalsMatch[1] } }
-  if (m === "GET" && proposalsMatch) return { name: "proposals.list", params: { job_id: proposalsMatch[1] } }
-
-  const proposalAcceptMatch = pathname.match(/^\/api\/jobs\/([^/]+)\/proposals\/([^/]+)\/accept$/)
-  if (m === "POST" && proposalAcceptMatch) {
-    return { name: "proposals.accept", params: { job_id: proposalAcceptMatch[1], proposal_id: proposalAcceptMatch[2] } }
+function wosSchedulerCtlStopTimer() {
+  if (wosSchedulerCtl.timer) {
+    clearInterval(wosSchedulerCtl.timer)
+    wosSchedulerCtl.timer = null
   }
+  wosSchedulerCtl.enabled = false
+  wosSchedulerCtl.interval_ms = null
+}
 
-  const proposalRejectMatch = pathname.match(/^\/api\/jobs\/([^/]+)\/proposals\/([^/]+)\/reject$/)
-  if (m === "POST" && proposalRejectMatch) {
-    return { name: "proposals.reject", params: { job_id: proposalRejectMatch[1], proposal_id: proposalRejectMatch[2] } }
+function wosSchedulerCtlSnapshot() {
+  return {
+    enabled: Boolean(wosSchedulerCtl.enabled),
+    interval_ms: wosSchedulerCtl.interval_ms,
+    running: Boolean(wosSchedulerCtl.running),
+    last_run: wosSchedulerCtl.last_run,
+    last_error: wosSchedulerCtl.last_error
   }
-
-  if (m === "POST" && pathname === "/api/contracts/intent") return { name: "contracts.intent.create", params: {} }
-  if (m === "GET" && pathname === "/api/contracts/intent") return { name: "contracts.intent.list", params: {} }
-
-  const ciAuditMatch = pathname.match(/^\/api\/contracts\/intent\/([^/]+)\/audit$/)
-  if (m === "GET" && ciAuditMatch) return { name: "contracts.intent.audit", params: { id: ciAuditMatch[1] } }
-
-  const ciGetMatch = pathname.match(/^\/api\/contracts\/intent\/([^/]+)$/)
-  if (m === "GET" && ciGetMatch) return { name: "contracts.intent.get", params: { id: ciGetMatch[1] } }
-
-  const ciSendMatch = pathname.match(/^\/api\/contracts\/intent\/([^/]+)\/send$/)
-  if (m === "POST" && ciSendMatch) return { name: "contracts.intent.send", params: { id: ciSendMatch[1] } }
-
-  const ciAcceptMatch = pathname.match(/^\/api\/contracts\/intent\/([^/]+)\/accept$/)
-  if (m === "POST" && ciAcceptMatch) return { name: "contracts.intent.accept", params: { id: ciAcceptMatch[1] } }
-
-  if (m === "POST" && pathname === "/api/wos/workers") return { name: "wos.workers.create", params: {} }
-  if (m === "GET" && pathname === "/api/wos/workers") return { name: "wos.workers.list", params: {} }
-
-  if (m === "GET" && pathname === "/api/wos/evidence-events") return { name: "wos.evidence.list", params: {} }
-
-  if (m === "GET" && pathname === "/api/admin/stats") return { name: "admin.stats", params: {} }
-  if (m === "GET" && pathname === "/api/admin/governance") return { name: "admin.governance", params: {} }
-  if (m === "GET" && pathname === "/api/admin/workers") return { name: "admin.workers.list", params: {} }
-  if (m === "GET" && pathname === "/api/admin/pods") return { name: "admin.pods.list", params: {} }
-
-  if (m === "GET" && pathname === "/api/admin/principals") return { name: "admin.principals.list", params: {} }
-  if (m === "POST" && pathname === "/api/admin/principals") return { name: "admin.principals.create", params: {} }
-
-  if (m === "POST" && pathname === "/api/admin/bootstrap/superadmin") return { name: "admin.bootstrap.superadmin", params: {} }
-
-  return null
 }
 
 const server = http.createServer(async (req, res) => {
@@ -1228,6 +1212,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     
+
 /* =========================================================
 S25-B-WOS-SCHEDULER
 Deterministic WOS scheduler (preview + run)
@@ -1352,7 +1337,223 @@ if (route.name === "admin.evidence.list") {
 
       return ok(res, { items: capped, count: store.wosEvidenceEvents.length, returned: capped.length })
     }
-    if (route.name === "admin.scheduler.preview") {
+    
+    if (route.name === "admin.scheduler.status") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+
+      if (!requireAdminPerm(res, ap.principal, "admin:governance:read")) return
+
+      return ok(res, { scheduler: wosSchedulerCtlSnapshot() })
+    }
+
+    if (route.name === "admin.scheduler.run_once") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+
+      if (!requireAdminPerm(res, ap.principal, "admin:wos:assignments:write")) return
+
+      if (wosSchedulerCtl.running) {
+        return fail(res, "CONFLICT", "scheduler already running", 409)
+      }
+
+      const body = await readJson(req, res)
+      if (body === null) return
+
+      const limit = wosSchedulerClampInt(body.limit, 50, 1, 200)
+      const dryRun = Boolean(body.dry_run)
+
+      // Evidence: control action
+      try {
+        // Prefer existing evidence helper if in scope; fallback to direct push
+        store.wosEvidenceEvents.push({
+          id: crypto.randomUUID(),
+          ts: new Date().toISOString(),
+          action: "wos.scheduler.run_once",
+          actor: { principal_id: ap.principal && ap.principal.id ? ap.principal.id : null, role: ap.principal && ap.principal.role ? ap.principal.role : null },
+          snapshot: { limit, dry_run: dryRun }
+        })
+      } catch {}
+
+      wosSchedulerCtl.running = true
+      wosSchedulerCtl.last_error = null
+      const started_at = new Date().toISOString()
+
+      try {
+        const plan = wosSchedulerPlan(limit)
+        const planned = Array.isArray(plan && plan.planned) ? plan.planned : []
+
+        if (!dryRun) {
+          for (const it of planned) {
+            const worker = store.wosWorkers.get(it.worker_id) || null
+            const pod = store.wosPods.get(it.pod_id) || null
+            if (!worker || !pod) continue
+            if (worker.assigned_pod !== null && worker.assigned_pod !== undefined) continue
+
+            const asnId = crypto.randomUUID()
+            const asn = {
+              id: asnId,
+              worker_id: worker.id,
+              pod_id: pod.id,
+              role: it.role || "member",
+              state: "active",
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }
+            store.wosAssignments.set(asnId, asn)
+
+            const nextW = { ...worker, assigned_pod: { pod_id: pod.id, role: asn.role, assignment_id: asnId } }
+            store.wosWorkers.set(worker.id, nextW)
+
+            store.wosEvidenceEvents.push({
+              id: crypto.randomUUID(),
+              ts: new Date().toISOString(),
+              action: "wos.scheduler.assign",
+              entity_type: "wos.assignment",
+              entity_id: asnId,
+              snapshot: { assignment: asn, worker: nextW, pod: pod }
+            })
+          }
+        }
+
+        const finished_at = new Date().toISOString()
+        wosSchedulerCtl.last_run = {
+          mode: "run_once",
+          dry_run: dryRun,
+          limit,
+          started_at,
+          finished_at,
+          planned_count: planned.length
+        }
+
+        store.wosEvidenceEvents.push({
+          id: crypto.randomUUID(),
+          ts: new Date().toISOString(),
+          action: "wos.scheduler.run",
+          snapshot: wosSchedulerCtl.last_run
+        })
+
+        wosSchedulerCtl.running = false
+        return ok(res, { dry_run: dryRun, planned, scheduler: wosSchedulerCtlSnapshot() })
+      } catch (e) {
+        wosSchedulerCtl.running = false
+        wosSchedulerCtl.last_error = { message: "scheduler run_once failed" }
+        return fail(res, "SCHEDULER_ERROR", "scheduler run_once failed", 500)
+      }
+    }
+
+    if (route.name === "admin.scheduler.interval.start") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+
+      if (!requireAdminPerm(res, ap.principal, "admin:wos:assignments:write")) return
+
+      const body = await readJson(req, res)
+      if (body === null) return
+
+      const intervalMs = wosSchedulerClampInt(body.interval_ms, 30000, 5000, 3600000)
+      const limit = wosSchedulerClampInt(body.limit, 50, 1, 200)
+      const dryRun = Boolean(body.dry_run)
+
+      wosSchedulerCtlStopTimer()
+
+      wosSchedulerCtl.enabled = true
+      wosSchedulerCtl.interval_ms = intervalMs
+      wosSchedulerCtl.last_error = null
+
+      store.wosEvidenceEvents.push({
+        id: crypto.randomUUID(),
+        ts: new Date().toISOString(),
+        action: "wos.scheduler.control.start",
+        snapshot: { interval_ms: intervalMs, limit, dry_run: dryRun }
+      })
+
+      wosSchedulerCtl.timer = setInterval(() => {
+        if (wosSchedulerCtl.running) return
+        wosSchedulerCtl.running = true
+        const started_at = new Date().toISOString()
+        try {
+          const plan = wosSchedulerPlan(limit)
+          const planned = Array.isArray(plan && plan.planned) ? plan.planned : []
+
+          if (!dryRun) {
+            for (const it of planned) {
+              const worker = store.wosWorkers.get(it.worker_id) || null
+              const pod = store.wosPods.get(it.pod_id) || null
+              if (!worker || !pod) continue
+              if (worker.assigned_pod !== null && worker.assigned_pod !== undefined) continue
+
+              const asnId = crypto.randomUUID()
+              const asn = {
+                id: asnId,
+                worker_id: worker.id,
+                pod_id: pod.id,
+                role: it.role || "member",
+                state: "active",
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              }
+              store.wosAssignments.set(asnId, asn)
+              const nextW = { ...worker, assigned_pod: { pod_id: pod.id, role: asn.role, assignment_id: asnId } }
+              store.wosWorkers.set(worker.id, nextW)
+
+              store.wosEvidenceEvents.push({
+                id: crypto.randomUUID(),
+                ts: new Date().toISOString(),
+                action: "wos.scheduler.assign",
+                entity_type: "wos.assignment",
+                entity_id: asnId,
+                snapshot: { assignment: asn, worker: nextW, pod: pod }
+              })
+            }
+          }
+
+          const finished_at = new Date().toISOString()
+          wosSchedulerCtl.last_run = {
+            mode: "interval",
+            dry_run: dryRun,
+            interval_ms: intervalMs,
+            limit,
+            started_at,
+            finished_at,
+            planned_count: planned.length
+          }
+
+          store.wosEvidenceEvents.push({
+            id: crypto.randomUUID(),
+            ts: new Date().toISOString(),
+            action: "wos.scheduler.run",
+            snapshot: wosSchedulerCtl.last_run
+          })
+
+          wosSchedulerCtl.running = false
+        } catch {
+          wosSchedulerCtl.running = false
+          wosSchedulerCtl.last_error = { message: "scheduler interval tick failed" }
+        }
+      }, intervalMs)
+
+      return ok(res, { scheduler: wosSchedulerCtlSnapshot() })
+    }
+
+    if (route.name === "admin.scheduler.interval.stop") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+
+      if (!requireAdminPerm(res, ap.principal, "admin:wos:assignments:write")) return
+
+      wosSchedulerCtlStopTimer()
+
+      store.wosEvidenceEvents.push({
+        id: crypto.randomUUID(),
+        ts: new Date().toISOString(),
+        action: "wos.scheduler.control.stop",
+        snapshot: {}
+      })
+
+      return ok(res, { scheduler: wosSchedulerCtlSnapshot() })
+    }
+if (route.name === "admin.scheduler.preview") {
       const ap = Admin.authenticate(req)
       if (!ap.ok) return failFromAdmin(res, ap)
       if (!requireAdminPerm(res, ap.principal, "admin:workers:read")) return
