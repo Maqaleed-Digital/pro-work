@@ -1,0 +1,124 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  color: #111;
+  background: #fff;
+}
+
+/* ── Login ─────────────────────────────────────────────── */
+#login-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+.login-box {
+  border: 1px solid #e5e5e5;
+  border-radius: 14px;
+  padding: 28px 28px 24px;
+  min-width: 340px;
+}
+.login-box h1 { font-size: 17px; font-weight: 700; }
+.login-box p  { font-size: 12px; color: #666; margin-top: 4px; margin-bottom: 20px; }
+.login-box input {
+  width: 100%; padding: 10px 12px;
+  border: 1px solid #ddd; border-radius: 10px;
+  font-size: 14px; margin-bottom: 10px;
+}
+.login-box .login-err { font-size: 12px; color: #b00020; margin-bottom: 8px; }
+
+/* ── Nav ────────────────────────────────────────────────── */
+#nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  border-bottom: 1px solid #eee;
+  gap: 12px;
+}
+#nav .brand { font-size: 16px; font-weight: 700; }
+#nav .tabs  { display: flex; gap: 8px; flex-wrap: wrap; }
+#nav .tab {
+  text-decoration: none; padding: 7px 10px;
+  border: 1px solid #ddd; border-radius: 10px;
+  color: #111; font-size: 13px; background: #fff;
+}
+#nav .tab.active { background: #f3f3f3; }
+#nav .token-badge {
+  font-size: 11px; color: #444; background: #f3f3f3;
+  padding: 6px 10px; border-radius: 8px;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+#nav .signout-btn {
+  font-size: 12px; padding: 6px 10px;
+  border: 1px solid #ddd; border-radius: 8px;
+  background: #fff; color: #111; cursor: pointer;
+}
+
+/* ── Page area ──────────────────────────────────────────── */
+#page { padding: 18px; }
+.page-title { font-size: 15px; font-weight: 600; margin-bottom: 14px; }
+
+/* ── Buttons ────────────────────────────────────────────── */
+.btn {
+  padding: 8px 13px; border-radius: 10px; font-size: 13px;
+  cursor: pointer; border: 1px solid #ddd; background: #fff; color: #111;
+}
+.btn-primary { background: #111; color: #fff; border-color: #111; }
+.btn-success { background: #1a7f37; color: #fff; border-color: #1a7f37; }
+.btn-danger  { background: #b00020; color: #fff; border-color: #b00020; }
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* ── Filters bar ────────────────────────────────────────── */
+.filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 14px; }
+.filters label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: #555; }
+.filters input, .filters select {
+  padding: 8px 10px; border: 1px solid #ddd; border-radius: 10px;
+  font-size: 13px; min-width: 130px;
+}
+
+/* ── Table ──────────────────────────────────────────────── */
+.table-wrap { border: 1px solid #eee; border-radius: 14px; overflow: hidden; }
+table { width: 100%; border-collapse: collapse; }
+thead tr { background: #fafafa; }
+th { text-align: left; padding: 10px 12px; font-size: 12px; color: #555; font-weight: 600; }
+td { padding: 10px 12px; font-size: 13px; border-top: 1px solid #eee; }
+td.mono { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-size: 12px; }
+.empty-row td { color: #888; font-size: 13px; }
+
+/* ── Pagination ─────────────────────────────────────────── */
+.pagination { display: flex; gap: 10px; margin-top: 12px; }
+
+/* ── Status card (scheduler / stats) ───────────────────── */
+.stat-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.stat-card { border: 1px solid #eee; border-radius: 14px; padding: 14px; }
+.stat-card .sc-label { font-size: 12px; color: #666; }
+.stat-card .sc-value { font-size: 26px; font-weight: 800; margin-top: 4px; }
+.stat-card .sc-sub   { font-size: 12px; color: #666; margin-top: 4px; }
+
+.kv-table { border: 1px solid #eee; border-radius: 14px; overflow: hidden; margin-bottom: 16px; }
+.kv-table table { width: 100%; border-collapse: collapse; }
+.kv-table td { padding: 8px 12px; border-top: 1px solid #eee; font-size: 13px; }
+.kv-table td:first-child { width: 140px; font-size: 12px; color: #666; }
+.kv-table td:last-child { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; }
+
+.actions-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-top: 4px; }
+.interval-input { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: #555; }
+.interval-input input { padding: 8px 10px; border: 1px solid #ddd; border-radius: 10px; font-size: 13px; width: 130px; }
+
+/* ── Toast ──────────────────────────────────────────────── */
+#toast-root { position: fixed; bottom: 22px; right: 22px; display: flex; flex-direction: column; gap: 8px; z-index: 999; }
+.toast {
+  padding: 11px 16px; border-radius: 12px; font-size: 13px;
+  max-width: 340px; animation: slide-in 0.18s ease;
+  box-shadow: 0 2px 12px rgba(0,0,0,.13);
+}
+.toast.ok  { background: #1a7f37; color: #fff; }
+.toast.err { background: #b00020; color: #fff; }
+@keyframes slide-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* ── Error / loading ────────────────────────────────────── */
+.page-err  { color: #b00020; font-size: 13px; margin-top: 8px; }
+.page-load { color: #666; font-size: 13px; }
