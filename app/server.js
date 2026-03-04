@@ -1,6 +1,3 @@
-Here's the complete code with the requested replacements:
-
-```javascript
 "use strict"
 
 const http = require("http")
