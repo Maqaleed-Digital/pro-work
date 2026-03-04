@@ -13,6 +13,10 @@ const BOOT_ID = crypto.randomUUID()
 const STARTED_AT_ISO = nowIso()
 const PID = process.pid
 
+/* S27 */
+const SYSTEM_VERSION = "S27"
+const BUILD_COMMIT = process.env.GIT_COMMIT || "unknown"
+
 function bootMeta() {
   return {
     boot_id: BOOT_ID,
@@ -726,6 +730,8 @@ function matchRoute(method, pathname) {
   if (m === "GET" && pathname === "/wos/evidence-events") return { name: "wos.evidence.ui", params: {} }
   if (m === "POST" && pathname === "/api/wos/evidence-events") return { name: "wos.evidence.create", params: {} }
 
+  if (m === "GET" && pathname === "/api/admin/version") return { name: "admin.version", params: {} }
+  if (m === "GET" && pathname === "/api/admin/health") return { name: "admin.health", params: {} }
   if (m === "GET" && pathname === "/api/admin/stats") return { name: "admin.stats", params: {} }
   if (m === "GET" && pathname === "/api/admin/governance") return { name: "admin.governance", params: {} }
   if (m === "GET" && pathname === "/api/admin/workers") return { name: "admin.workers.list", params: {} }
@@ -841,6 +847,34 @@ function adminStatsSnapshot() {
     evidence: { total: evidenceTotal, recent },
     governance: { status: "pass", checks_passed: 1, checks_total: 1 }
   }
+}
+
+function adminListEvidence(query) {
+  const limit  = normalizeLimit(query.get("limit"))
+  const cursor = String(query.get("cursor") || "").trim()
+  const type   = String(query.get("type")   || "").trim()
+  const actor  = String(query.get("actor")  || "").trim()
+
+  let items = store.wosEvidenceEvents.slice()
+
+  if (type)   items = items.filter(e => String(e.action || "") === type)
+  if (actor)  items = items.filter(e => String(e.actor  || "") === actor)
+
+  // sort descending by timestamp
+  items.sort((a, b) => {
+    const aa = String(a.timestamp || "")
+    const bb = String(b.timestamp || "")
+    return aa > bb ? -1 : aa < bb ? 1 : 0
+  })
+
+  // cursor = exclusive upper bound on timestamp (return events older than cursor)
+  if (cursor) items = items.filter(e => String(e.timestamp || "") < cursor)
+
+  const page      = items.slice(0, limit)
+  const hasMore   = items.length > limit
+  const nextCursor = hasMore && page.length > 0 ? String(page[page.length - 1].timestamp || "") : null
+
+  return { items: page, next_cursor: nextCursor, has_more: hasMore }
 }
 
 function adminGovernanceSnapshot() {
@@ -1173,6 +1207,24 @@ const server = http.createServer(async (req, res) => {
       return ok(res, { ...bootMeta(), admin: { id: auth.principal.id, name: auth.principal.name, role: auth.principal.role }, ...adminStatsSnapshot() }, 200)
     }
 
+    if (route.name === "admin.version") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      return ok(res, { version: SYSTEM_VERSION, commit: BUILD_COMMIT, started_at: STARTED_AT_ISO }, 200)
+    }
+
+    if (route.name === "admin.health") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      const counts = {
+        workers:        store.wosWorkers     ? store.wosWorkers.size                          : 0,
+        pods:           store.wosPods        ? store.wosPods.size                             : 0,
+        assignments:    store.wosAssignments ? store.wosAssignments.size                      : 0,
+        evidence_events: store.wosEvidenceEvents ? store.wosEvidenceEvents.length             : 0,
+      }
+      return ok(res, { ok: true, system: { version: SYSTEM_VERSION, commit: BUILD_COMMIT, started_at: STARTED_AT_ISO, uptime_s: Math.floor(process.uptime()) }, counts, scheduler: wosSchedulerCtlSnapshot() }, 200)
+    }
+
     if (route.name === "admin.governance") {
       const ap = Admin.authenticate(req)
       if (!ap.ok) return failFromAdmin(res, ap)
@@ -1331,11 +1383,7 @@ if (route.name === "admin.evidence.list") {
 
       if (!requireAdminPerm(res, ap.principal, "admin:governance:read")) return
 
-      const items = store.wosEvidenceEvents.slice()
-      items.reverse()
-      const capped = items.slice(0, 200)
-
-      return ok(res, { items: capped, count: store.wosEvidenceEvents.length, returned: capped.length })
+      return ok(res, adminListEvidence(url.searchParams))
     }
     
     if (route.name === "admin.scheduler.status") {

@@ -5,6 +5,7 @@ import pods        from "./pages/pods.js"
 import assignments from "./pages/assignments.js"
 import evidence    from "./pages/evidence.js"
 import scheduler   from "./pages/scheduler.js"
+import governance  from "./pages/governance.js"
 
 const ROUTES = {
   "dashboard":   dashboard,
@@ -13,6 +14,7 @@ const ROUTES = {
   "assignments": assignments,
   "evidence":    evidence,
   "scheduler":   scheduler,
+  "governance":  governance,
 }
 
 const DEFAULT = "dashboard"
