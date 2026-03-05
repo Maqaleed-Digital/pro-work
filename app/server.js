@@ -943,7 +943,8 @@ const wosSchedulerCtl = {
   timer: null,
   running: false,
   last_run: null,
-  last_error: null
+  last_error: null,
+  tenantStats: {}  // { [tenantId]: { last_run, last_error } }
 }
 
 function wosSchedulerClampInt(v, def, min, max) {
@@ -962,12 +963,17 @@ function wosSchedulerCtlStopTimer() {
 }
 
 function wosSchedulerCtlSnapshot() {
+  const tenants = {}
+  for (const [tid, stats] of Object.entries(wosSchedulerCtl.tenantStats)) {
+    tenants[tid] = { last_run: stats.last_run, last_error: stats.last_error }
+  }
   return {
     enabled: Boolean(wosSchedulerCtl.enabled),
     interval_ms: wosSchedulerCtl.interval_ms,
     running: Boolean(wosSchedulerCtl.running),
     last_run: wosSchedulerCtl.last_run,
-    last_error: wosSchedulerCtl.last_error
+    last_error: wosSchedulerCtl.last_error,
+    tenants
   }
 }
 
@@ -1412,13 +1418,57 @@ function wosSchedulerPlan(tenantId, limit) {
   }
 }
 
+/* Execute one scheduling pass for a single tenant.
+   Returns the array of planned assignment objects (empty on dry-run). */
+function runSchedulerForTenant(tenantId, tenant, limit, dryRun) {
+  const plan = wosSchedulerPlan(tenantId, limit)
+  const planned = Array.isArray(plan && plan.planned) ? plan.planned : []
+
+  if (!dryRun) {
+    for (const it of planned) {
+      const worker = tenant.wosWorkers.get(it.worker_id) || null
+      const pod = tenant.wosPods.get(it.pod_id) || null
+      if (!worker || !pod) continue
+      if (worker.assigned_pod !== null && worker.assigned_pod !== undefined) continue
+
+      const asnId = crypto.randomUUID()
+      const asn = {
+        id: asnId,
+        worker_id: worker.id,
+        pod_id: pod.id,
+        role: it.role || "member",
+        state: "active",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+      tenant.wosAssignments.set(asnId, asn)
+
+      const nextW = { ...worker, assigned_pod: { pod_id: pod.id, role: asn.role, assignment_id: asnId } }
+      tenant.wosWorkers.set(worker.id, nextW)
+
+      tenant.wosEvidenceEvents.push({
+        id: crypto.randomUUID(),
+        tenant_id: tenantId,
+        ts: new Date().toISOString(),
+        action: "wos.scheduler.assign",
+        entity_type: "wos.assignment",
+        entity_id: asnId,
+        snapshot: { assignment: asn, worker: nextW, pod: pod }
+      })
+    }
+  }
+
+  return planned
+}
+
 if (route.name === "admin.evidence.list") {
       const ap = Admin.authenticate(req)
       if (!ap.ok) return failFromAdmin(res, ap)
 
       if (!requireAdminPerm(res, ap.principal, "admin:governance:read")) return
 
-      return ok(res, adminListEvidence(tenantId, url.searchParams))
+      const evidenceResult = adminListEvidence(tenantId, url.searchParams)
+      return ok(res, { ok: true, tenant_id: tenantId, data: evidenceResult })
     }
     
     if (route.name === "admin.scheduler.status") {
@@ -1446,7 +1496,7 @@ if (route.name === "admin.evidence.list") {
       const limit = wosSchedulerClampInt(body.limit, 50, 1, 200)
       const dryRun = Boolean(body.dry_run)
 
-      // Evidence: control action
+      // Evidence: control action on initiating tenant
       try {
         tenant.wosEvidenceEvents.push({
           id: crypto.randomUUID(),
@@ -1463,41 +1513,12 @@ if (route.name === "admin.evidence.list") {
       const started_at = new Date().toISOString()
 
       try {
-        const plan = wosSchedulerPlan(tenantId, limit)
-        const planned = Array.isArray(plan && plan.planned) ? plan.planned : []
-
-        if (!dryRun) {
-          for (const it of planned) {
-            const worker = tenant.wosWorkers.get(it.worker_id) || null
-            const pod = tenant.wosPods.get(it.pod_id) || null
-            if (!worker || !pod) continue
-            if (worker.assigned_pod !== null && worker.assigned_pod !== undefined) continue
-
-            const asnId = crypto.randomUUID()
-            const asn = {
-              id: asnId,
-              worker_id: worker.id,
-              pod_id: pod.id,
-              role: it.role || "member",
-              state: "active",
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            }
-            tenant.wosAssignments.set(asnId, asn)
-
-            const nextW = { ...worker, assigned_pod: { pod_id: pod.id, role: asn.role, assignment_id: asnId } }
-            tenant.wosWorkers.set(worker.id, nextW)
-
-            tenant.wosEvidenceEvents.push({
-              id: crypto.randomUUID(),
-              tenant_id: tenantId,
-              ts: new Date().toISOString(),
-              action: "wos.scheduler.assign",
-              entity_type: "wos.assignment",
-              entity_id: asnId,
-              snapshot: { assignment: asn, worker: nextW, pod: pod }
-            })
-          }
+        const allPlanned = []
+        for (const tid of Array.from(store.tenants.keys()).sort()) {
+          const t = store.tenants.get(tid)
+          const planned = runSchedulerForTenant(tid, t, limit, dryRun)
+          allPlanned.push(...planned)
+          wosSchedulerCtl.tenantStats[tid] = { last_run: new Date().toISOString(), last_error: null }
         }
 
         const finished_at = new Date().toISOString()
@@ -1507,7 +1528,7 @@ if (route.name === "admin.evidence.list") {
           limit,
           started_at,
           finished_at,
-          planned_count: planned.length
+          planned_count: allPlanned.length
         }
 
         tenant.wosEvidenceEvents.push({
@@ -1519,7 +1540,7 @@ if (route.name === "admin.evidence.list") {
         })
 
         wosSchedulerCtl.running = false
-        return ok(res, { dry_run: dryRun, planned, scheduler: wosSchedulerCtlSnapshot() })
+        return ok(res, { dry_run: dryRun, planned: allPlanned, scheduler: wosSchedulerCtlSnapshot() })
       } catch (e) {
         wosSchedulerCtl.running = false
         wosSchedulerCtl.last_error = { message: "scheduler run_once failed" }
@@ -1546,7 +1567,6 @@ if (route.name === "admin.evidence.list") {
       wosSchedulerCtl.interval_ms = intervalMs
       wosSchedulerCtl.last_error = null
 
-      const schedulerTenantId = tenantId  // capture for interval closure
       tenant.wosEvidenceEvents.push({
         id: crypto.randomUUID(),
         tenant_id: tenantId,
@@ -1560,40 +1580,15 @@ if (route.name === "admin.evidence.list") {
         wosSchedulerCtl.running = true
         const started_at = new Date().toISOString()
         try {
-          const plan = wosSchedulerPlan(schedulerTenantId, limit)
-          const planned = Array.isArray(plan && plan.planned) ? plan.planned : []
-          const intervalTenant = getTenantStore(schedulerTenantId)
-
-          if (!dryRun) {
-            for (const it of planned) {
-              const worker = intervalTenant.wosWorkers.get(it.worker_id) || null
-              const pod = intervalTenant.wosPods.get(it.pod_id) || null
-              if (!worker || !pod) continue
-              if (worker.assigned_pod !== null && worker.assigned_pod !== undefined) continue
-
-              const asnId = crypto.randomUUID()
-              const asn = {
-                id: asnId,
-                worker_id: worker.id,
-                pod_id: pod.id,
-                role: it.role || "member",
-                state: "active",
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              }
-              intervalTenant.wosAssignments.set(asnId, asn)
-              const nextW = { ...worker, assigned_pod: { pod_id: pod.id, role: asn.role, assignment_id: asnId } }
-              intervalTenant.wosWorkers.set(worker.id, nextW)
-
-              intervalTenant.wosEvidenceEvents.push({
-                id: crypto.randomUUID(),
-                tenant_id: schedulerTenantId,
-                ts: new Date().toISOString(),
-                action: "wos.scheduler.assign",
-                entity_type: "wos.assignment",
-                entity_id: asnId,
-                snapshot: { assignment: asn, worker: nextW, pod: pod }
-              })
+          let totalPlanned = 0
+          for (const tid of Array.from(store.tenants.keys()).sort()) {
+            const t = store.tenants.get(tid)
+            try {
+              const planned = runSchedulerForTenant(tid, t, limit, dryRun)
+              totalPlanned += planned.length
+              wosSchedulerCtl.tenantStats[tid] = { last_run: new Date().toISOString(), last_error: null }
+            } catch (tenantErr) {
+              wosSchedulerCtl.tenantStats[tid] = { last_run: null, last_error: { message: tenantErr && tenantErr.message ? String(tenantErr.message) : "tick failed" } }
             }
           }
 
@@ -1605,16 +1600,8 @@ if (route.name === "admin.evidence.list") {
             limit,
             started_at,
             finished_at,
-            planned_count: planned.length
+            planned_count: totalPlanned
           }
-
-          intervalTenant.wosEvidenceEvents.push({
-            id: crypto.randomUUID(),
-            tenant_id: schedulerTenantId,
-            ts: new Date().toISOString(),
-            action: "wos.scheduler.run",
-            snapshot: wosSchedulerCtl.last_run
-          })
 
           wosSchedulerCtl.running = false
         } catch {
