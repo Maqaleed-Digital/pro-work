@@ -8,6 +8,9 @@ evidence/
 # Runtime-generated app data
 app/.runtime/
 
+# Per-tenant persistence (do not commit runtime data)
+data/tenants/
+
 # Node artifacts
 node_modules/
 npm-debug.log*
