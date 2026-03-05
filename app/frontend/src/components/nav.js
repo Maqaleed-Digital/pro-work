@@ -1,5 +1,12 @@
 import { getToken, setToken, getTenant, setTenant } from "../api.js"
 
+// S30: live tenant list (null = use hardcoded fallback)
+let _tenantOptions = null
+
+export function setTenantOptions(options) {
+  _tenantOptions = Array.isArray(options) ? options : null
+}
+
 const TABS = [
   { key: "dashboard",   label: "Dashboard"   },
   { key: "workers",     label: "Workers"      },
@@ -53,7 +60,8 @@ export function renderNav(activeKey, onSignOut, onTenantChange) {
   const tenantSel = document.createElement("select")
   tenantSel.style.cssText = "font-size:12px;padding:2px 4px;border-radius:4px;border:1px solid #ccc;cursor:pointer"
   const currentTenant = getTenant()
-  const tenantOptions = ["default", "t1", "t2", "t3"]
+  const base = _tenantOptions || ["default", "t1", "t2", "t3"]
+  const tenantOptions = [...base]
   if (!tenantOptions.includes(currentTenant)) tenantOptions.unshift(currentTenant)
   tenantOptions.forEach(tid => {
     const opt = document.createElement("option")

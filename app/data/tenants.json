@@ -1,0 +1,39 @@
+{
+  "tenants": {
+    "default": {
+      "tenant_id": "default",
+      "name": "Default",
+      "status": "active",
+      "created_at": "2026-03-05T05:14:32.088Z",
+      "notes": ""
+    },
+    "acme": {
+      "tenant_id": "acme",
+      "name": "ACME Corp",
+      "status": "active",
+      "created_at": "2026-03-05T05:15:01.644Z",
+      "notes": ""
+    },
+    "upper": {
+      "tenant_id": "upper",
+      "name": "bad",
+      "status": "active",
+      "created_at": "2026-03-05T05:15:14.277Z",
+      "notes": ""
+    },
+    "t1": {
+      "tenant_id": "t1",
+      "name": "t1",
+      "status": "active",
+      "created_at": "2026-03-05T05:16:12.825Z",
+      "notes": "auto-registered from existing data"
+    },
+    "t2": {
+      "tenant_id": "t2",
+      "name": "t2",
+      "status": "active",
+      "created_at": "2026-03-05T05:16:12.825Z",
+      "notes": "auto-registered from existing data"
+    }
+  }
+}

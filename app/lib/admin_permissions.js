@@ -24,7 +24,10 @@ const PERMS = Object.freeze({
   ADMIN_PODS_WRITE: "admin:pods:write",
   ADMIN_PRINCIPALS_READ: "admin:principals:read",
   ADMIN_PRINCIPALS_WRITE: "admin:principals:write",
-  ADMIN_WOS_ASSIGNMENTS_WRITE: "admin:wos:assignments:write"
+  ADMIN_WOS_ASSIGNMENTS_WRITE: "admin:wos:assignments:write",
+  // S30: tenant registry
+  ADMIN_TENANTS_READ:  "admin:tenants:read",
+  ADMIN_TENANTS_WRITE: "admin:tenants:write"
 });
 
 function rolePerms(role) {
@@ -46,7 +49,9 @@ function rolePerms(role) {
         PERMS.ADMIN_PODS_WRITE,
         PERMS.ADMIN_PRINCIPALS_READ,
         PERMS.ADMIN_PRINCIPALS_WRITE,
-        PERMS.ADMIN_WOS_ASSIGNMENTS_WRITE
+        PERMS.ADMIN_WOS_ASSIGNMENTS_WRITE,
+        PERMS.ADMIN_TENANTS_READ,
+        PERMS.ADMIN_TENANTS_WRITE
       ])
     };
   }
@@ -60,7 +65,8 @@ function rolePerms(role) {
         PERMS.ADMIN_GOVERNANCE_READ,
         PERMS.ADMIN_WORKERS_READ,
         PERMS.ADMIN_PODS_READ,
-        PERMS.ADMIN_PRINCIPALS_READ
+        PERMS.ADMIN_PRINCIPALS_READ,
+        PERMS.ADMIN_TENANTS_READ
       ])
     };
   }

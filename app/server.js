@@ -63,6 +63,17 @@ function requireAdminPerm(res, principal, perm) {
   return failFromAdmin(res, AdminPerms.deny(perm))
 }
 
+// S30: tenant-scoped principal access check
+function requireTenantAccess(res, principal, tenantId) {
+  const pt = String((principal && principal.tenant_id) || "default").trim()
+  if (pt === "*") return true
+  if (pt !== tenantId) {
+    fail(res, "FORBIDDEN", `principal does not have access to tenant "${tenantId}"`, 403)
+    return false
+  }
+  return true
+}
+
 
 async function readJson(req, res) {
   const ct = String(req.headers["content-type"] || "").toLowerCase()
@@ -189,6 +200,72 @@ function loadAllTenants() {
     console.log(`[persist] loaded tenant "${tid}": ${t.wosWorkers.size} workers, ${t.wosAssignments.size} assignments, ${t.wosEvidenceEvents.length} events`)
   }
 }
+
+// S30: tenant registry ──────────────────────────────────────────────────────
+const TENANT_REGISTRY_PATH = path.join(__dirname, "data", "tenants.json")
+let tenantRegistry = {}  // { [tenantId]: { tenant_id, name, status, created_at, notes } }
+const TENANT_ID_RE = /^[a-z0-9][a-z0-9_-]{1,31}$/
+
+function normalizeTenantId(raw) {
+  return String(raw || "").trim().toLowerCase()
+}
+
+function assertValidTenantId(res, tid) {
+  if (!tid) { fail(res, "VALIDATION_ERROR", "body.tenant_id: Field required", 422); return false }
+  if (tid === "*" || tid.includes("/") || tid.includes("\\") || tid.includes("..")) {
+    fail(res, "VALIDATION_ERROR", `body.tenant_id: Invalid tenant_id "${tid}"`, 422); return false
+  }
+  if (!TENANT_ID_RE.test(tid)) {
+    fail(res, "VALIDATION_ERROR", "body.tenant_id: Must match ^[a-z0-9][a-z0-9_-]{1,31}$", 422); return false
+  }
+  return true
+}
+
+function saveTenantRegistry() {
+  try {
+    fs.mkdirSync(path.dirname(TENANT_REGISTRY_PATH), { recursive: true })
+    fs.writeFileSync(TENANT_REGISTRY_PATH,
+      JSON.stringify({ tenants: tenantRegistry }, null, 2) + "\n", "utf8")
+  } catch (e) { console.error("[registry] save failed", e && e.message) }
+}
+
+function loadTenantRegistry() {
+  try {
+    const raw = fs.readFileSync(TENANT_REGISTRY_PATH, "utf8")
+    const parsed = JSON.parse(raw)
+    tenantRegistry = (parsed && typeof parsed.tenants === "object" && !Array.isArray(parsed.tenants))
+      ? parsed.tenants : {}
+  } catch { tenantRegistry = {} }
+  // seed "default" if missing
+  if (!tenantRegistry["default"]) {
+    tenantRegistry["default"] = { tenant_id: "default", name: "Default",
+      status: "active", created_at: new Date().toISOString(), notes: "" }
+  }
+  // S30 migration: auto-register any tenants already loaded from data/tenants/
+  let migrated = 0
+  for (const tid of store.tenants.keys()) {
+    if (!tenantRegistry[tid]) {
+      tenantRegistry[tid] = { tenant_id: tid, name: tid, status: "active",
+        created_at: new Date().toISOString(), notes: "auto-registered from existing data" }
+      migrated++
+    }
+  }
+  saveTenantRegistry()
+  console.log(`[registry] loaded ${Object.keys(tenantRegistry).length} tenant(s)${migrated ? ` (${migrated} auto-registered)` : ""}`)
+}
+
+function isTenantActive(tenantId) {
+  const e = tenantRegistry[tenantId]
+  return !!e && String(e.status || "active") === "active"
+}
+
+function requireTenantActive(res, tenantId) {
+  const e = tenantRegistry[tenantId]
+  if (!e) { fail(res, "TENANT_NOT_FOUND", `tenant "${tenantId}" is not registered`, 404); return false }
+  if (!isTenantActive(tenantId)) { fail(res, "TENANT_DISABLED", `tenant "${tenantId}" is disabled`, 403); return false }
+  return true
+}
+// ────────────────────────────────────────────────────────────────────────────
 
 function resolveTenantId(req) {
   const header = req.headers["x-tenant-id"]
@@ -847,6 +924,10 @@ function matchRoute(method, pathname) {
 
   if (m === "POST" && pathname === "/api/admin/bootstrap/superadmin") return { name: "admin.bootstrap.superadmin", params: {} }
 
+  // S30: tenant registry
+  if (m === "GET"  && pathname === "/api/admin/tenants") return { name: "admin.tenants.list",   params: {} }
+  if (m === "POST" && pathname === "/api/admin/tenants") return { name: "admin.tenants.create", params: {} }
+
   return null
 }
 
@@ -1250,6 +1331,11 @@ const server = http.createServer(async (req, res) => {
       return ok(res, updateContractIntent(ci, { status: "accepted" }), 200)
     }
 
+    // S30: enforce tenant registry on all WOS routes
+    if (route.name.startsWith("wos.")) {
+      if (!requireTenantActive(res, tenantId)) return
+    }
+
     if (route.name === "wos.workers.create") {
       const body = await readJson(req, res)
       if (!body) return
@@ -1370,6 +1456,8 @@ const server = http.createServer(async (req, res) => {
       const ap = Admin.authenticate(req)
       if (!ap.ok) return failFromAdmin(res, ap)
       if (!requireAdminPerm(res, ap.principal, "admin:workers:read")) return
+      if (!requireTenantAccess(res, ap.principal, tenantId)) return  // S30
+      if (!requireTenantActive(res, tenantId)) return                // S30
       // S24-C-RBAC
       const auth = ap  // S24-C: authenticated by guard above
       const out = listAdminWorkers(tenantId, url.searchParams)
@@ -1381,6 +1469,8 @@ const server = http.createServer(async (req, res) => {
       const ap = Admin.authenticate(req)
       if (!ap.ok) return failFromAdmin(res, ap)
       if (!requireAdminPerm(res, ap.principal, "admin:pods:read")) return
+      if (!requireTenantAccess(res, ap.principal, tenantId)) return  // S30
+      if (!requireTenantActive(res, tenantId)) return                // S30
       // S24-C-RBAC
       const auth = ap  // S24-C: authenticated by guard above
       return ok(res, { ...bootMeta(), admin: { id: auth.principal.id, name: auth.principal.name, role: auth.principal.role }, pods: [] }, 200)
@@ -1388,8 +1478,9 @@ const server = http.createServer(async (req, res) => {
     if (route.name === "admin.assignments.list") {
       const ap = Admin.authenticate(req)
       if (!ap.ok) return failFromAdmin(res, ap)
-
       if (!requireAdminPerm(res, ap.principal, "admin:workers:read")) return
+      if (!requireTenantAccess(res, ap.principal, tenantId)) return  // S30
+      if (!requireTenantActive(res, tenantId)) return                // S30
 
       const items = Array.from(tenant.wosAssignments.values())
       return ok(res, { items, count: items.length })
@@ -1553,11 +1644,12 @@ function runSchedulerForTenant(tenantId, tenant, limit, dryRun) {
   return planned
 }
 
-if (route.name === "admin.evidence.list") {
+    if (route.name === "admin.evidence.list") {
       const ap = Admin.authenticate(req)
       if (!ap.ok) return failFromAdmin(res, ap)
-
       if (!requireAdminPerm(res, ap.principal, "admin:governance:read")) return
+      if (!requireTenantAccess(res, ap.principal, tenantId)) return  // S30
+      if (!requireTenantActive(res, tenantId)) return                // S30
 
       const evidenceResult = adminListEvidence(tenantId, url.searchParams)
       return ok(res, { tenant_id: tenantId, ...evidenceResult })
@@ -1818,6 +1910,34 @@ if (route.name === "admin.scheduler.preview") {
       return ok(res, { ...bootMeta(), admin: { id: auth.principal.id, name: auth.principal.name, role: auth.principal.role }, principal: created.principal, token: created.token }, 201)
     }
 
+    // S30: tenant registry ──────────────────────────────────────────────────
+    if (route.name === "admin.tenants.list") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, "admin:tenants:read")) return
+      return ok(res, { tenants: Object.values(tenantRegistry) })
+    }
+
+    if (route.name === "admin.tenants.create") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, "admin:tenants:write")) return
+      const body = await readJson(req, res)
+      if (!body) return
+      const tid = normalizeTenantId(body.tenant_id)
+      const name = String(body.name || "").trim()
+      if (!assertValidTenantId(res, tid)) return
+      if (!name) return fail(res, "VALIDATION_ERROR", "body.name: Field required", 422)
+      if (tenantRegistry[tid]) return fail(res, "CONFLICT", `tenant "${tid}" already exists`, 409)
+      const entry = { tenant_id: tid, name, status: "active",
+        created_at: new Date().toISOString(), notes: String(body.notes || "") }
+      tenantRegistry[tid] = entry
+      saveTenantRegistry()
+      getTenantStore(tid)  // pre-init in-memory store
+      return ok(res, entry, 201)
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
     return methodNotAllowed(res)
   } catch (e) {
     const msg = e && e.message ? String(e.message) : "Unhandled error"
@@ -1826,6 +1946,7 @@ if (route.name === "admin.scheduler.preview") {
 })
 
 loadAllTenants()
+loadTenantRegistry()
 
 server.listen(PORT, HOST, () => {
   console.log(`server running: http://${HOST}:${PORT}`)

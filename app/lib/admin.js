@@ -113,7 +113,7 @@ function authenticate(req) {
     const db = loaded.ok ? loaded.data.db : { principals: [], roles: {} }
     return {
       ok: true,
-      principal: { id: "bootstrap", name: "Bootstrap Superadmin", role: "superadmin", status: "active" },
+      principal: { id: "bootstrap", name: "Bootstrap Superadmin", role: "superadmin", status: "active", tenant_id: "*" },
       db,
       dbPath
     }
@@ -135,7 +135,8 @@ function authenticate(req) {
       id: String(principal.id || ""),
       name: String(principal.name || ""),
       role: roleName,
-      status: String(principal.status || "active")
+      status: String(principal.status || "active"),
+      tenant_id: String(principal.tenant_id || "default")  // S30
     },
     db,
     dbPath
@@ -182,6 +183,7 @@ function listPrincipalsSafe(db) {
       name: String(p.name || ""),
       role: String(p.role || ""),
       status: String(p.status || "active"),
+      tenant_id: String(p.tenant_id || "default"),  // S30
       created_at: p.created_at || null,
       updated_at: p.updated_at || null
     }
@@ -194,6 +196,7 @@ function createPrincipal(db, dbPath, body) {
     const role = body && body.role !== undefined ? String(body.role).trim() : ""
     const token = body && body.token !== undefined ? String(body.token).trim() : ""
     const status = body && body.status !== undefined ? String(body.status).trim() : "active"
+    const tenantId = body && body.tenant_id !== undefined ? String(body.tenant_id).trim() : "default"  // S30
 
     if (!name) return err(422, "VALIDATION_ERROR", "body.name: Field required")
     if (!role) return err(422, "VALIDATION_ERROR", "body.role: Field required")
@@ -210,6 +213,7 @@ function createPrincipal(db, dbPath, body) {
       role,
       status,
       token,
+      tenant_id: tenantId || "default",  // S30
       created_at: t,
       updated_at: t
     }
@@ -236,6 +240,7 @@ function createPrincipal(db, dbPath, body) {
       name: created.name,
       role: created.role,
       status: created.status,
+      tenant_id: created.tenant_id,  // S30
       created_at: created.created_at,
       updated_at: created.updated_at
     })
