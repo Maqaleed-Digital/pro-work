@@ -1,0 +1,14 @@
+{
+  "name": "pro-work",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "node app/server.js",
+    "build:ui": "cd app/frontend && npm run build",
+    "start:prod": "node app/server.js",
+    "dev:all": "concurrently \"node app/server.js\" \"cd app/frontend && npm run dev\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
