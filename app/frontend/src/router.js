@@ -7,6 +7,7 @@ import assignments from "./pages/assignments.js"
 import evidence    from "./pages/evidence.js"
 import scheduler   from "./pages/scheduler.js"
 import governance  from "./pages/governance.js"
+import tenants     from "./pages/tenants.js"
 
 const ROUTES = {
   "dashboard":   dashboard,
@@ -16,6 +17,7 @@ const ROUTES = {
   "evidence":    evidence,
   "scheduler":   scheduler,
   "governance":  governance,
+  "tenants":     tenants,
 }
 
 const DEFAULT = "dashboard"
