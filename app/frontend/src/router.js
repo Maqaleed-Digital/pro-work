@@ -1,4 +1,5 @@
-import { renderNav } from "./components/nav.js"
+import { renderNav, setTenantOptions } from "./components/nav.js"
+import { apiGet } from "./api.js"
 import dashboard   from "./pages/dashboard.js"
 import workers     from "./pages/workers.js"
 import pods        from "./pages/pods.js"
@@ -48,6 +49,16 @@ export function initRouter(appEl, onSignOut) {
   appEl.appendChild(_pageEl)
 
   renderNav(currentRoute(), onSignOut)
+
+  // S30: load tenant list from registry; token is already set at this point
+  apiGet("/api/admin/tenants")
+    .then(data => {
+      const ids = Array.isArray(data && data.tenants)
+        ? data.tenants.map(t => t.tenant_id).filter(Boolean)
+        : null
+      if (ids && ids.length) { setTenantOptions(ids); renderNav(currentRoute()) }
+    })
+    .catch(() => {})  // silent fallback — hardcoded list stays
 
   window.addEventListener("hashchange", () => navigate(currentRoute(), false))
 
