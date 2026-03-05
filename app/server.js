@@ -930,6 +930,15 @@ function matchRoute(method, pathname) {
   if (m === "GET"  && pathname === "/api/admin/tenants") return { name: "admin.tenants.list",   params: {} }
   if (m === "POST" && pathname === "/api/admin/tenants") return { name: "admin.tenants.create", params: {} }
 
+  const tenantIdMatch = pathname.match(/^\/api\/admin\/tenants\/([^/]+)$/)
+  if (m === "GET"  && tenantIdMatch) return { name: "admin.tenants.get",     params: { id: tenantIdMatch[1] } }
+
+  const tenantDisableMatch = pathname.match(/^\/api\/admin\/tenants\/([^/]+)\/disable$/)
+  if (m === "POST" && tenantDisableMatch) return { name: "admin.tenants.disable", params: { id: tenantDisableMatch[1] } }
+
+  const tenantEnableMatch = pathname.match(/^\/api\/admin\/tenants\/([^/]+)\/enable$/)
+  if (m === "POST" && tenantEnableMatch) return { name: "admin.tenants.enable",  params: { id: tenantEnableMatch[1] } }
+
   return null
 }
 
@@ -1923,7 +1932,19 @@ if (route.name === "admin.scheduler.preview") {
       const ap = Admin.authenticate(req)
       if (!ap.ok) return failFromAdmin(res, ap)
       if (!requireAdminPerm(res, ap.principal, "admin:tenants:read")) return
-      return ok(res, { tenants: Object.values(tenantRegistry) })
+      const tenants = Object.values(tenantRegistry).map(entry => {
+        const t = store.tenants.has(entry.tenant_id) ? store.tenants.get(entry.tenant_id) : null
+        return {
+          ...entry,
+          stats: {
+            workers:     t ? t.wosWorkers.size          : 0,
+            pods:        t ? t.wosPods.size              : 0,
+            assignments: t ? t.wosAssignments.size       : 0,
+            evidence:    t ? t.wosEvidenceEvents.length  : 0
+          }
+        }
+      })
+      return ok(res, { tenants })
     }
 
     if (route.name === "admin.tenants.create") {
@@ -1943,6 +1964,65 @@ if (route.name === "admin.scheduler.preview") {
       saveTenantRegistry()
       getTenantStore(tid)  // pre-init in-memory store
       return ok(res, entry, 201)
+    }
+
+    if (route.name === "admin.tenants.get") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, "admin:tenants:read")) return
+      const tid = route.params.id
+      const entry = tenantRegistry[tid]
+      if (!entry) return fail(res, "TENANT_NOT_FOUND", `tenant "${tid}" is not registered`, 404)
+      const t = store.tenants.has(tid) ? store.tenants.get(tid) : null
+      return ok(res, {
+        ...entry,
+        stats: {
+          workers:     t ? t.wosWorkers.size          : 0,
+          pods:        t ? t.wosPods.size              : 0,
+          assignments: t ? t.wosAssignments.size       : 0,
+          evidence:    t ? t.wosEvidenceEvents.length  : 0
+        }
+      })
+    }
+
+    if (route.name === "admin.tenants.disable") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, "admin:tenants:write")) return
+      if (String(ap.principal.tenant_id || "") !== "*")
+        return fail(res, "FORBIDDEN", "only global superadmin can disable tenants", 403)
+      const tid = route.params.id
+      if (!tenantRegistry[tid]) return fail(res, "TENANT_NOT_FOUND", `tenant "${tid}" is not registered`, 404)
+      tenantRegistry[tid] = { ...tenantRegistry[tid], status: "disabled" }
+      saveTenantRegistry()
+      emitWosEvidenceEvent(tid, {
+        actor: ap.principal.name || ap.principal.id,
+        action: "tenant.disabled",
+        entity_type: "tenant",
+        entity_id: tid,
+        snapshot: null
+      })
+      return ok(res, { tenant_id: tid, status: "disabled" })
+    }
+
+    if (route.name === "admin.tenants.enable") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, "admin:tenants:write")) return
+      if (String(ap.principal.tenant_id || "") !== "*")
+        return fail(res, "FORBIDDEN", "only global superadmin can enable tenants", 403)
+      const tid = route.params.id
+      if (!tenantRegistry[tid]) return fail(res, "TENANT_NOT_FOUND", `tenant "${tid}" is not registered`, 404)
+      tenantRegistry[tid] = { ...tenantRegistry[tid], status: "active" }
+      saveTenantRegistry()
+      emitWosEvidenceEvent(tid, {
+        actor: ap.principal.name || ap.principal.id,
+        action: "tenant.enabled",
+        entity_type: "tenant",
+        entity_id: tid,
+        snapshot: null
+      })
+      return ok(res, { tenant_id: tid, status: "active" })
     }
     // ────────────────────────────────────────────────────────────────────────
 
