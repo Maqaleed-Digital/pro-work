@@ -1,4 +1,4 @@
-import { getToken, setToken } from "../api.js"
+import { getToken, setToken, getTenant, setTenant } from "../api.js"
 
 const TABS = [
   { key: "dashboard",   label: "Dashboard"   },
@@ -11,9 +11,11 @@ const TABS = [
 ]
 
 let _signOutCb = null
+let _tenantChangeCb = null
 
-export function renderNav(activeKey, onSignOut) {
+export function renderNav(activeKey, onSignOut, onTenantChange) {
   if (onSignOut) _signOutCb = onSignOut
+  if (onTenantChange) _tenantChangeCb = onTenantChange
 
   const nav = document.getElementById("nav")
   if (!nav) return
@@ -42,6 +44,31 @@ export function renderNav(activeKey, onSignOut) {
   right.style.display = "flex"
   right.style.gap = "8px"
   right.style.alignItems = "center"
+
+  // tenant selector
+  const tenantWrap = document.createElement("div")
+  tenantWrap.style.cssText = "display:flex;align-items:center;gap:4px;font-size:12px;color:#888"
+  const tenantLabel = document.createElement("span")
+  tenantLabel.textContent = "Tenant:"
+  const tenantSel = document.createElement("select")
+  tenantSel.style.cssText = "font-size:12px;padding:2px 4px;border-radius:4px;border:1px solid #ccc;cursor:pointer"
+  const currentTenant = getTenant()
+  const tenantOptions = ["default", "t1", "t2", "t3"]
+  if (!tenantOptions.includes(currentTenant)) tenantOptions.unshift(currentTenant)
+  tenantOptions.forEach(tid => {
+    const opt = document.createElement("option")
+    opt.value = tid
+    opt.textContent = tid
+    if (tid === currentTenant) opt.selected = true
+    tenantSel.appendChild(opt)
+  })
+  tenantSel.addEventListener("change", () => {
+    setTenant(tenantSel.value)
+    if (_tenantChangeCb) _tenantChangeCb(tenantSel.value)
+  })
+  tenantWrap.appendChild(tenantLabel)
+  tenantWrap.appendChild(tenantSel)
+  right.appendChild(tenantWrap)
 
   const token = getToken()
   if (token) {

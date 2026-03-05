@@ -3,6 +3,8 @@
 const http = require("http")
 const { URL } = require("url")
 const crypto = require("crypto")
+const path = require("path")
+const fs = require("fs")
 const Admin = require("./lib/admin")
 const AdminPerms = require("./lib/admin_permissions")
 
@@ -123,6 +125,67 @@ function getTenantStore(tenantId) {
     })
   }
   return store.tenants.get(tenantId)
+}
+
+/* =========================================================
+S29-PERSISTENCE: per-tenant JSON file storage
+data/tenants/<tenantId>/{workers,pods,assignments,evidence}.json
+========================================================= */
+
+const DATA_DIR = path.join(__dirname, "..", "data")
+
+function tenantDataDir(tenantId) {
+  return path.join(DATA_DIR, "tenants", tenantId)
+}
+
+const _persistTimers = {}
+
+function schedulePersist(tenantId) {
+  if (_persistTimers[tenantId]) clearTimeout(_persistTimers[tenantId])
+  _persistTimers[tenantId] = setTimeout(() => {
+    delete _persistTimers[tenantId]
+    try { saveTenantStore(tenantId) } catch (e) {
+      console.error("[persist] save failed for tenant", tenantId, e && e.message)
+    }
+  }, 2000)
+}
+
+function saveTenantStore(tenantId) {
+  const dir = tenantDataDir(tenantId)
+  fs.mkdirSync(dir, { recursive: true })
+  const t = getTenantStore(tenantId)
+  fs.writeFileSync(path.join(dir, "workers.json"),     JSON.stringify(Array.from(t.wosWorkers.entries()),    null, 2))
+  fs.writeFileSync(path.join(dir, "pods.json"),        JSON.stringify(Array.from(t.wosPods.entries()),       null, 2))
+  fs.writeFileSync(path.join(dir, "assignments.json"), JSON.stringify(Array.from(t.wosAssignments.entries()), null, 2))
+  fs.writeFileSync(path.join(dir, "evidence.json"),    JSON.stringify(t.wosEvidenceEvents,                   null, 2))
+}
+
+function loadAllTenants() {
+  const tenantsDir = path.join(DATA_DIR, "tenants")
+  if (!fs.existsSync(tenantsDir)) return
+  let dirs
+  try { dirs = fs.readdirSync(tenantsDir) } catch { return }
+  for (const tid of dirs) {
+    const dir = path.join(tenantsDir, tid)
+    try { if (!fs.statSync(dir).isDirectory()) continue } catch { continue }
+    const t = getTenantStore(tid)
+    const tryLoad = (file) => {
+      try {
+        const p = path.join(dir, file)
+        if (!fs.existsSync(p)) return null
+        return JSON.parse(fs.readFileSync(p, "utf8"))
+      } catch { return null }
+    }
+    const workers = tryLoad("workers.json")
+    if (Array.isArray(workers)) for (const [id, w] of workers) t.wosWorkers.set(id, w)
+    const pods = tryLoad("pods.json")
+    if (Array.isArray(pods)) for (const [id, p] of pods) t.wosPods.set(id, p)
+    const assignments = tryLoad("assignments.json")
+    if (Array.isArray(assignments)) for (const [id, a] of assignments) t.wosAssignments.set(id, a)
+    const evidence = tryLoad("evidence.json")
+    if (Array.isArray(evidence)) t.wosEvidenceEvents.push(...evidence)
+    console.log(`[persist] loaded tenant "${tid}": ${t.wosWorkers.size} workers, ${t.wosAssignments.size} assignments, ${t.wosEvidenceEvents.length} events`)
+  }
 }
 
 function resolveTenantId(req) {
@@ -381,6 +444,7 @@ function emitWosEvidenceEvent(tenantId, input) {
     snapshot: input.snapshot === undefined ? null : input.snapshot
   }
   tenant.wosEvidenceEvents.push(evt)
+  schedulePersist(tenantId)
   return evt
 }
 
@@ -467,6 +531,7 @@ function createWosWorker(tenantId, input, actor) {
 
   const tenant = getTenantStore(tenantId)
   tenant.wosWorkers.set(id, worker)
+  schedulePersist(tenantId)
 
   emitWosEvidenceEvent(tenantId, {
     actor,
@@ -679,6 +744,7 @@ function transitionWorkerStatus(tenantId, id, toStatus, actor, actionName) {
   const next = { ...w, status: to, updated_at: nowIso() }
   const tenant = getTenantStore(tenantId)
   tenant.wosWorkers.set(id, next)
+  schedulePersist(tenantId)
 
   emitWosEvidenceEvent(tenantId, {
     actor,
@@ -1458,6 +1524,7 @@ function runSchedulerForTenant(tenantId, tenant, limit, dryRun) {
     }
   }
 
+  if (!dryRun && planned.length > 0) schedulePersist(tenantId)
   return planned
 }
 
@@ -1468,7 +1535,7 @@ if (route.name === "admin.evidence.list") {
       if (!requireAdminPerm(res, ap.principal, "admin:governance:read")) return
 
       const evidenceResult = adminListEvidence(tenantId, url.searchParams)
-      return ok(res, { ok: true, tenant_id: tenantId, data: evidenceResult })
+      return ok(res, { tenant_id: tenantId, ...evidenceResult })
     }
     
     if (route.name === "admin.scheduler.status") {
@@ -1732,6 +1799,8 @@ if (route.name === "admin.scheduler.preview") {
     return fail(res, "INTERNAL_ERROR", msg, 500)
   }
 })
+
+loadAllTenants()
 
 server.listen(PORT, HOST, () => {
   console.log(`server running: http://${HOST}:${PORT}`)

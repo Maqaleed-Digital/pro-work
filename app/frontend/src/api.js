@@ -11,6 +11,16 @@ export function setToken(t) {
   return v
 }
 
+export function getTenant() {
+  try { return localStorage.getItem("pw_tenant") || "default" } catch { return "default" }
+}
+
+export function setTenant(id) {
+  const v = String(id || "default").trim() || "default"
+  try { localStorage.setItem("pw_tenant", v) } catch {}
+  return v
+}
+
 async function readJson(resp) {
   const text = await resp.text()
   try { return text ? JSON.parse(text) : null } catch { return null }
@@ -18,9 +28,10 @@ async function readJson(resp) {
 
 function authHeaders(extra) {
   const token = getToken()
+  const tenant = getTenant()
   return Object.assign(
     token ? { "Authorization": "Bearer " + token } : {},
-    { "cache-control": "no-store" },
+    { "cache-control": "no-store", "X-Tenant-Id": tenant },
     extra || {}
   )
 }
