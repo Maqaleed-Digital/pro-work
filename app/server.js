@@ -109,8 +109,31 @@ const store = {
   proposalsByJob: new Map(),
   proposals: new Map(),
   contractIntents: new Map(),
-  wosWorkers: new Map(),
-  wosEvidenceEvents: []
+  tenants: new Map()
+}
+
+/* S29: tenant-scoped WOS store */
+function getTenantStore(tenantId) {
+  if (!store.tenants.has(tenantId)) {
+    store.tenants.set(tenantId, {
+      wosWorkers: new Map(),
+      wosPods: new Map(),
+      wosAssignments: new Map(),
+      wosEvidenceEvents: []
+    })
+  }
+  return store.tenants.get(tenantId)
+}
+
+function resolveTenantId(req) {
+  const header = req.headers["x-tenant-id"]
+  if (header && header.trim()) return header.trim()
+
+  const url = new URL(req.url, "http://localhost")
+  const queryTenant = url.searchParams.get("tenant_id")
+  if (queryTenant && queryTenant.trim()) return queryTenant.trim()
+
+  return "default"
 }
 
 function createJob(input) {
@@ -344,10 +367,12 @@ function isWorkerType(v) {
   return v === "FTE" || v === "FREELANCER"
 }
 
-function emitWosEvidenceEvent(input) {
+function emitWosEvidenceEvent(tenantId, input) {
+  const tenant = getTenantStore(tenantId)
   const id = genId("ev")
   const evt = {
     id,
+    tenant_id: tenantId,
     actor: String(input.actor || "system"),
     action: String(input.action),
     entity_type: String(input.entity_type),
@@ -355,12 +380,12 @@ function emitWosEvidenceEvent(input) {
     timestamp: nowIso(),
     snapshot: input.snapshot === undefined ? null : input.snapshot
   }
-  store.wosEvidenceEvents.push(evt)
+  tenant.wosEvidenceEvents.push(evt)
   return evt
 }
 
-function listWosEvidenceEventsQuery(query) {
-  const allowed = new Set(["entity_id", "entity_type", "action", "actor", "limit", "cursor"])
+function listWosEvidenceEventsQuery(tenantId, query) {
+  const allowed = new Set(["entity_id", "entity_type", "action", "actor", "limit", "cursor", "tenant_id"])
   for (const k of query.keys()) {
     if (!allowed.has(k)) {
       return { ok: false, error: { code: "VALIDATION_ERROR", message: `query.${k}: Unsupported query param` }, status: 422 }
@@ -374,7 +399,8 @@ function listWosEvidenceEventsQuery(query) {
   const limit = normalizeLimit(query.get("limit"))
   const cursor = query.get("cursor")
 
-  let items = store.wosEvidenceEvents.slice()
+  const tenant = getTenantStore(tenantId)
+  let items = tenant.wosEvidenceEvents.slice()
 
   if (entityId && String(entityId).trim() !== "") items = items.filter(e => String(e.entity_id) === String(entityId))
   if (entityType && String(entityType).trim() !== "") items = items.filter(e => String(e.entity_type) === String(entityType))
@@ -409,7 +435,7 @@ function actorFromReq(req) {
   return actor || "user"
 }
 
-function createWosWorker(input, actor) {
+function createWosWorker(tenantId, input, actor) {
   const type = String(input.type || "").trim()
   if (!isWorkerType(type)) {
     return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.type: Must be 'FTE' or 'FREELANCER'" }, status: 422 }
@@ -439,9 +465,10 @@ function createWosWorker(input, actor) {
     updated_at: t
   }
 
-  store.wosWorkers.set(id, worker)
+  const tenant = getTenantStore(tenantId)
+  tenant.wosWorkers.set(id, worker)
 
-  emitWosEvidenceEvent({
+  emitWosEvidenceEvent(tenantId, {
     actor,
     action: "wos.worker.create",
     entity_type: "wos.worker",
@@ -452,12 +479,12 @@ function createWosWorker(input, actor) {
   return { ok: true, data: worker }
 }
 
-function getWosWorker(id) {
-  return store.wosWorkers.get(id) || null
+function getWosWorker(tenantId, id) {
+  return getTenantStore(tenantId).wosWorkers.get(id) || null
 }
 
-function listWosWorkersQuery(query) {
-  const allowed = new Set(["type", "status", "skill", "limit", "cursor"])
+function listWosWorkersQuery(tenantId, query) {
+  const allowed = new Set(["type", "status", "skill", "limit", "cursor", "tenant_id"])
   for (const k of query.keys()) {
     if (!allowed.has(k)) {
       return { ok: false, error: { code: "VALIDATION_ERROR", message: `query.${k}: Unsupported query param` }, status: 422 }
@@ -474,7 +501,8 @@ function listWosWorkersQuery(query) {
     return { ok: false, error: { code: "VALIDATION_ERROR", message: "query.type: Must be 'FTE' or 'FREELANCER'" }, status: 422 }
   }
 
-  let items = Array.from(store.wosWorkers.values())
+  const tenant = getTenantStore(tenantId)
+  let items = Array.from(tenant.wosWorkers.values())
 
   if (type && String(type).trim() !== "") items = items.filter(w => String(w.type) === String(type))
   if (status && String(status).trim() !== "") items = items.filter(w => String(w.status) === String(status))
@@ -502,7 +530,7 @@ function listWosWorkersQuery(query) {
   }
 }
 
-function createManualWosEvidenceEvent(input) {
+function createManualWosEvidenceEvent(tenantId, input) {
   if (typeof input !== "object" || input === null) {
     return { ok: false, error: { code: "VALIDATION_ERROR", message: "body: JSON object required" }, status: 422 }
   }
@@ -517,7 +545,7 @@ function createManualWosEvidenceEvent(input) {
   if (!entityType) return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.entity_type: Field required" }, status: 422 }
   if (!entityId) return { ok: false, error: { code: "VALIDATION_ERROR", message: "body.entity_id: Field required" }, status: 422 }
 
-  const evt = emitWosEvidenceEvent({
+  const evt = emitWosEvidenceEvent(tenantId, {
     actor,
     action,
     entity_type: entityType,
@@ -629,8 +657,8 @@ function canTransitionWorkerStatus(fromStatus, toStatus) {
   return false
 }
 
-function transitionWorkerStatus(id, toStatus, actor, actionName) {
-  const w = getWosWorker(id)
+function transitionWorkerStatus(tenantId, id, toStatus, actor, actionName) {
+  const w = getWosWorker(tenantId, id)
   if (!w) return { ok: false, error: { code: "NOT_FOUND", message: "Worker not found" }, status: 404 }
 
   const from = String(w.status || "")
@@ -649,9 +677,10 @@ function transitionWorkerStatus(id, toStatus, actor, actionName) {
   }
 
   const next = { ...w, status: to, updated_at: nowIso() }
-  store.wosWorkers.set(id, next)
+  const tenant = getTenantStore(tenantId)
+  tenant.wosWorkers.set(id, next)
 
-  emitWosEvidenceEvent({
+  emitWosEvidenceEvent(tenantId, {
     actor,
     action: actionName,
     entity_type: "wos.worker",
@@ -775,8 +804,8 @@ function actorFromReq(req) {
   return actor || "user"
 }
 
-function listAdminWorkers(query) {
-  const allowed = new Set(["status", "worker_type"])
+function listAdminWorkers(tenantId, query) {
+  const allowed = new Set(["status", "worker_type", "tenant_id"])
   for (const k of query.keys()) {
     if (!allowed.has(k)) {
       return { ok: false, error: { code: "VALIDATION_ERROR", message: `query.${k}: Unsupported query param` }, status: 422 }
@@ -786,7 +815,8 @@ function listAdminWorkers(query) {
   const status = query.get("status")
   const workerType = query.get("worker_type")
 
-  let items = Array.from(store.wosWorkers.values())
+  const tenant = getTenantStore(tenantId)
+  let items = Array.from(tenant.wosWorkers.values())
 
   if (workerType && String(workerType).trim() !== "") {
     const t = String(workerType).trim()
@@ -825,13 +855,14 @@ function listAdminWorkers(query) {
   return { ok: true, data: shaped }
 }
 
-function adminStatsSnapshot() {
-  const workers = Array.from(store.wosWorkers.values())
+function adminStatsSnapshot(tenantId) {
+  const tenant = getTenantStore(tenantId)
+  const workers = Array.from(tenant.wosWorkers.values())
   const fte = workers.filter(w => String(w.type) === "FTE").length
   const freelancer = workers.filter(w => String(w.type) === "FREELANCER").length
 
-  const evidenceTotal = store.wosEvidenceEvents.length
-  const recent = store.wosEvidenceEvents
+  const evidenceTotal = tenant.wosEvidenceEvents.length
+  const recent = tenant.wosEvidenceEvents
     .slice()
     .sort((a, b) => {
       const aa = String(a.timestamp || "")
@@ -849,13 +880,14 @@ function adminStatsSnapshot() {
   }
 }
 
-function adminListEvidence(query) {
+function adminListEvidence(tenantId, query) {
   const limit  = normalizeLimit(query.get("limit"))
   const cursor = String(query.get("cursor") || "").trim()
   const type   = String(query.get("type")   || "").trim()
   const actor  = String(query.get("actor")  || "").trim()
 
-  let items = store.wosEvidenceEvents.slice()
+  const tenant = getTenantStore(tenantId)
+  let items = tenant.wosEvidenceEvents.slice()
 
   if (type)   items = items.filter(e => String(e.action || "") === type)
   if (actor)  items = items.filter(e => String(e.actor  || "") === actor)
@@ -946,6 +978,9 @@ const server = http.createServer(async (req, res) => {
 
     const route = matchRoute(req.method || "GET", pathname)
     if (!route) return fail(res, "NOT_FOUND", "Route not found", 404)
+
+    const tenantId = resolveTenantId(req)
+    const tenant = getTenantStore(tenantId)
 
     if (route.name === "health") return ok(res, { service: "pro-work", health: "ok", time: nowIso(), ...bootMeta() }, 200)
 
@@ -1122,19 +1157,19 @@ const server = http.createServer(async (req, res) => {
       const body = await readJson(req, res)
       if (!body) return
       const actor = actorFromReq(req)
-      const out = createWosWorker(body, actor)
+      const out = createWosWorker(tenantId, body, actor)
       if (!out.ok) return fail(res, out.error.code, out.error.message, out.status || 422)
       return ok(res, out.data, 201)
     }
 
     if (route.name === "wos.workers.list") {
-      const out = listWosWorkersQuery(url.searchParams)
+      const out = listWosWorkersQuery(tenantId, url.searchParams)
       if (!out.ok) return fail(res, out.error.code, out.error.message, out.status || 422)
       return ok(res, out.data, 200)
     }
 
     if (route.name === "wos.workers.audit") {
-      const w = getWosWorker(route.params.id)
+      const w = getWosWorker(tenantId, route.params.id)
       if (!w) return fail(res, "NOT_FOUND", "Worker not found", 404)
       const audit = buildWorkerAudit(w)
       return ok(res, audit, 200)
@@ -1143,7 +1178,7 @@ const server = http.createServer(async (req, res) => {
     if (route.name === "wos.workers.activate") {
       await readJson(req, res).catch(() => null)
       const actor = actorFromReq(req)
-      const out = transitionWorkerStatus(route.params.id, "active", actor, "wos.worker.activate")
+      const out = transitionWorkerStatus(tenantId, route.params.id, "active", actor, "wos.worker.activate")
       if (!out.ok) return fail(res, out.error.code, out.error.message, out.status || 422)
       return ok(res, out.data, 200)
     }
@@ -1151,7 +1186,7 @@ const server = http.createServer(async (req, res) => {
     if (route.name === "wos.workers.deactivate") {
       await readJson(req, res).catch(() => null)
       const actor = actorFromReq(req)
-      const out = transitionWorkerStatus(route.params.id, "inactive", actor, "wos.worker.deactivate")
+      const out = transitionWorkerStatus(tenantId, route.params.id, "inactive", actor, "wos.worker.deactivate")
       if (!out.ok) return fail(res, out.error.code, out.error.message, out.status || 422)
       return ok(res, out.data, 200)
     }
@@ -1159,13 +1194,13 @@ const server = http.createServer(async (req, res) => {
     if (route.name === "wos.workers.suspend") {
       await readJson(req, res).catch(() => null)
       const actor = actorFromReq(req)
-      const out = transitionWorkerStatus(route.params.id, "suspended", actor, "wos.worker.suspend")
+      const out = transitionWorkerStatus(tenantId, route.params.id, "suspended", actor, "wos.worker.suspend")
       if (!out.ok) return fail(res, out.error.code, out.error.message, out.status || 422)
       return ok(res, out.data, 200)
     }
 
     if (route.name === "wos.workers.get") {
-      const w = getWosWorker(route.params.id)
+      const w = getWosWorker(tenantId, route.params.id)
       if (!w) return fail(res, "NOT_FOUND", "Worker not found", 404)
       return ok(res, w, 200)
     }
@@ -1174,13 +1209,13 @@ const server = http.createServer(async (req, res) => {
       const body = await readJson(req, res)
       if (!body) return
       const actor = actorFromReq(req)
-      const out = patchWosWorker(route.params.id, body, actor)
+      const out = patchWosWorker(tenantId, route.params.id, body, actor)
       if (!out.ok) return fail(res, out.error.code, out.error.message, out.status || 422)
       return ok(res, out.data, 200)
     }
 
     if (route.name === "wos.evidence.list") {
-      const out = listWosEvidenceEventsQuery(url.searchParams)
+      const out = listWosEvidenceEventsQuery(tenantId, url.searchParams)
       if (!out.ok) return fail(res, out.error.code, out.error.message, out.status || 422)
       return ok(res, out.data, 200)
     }
@@ -1193,7 +1228,7 @@ const server = http.createServer(async (req, res) => {
     if (route.name === "wos.evidence.create") {
       const body = await readJson(req, res)
       if (!body) return
-      const out = createManualWosEvidenceEvent(body)
+      const out = createManualWosEvidenceEvent(tenantId, body)
       if (!out.ok) return fail(res, out.error.code, out.error.message, out.status || 422)
       return ok(res, out.data, 201)
     }
@@ -1204,7 +1239,7 @@ const server = http.createServer(async (req, res) => {
       if (!requireAdminPerm(res, ap.principal, "admin:stats:read")) return
       // S24-C-RBAC
       const auth = ap  // S24-C: authenticated by guard above
-      return ok(res, { ...bootMeta(), admin: { id: auth.principal.id, name: auth.principal.name, role: auth.principal.role }, ...adminStatsSnapshot() }, 200)
+      return ok(res, { ...bootMeta(), admin: { id: auth.principal.id, name: auth.principal.name, role: auth.principal.role }, ...adminStatsSnapshot(tenantId) }, 200)
     }
 
     if (route.name === "admin.version") {
@@ -1217,10 +1252,10 @@ const server = http.createServer(async (req, res) => {
       const ap = Admin.authenticate(req)
       if (!ap.ok) return failFromAdmin(res, ap)
       const counts = {
-        workers:        store.wosWorkers     ? store.wosWorkers.size                          : 0,
-        pods:           store.wosPods        ? store.wosPods.size                             : 0,
-        assignments:    store.wosAssignments ? store.wosAssignments.size                      : 0,
-        evidence_events: store.wosEvidenceEvents ? store.wosEvidenceEvents.length             : 0,
+        workers:         tenant.wosWorkers.size,
+        pods:            tenant.wosPods.size,
+        assignments:     tenant.wosAssignments.size,
+        evidence_events: tenant.wosEvidenceEvents.length,
       }
       return ok(res, { ok: true, system: { version: SYSTEM_VERSION, commit: BUILD_COMMIT, started_at: STARTED_AT_ISO, uptime_s: Math.floor(process.uptime()) }, counts, scheduler: wosSchedulerCtlSnapshot() }, 200)
     }
@@ -1240,7 +1275,7 @@ const server = http.createServer(async (req, res) => {
       if (!requireAdminPerm(res, ap.principal, "admin:workers:read")) return
       // S24-C-RBAC
       const auth = ap  // S24-C: authenticated by guard above
-      const out = listAdminWorkers(url.searchParams)
+      const out = listAdminWorkers(tenantId, url.searchParams)
       if (!out.ok) return fail(res, out.error.code, out.error.message, out.status || 422)
       return ok(res, { ...bootMeta(), admin: { id: auth.principal.id, name: auth.principal.name, role: auth.principal.role }, workers: out.data }, 200)
     }
@@ -1259,7 +1294,7 @@ const server = http.createServer(async (req, res) => {
 
       if (!requireAdminPerm(res, ap.principal, "admin:workers:read")) return
 
-      const items = store.wosAssignments ? Array.from(store.wosAssignments.values()) : []
+      const items = Array.from(tenant.wosAssignments.values())
       return ok(res, { items, count: items.length })
     }
 
@@ -1287,10 +1322,10 @@ function wosSchedulerGetCapacityMax(pod) {
   }
 }
 
-function wosSchedulerActiveAssignmentCount(podId) {
-  if (!store.wosAssignments) return 0
+function wosSchedulerActiveAssignmentCount(tenantId, podId) {
+  const tenant = getTenantStore(tenantId)
   let c = 0
-  for (const asn of store.wosAssignments.values()) {
+  for (const asn of tenant.wosAssignments.values()) {
     if (!asn) continue
     if (String(asn.pod_id || "") !== String(podId || "")) continue
     if (String(asn.state || "") === "active") c++
@@ -1298,9 +1333,9 @@ function wosSchedulerActiveAssignmentCount(podId) {
   return c
 }
 
-function wosSchedulerEligiblePods() {
-  if (!store.wosPods) return []
-  const pods = Array.from(store.wosPods.values())
+function wosSchedulerEligiblePods(tenantId) {
+  const tenant = getTenantStore(tenantId)
+  const pods = Array.from(tenant.wosPods.values())
     .filter(p => p && String(p.state || "") === "active")
     .slice()
   pods.sort((a, b) => {
@@ -1312,9 +1347,9 @@ function wosSchedulerEligiblePods() {
   return pods
 }
 
-function wosSchedulerEligibleWorkers() {
-  if (!store.wosWorkers) return []
-  const workers = Array.from(store.wosWorkers.values())
+function wosSchedulerEligibleWorkers(tenantId) {
+  const tenant = getTenantStore(tenantId)
+  const workers = Array.from(tenant.wosWorkers.values())
     .filter(w => w && String(w.status || "") === "active" && (w.assigned_pod === null || w.assigned_pod === undefined))
     .slice()
   workers.sort((a, b) => {
@@ -1326,10 +1361,10 @@ function wosSchedulerEligibleWorkers() {
   return workers
 }
 
-function wosSchedulerPlan(limit) {
+function wosSchedulerPlan(tenantId, limit) {
   const cap = Number.isInteger(limit) && limit > 0 ? limit : 50
-  const pods = wosSchedulerEligiblePods()
-  const workers = wosSchedulerEligibleWorkers()
+  const pods = wosSchedulerEligiblePods(tenantId)
+  const workers = wosSchedulerEligibleWorkers(tenantId)
 
   const planned = []
   if (!pods.length || !workers.length) {
@@ -1348,7 +1383,7 @@ function wosSchedulerPlan(limit) {
       tries++
 
       const maxCap = wosSchedulerGetCapacityMax(p)
-      const currentCount = wosSchedulerActiveAssignmentCount(p.id)
+      const currentCount = wosSchedulerActiveAssignmentCount(tenantId, p.id)
 
       if (maxCap !== null && currentCount >= maxCap) continue
 
@@ -1383,7 +1418,7 @@ if (route.name === "admin.evidence.list") {
 
       if (!requireAdminPerm(res, ap.principal, "admin:governance:read")) return
 
-      return ok(res, adminListEvidence(url.searchParams))
+      return ok(res, adminListEvidence(tenantId, url.searchParams))
     }
     
     if (route.name === "admin.scheduler.status") {
@@ -1413,9 +1448,9 @@ if (route.name === "admin.evidence.list") {
 
       // Evidence: control action
       try {
-        // Prefer existing evidence helper if in scope; fallback to direct push
-        store.wosEvidenceEvents.push({
+        tenant.wosEvidenceEvents.push({
           id: crypto.randomUUID(),
+          tenant_id: tenantId,
           ts: new Date().toISOString(),
           action: "wos.scheduler.run_once",
           actor: { principal_id: ap.principal && ap.principal.id ? ap.principal.id : null, role: ap.principal && ap.principal.role ? ap.principal.role : null },
@@ -1428,13 +1463,13 @@ if (route.name === "admin.evidence.list") {
       const started_at = new Date().toISOString()
 
       try {
-        const plan = wosSchedulerPlan(limit)
+        const plan = wosSchedulerPlan(tenantId, limit)
         const planned = Array.isArray(plan && plan.planned) ? plan.planned : []
 
         if (!dryRun) {
           for (const it of planned) {
-            const worker = store.wosWorkers.get(it.worker_id) || null
-            const pod = store.wosPods.get(it.pod_id) || null
+            const worker = tenant.wosWorkers.get(it.worker_id) || null
+            const pod = tenant.wosPods.get(it.pod_id) || null
             if (!worker || !pod) continue
             if (worker.assigned_pod !== null && worker.assigned_pod !== undefined) continue
 
@@ -1448,13 +1483,14 @@ if (route.name === "admin.evidence.list") {
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             }
-            store.wosAssignments.set(asnId, asn)
+            tenant.wosAssignments.set(asnId, asn)
 
             const nextW = { ...worker, assigned_pod: { pod_id: pod.id, role: asn.role, assignment_id: asnId } }
-            store.wosWorkers.set(worker.id, nextW)
+            tenant.wosWorkers.set(worker.id, nextW)
 
-            store.wosEvidenceEvents.push({
+            tenant.wosEvidenceEvents.push({
               id: crypto.randomUUID(),
+              tenant_id: tenantId,
               ts: new Date().toISOString(),
               action: "wos.scheduler.assign",
               entity_type: "wos.assignment",
@@ -1474,8 +1510,9 @@ if (route.name === "admin.evidence.list") {
           planned_count: planned.length
         }
 
-        store.wosEvidenceEvents.push({
+        tenant.wosEvidenceEvents.push({
           id: crypto.randomUUID(),
+          tenant_id: tenantId,
           ts: new Date().toISOString(),
           action: "wos.scheduler.run",
           snapshot: wosSchedulerCtl.last_run
@@ -1509,8 +1546,10 @@ if (route.name === "admin.evidence.list") {
       wosSchedulerCtl.interval_ms = intervalMs
       wosSchedulerCtl.last_error = null
 
-      store.wosEvidenceEvents.push({
+      const schedulerTenantId = tenantId  // capture for interval closure
+      tenant.wosEvidenceEvents.push({
         id: crypto.randomUUID(),
+        tenant_id: tenantId,
         ts: new Date().toISOString(),
         action: "wos.scheduler.control.start",
         snapshot: { interval_ms: intervalMs, limit, dry_run: dryRun }
@@ -1521,13 +1560,14 @@ if (route.name === "admin.evidence.list") {
         wosSchedulerCtl.running = true
         const started_at = new Date().toISOString()
         try {
-          const plan = wosSchedulerPlan(limit)
+          const plan = wosSchedulerPlan(schedulerTenantId, limit)
           const planned = Array.isArray(plan && plan.planned) ? plan.planned : []
+          const intervalTenant = getTenantStore(schedulerTenantId)
 
           if (!dryRun) {
             for (const it of planned) {
-              const worker = store.wosWorkers.get(it.worker_id) || null
-              const pod = store.wosPods.get(it.pod_id) || null
+              const worker = intervalTenant.wosWorkers.get(it.worker_id) || null
+              const pod = intervalTenant.wosPods.get(it.pod_id) || null
               if (!worker || !pod) continue
               if (worker.assigned_pod !== null && worker.assigned_pod !== undefined) continue
 
@@ -1541,12 +1581,13 @@ if (route.name === "admin.evidence.list") {
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
               }
-              store.wosAssignments.set(asnId, asn)
+              intervalTenant.wosAssignments.set(asnId, asn)
               const nextW = { ...worker, assigned_pod: { pod_id: pod.id, role: asn.role, assignment_id: asnId } }
-              store.wosWorkers.set(worker.id, nextW)
+              intervalTenant.wosWorkers.set(worker.id, nextW)
 
-              store.wosEvidenceEvents.push({
+              intervalTenant.wosEvidenceEvents.push({
                 id: crypto.randomUUID(),
+                tenant_id: schedulerTenantId,
                 ts: new Date().toISOString(),
                 action: "wos.scheduler.assign",
                 entity_type: "wos.assignment",
@@ -1567,8 +1608,9 @@ if (route.name === "admin.evidence.list") {
             planned_count: planned.length
           }
 
-          store.wosEvidenceEvents.push({
+          intervalTenant.wosEvidenceEvents.push({
             id: crypto.randomUUID(),
+            tenant_id: schedulerTenantId,
             ts: new Date().toISOString(),
             action: "wos.scheduler.run",
             snapshot: wosSchedulerCtl.last_run
@@ -1592,8 +1634,9 @@ if (route.name === "admin.evidence.list") {
 
       wosSchedulerCtlStopTimer()
 
-      store.wosEvidenceEvents.push({
+      tenant.wosEvidenceEvents.push({
         id: crypto.randomUUID(),
+        tenant_id: tenantId,
         ts: new Date().toISOString(),
         action: "wos.scheduler.control.stop",
         snapshot: {}
@@ -1606,7 +1649,7 @@ if (route.name === "admin.scheduler.preview") {
       if (!ap.ok) return failFromAdmin(res, ap)
       if (!requireAdminPerm(res, ap.principal, "admin:workers:read")) return
 
-      const plan = wosSchedulerPlan(100)
+      const plan = wosSchedulerPlan(tenantId, 100)
       return ok(res, plan)
     }
 
@@ -1619,7 +1662,7 @@ if (route.name === "admin.scheduler.preview") {
       if (!body) return
 
       const dryRun = body.dry_run === true
-      const plan = wosSchedulerPlan(body.limit || 50)
+      const plan = wosSchedulerPlan(tenantId, body.limit || 50)
 
       if (dryRun || !plan.planned.length) {
         return ok(res, { dry_run: true, ...plan })
@@ -1641,16 +1684,17 @@ if (route.name === "admin.scheduler.preview") {
           created_by: "wos_scheduler"
         }
 
-        const worker = store.wosWorkers ? store.wosWorkers.get(slot.worker_id) : null
+        const worker = tenant.wosWorkers.get(slot.worker_id) || null
         if (worker) {
           const nextWorker = { ...worker, assigned_pod: { pod_id: slot.pod_id, role: slot.role, assigned_at: ts, assignment_id: assignmentId } }
-          store.wosWorkers.set(slot.worker_id, nextWorker)
+          tenant.wosWorkers.set(slot.worker_id, nextWorker)
         }
 
-        if (store.wosAssignments) store.wosAssignments.set(assignmentId, assignment)
+        tenant.wosAssignments.set(assignmentId, assignment)
 
-        store.wosEvidenceEvents.push({
+        tenant.wosEvidenceEvents.push({
           id: evtId,
+          tenant_id: tenantId,
           at: ts,
           action: "wos.scheduler.assign",
           entity_type: "wos.assignment",
