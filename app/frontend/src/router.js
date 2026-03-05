@@ -8,6 +8,7 @@ import evidence    from "./pages/evidence.js"
 import scheduler   from "./pages/scheduler.js"
 import governance  from "./pages/governance.js"
 import tenants     from "./pages/tenants.js"
+import analytics   from "./pages/analytics.js"
 
 const ROUTES = {
   "dashboard":   dashboard,
@@ -18,6 +19,7 @@ const ROUTES = {
   "scheduler":   scheduler,
   "governance":  governance,
   "tenants":     tenants,
+  "analytics":   analytics,
 }
 
 const DEFAULT = "dashboard"
