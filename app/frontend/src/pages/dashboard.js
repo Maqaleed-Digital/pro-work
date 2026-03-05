@@ -1,4 +1,4 @@
-import { apiGet, apiGetJson, downloadJson } from "../api.js"
+import { apiGet, apiGetJson, downloadJson, getTenant } from "../api.js"
 import { toast } from "../components/toast.js"
 
 function card(label, value, sub) {
@@ -40,17 +40,26 @@ export default {
     const header = document.createElement("div")
     header.style.cssText = "display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"
 
+    const titleWrap = document.createElement("div")
+    titleWrap.style.cssText = "display:flex;align-items:baseline;gap:10px"
+
     const title = document.createElement("div")
     title.className = "page-title"
     title.style.margin = "0"
     title.textContent = "Dashboard"
+
+    const tenantBadge = document.createElement("span")
+    tenantBadge.style.cssText = "font-size:12px;color:#888;font-weight:500"
+    tenantBadge.textContent = "Tenant: " + getTenant()
+    titleWrap.appendChild(title)
+    titleWrap.appendChild(tenantBadge)
 
     const exportBtn = document.createElement("button")
     exportBtn.className = "btn"
     exportBtn.textContent = "Export snapshot"
     exportBtn.disabled = true
 
-    header.appendChild(title)
+    header.appendChild(titleWrap)
     header.appendChild(exportBtn)
     container.appendChild(header)
 
