@@ -20,6 +20,7 @@ const TABS = [
   { key: "scheduler",   label: "Scheduler"    },
   { key: "governance",  label: "Governance"   },
   { key: "tenants",     label: "Tenants"      },
+  { key: "analytics",   label: "Analytics"    },
 ]
 
 let _signOutCb = null
