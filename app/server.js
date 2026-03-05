@@ -7,6 +7,11 @@ const path = require("path")
 const fs = require("fs")
 const Admin = require("./lib/admin")
 const AdminPerms = require("./lib/admin_permissions")
+const Scheduler      = require("./scheduler")
+const Analytics      = require("./analytics")
+const SchedulerJobs  = require("./wos/scheduler_jobs")
+const ProductionConfig = require("./config/production")
+const { buildZip }   = require("./lib/zip")
 
 const UI_DIST = path.join(__dirname, "frontend", "dist")
 
@@ -845,6 +850,10 @@ function transitionWorkerStatus(tenantId, id, toStatus, actor, actionName) {
 function matchRoute(method, pathname) {
   const m = method.toUpperCase()
 
+  // S34: public probes — no auth required
+  if (m === "GET" && pathname === "/api/health") return { name: "api.health",  params: {} }
+  if (m === "GET" && pathname === "/api/ready")  return { name: "api.ready",   params: {} }
+
   if (m === "POST" && pathname === "/api/jobs") return { name: "jobs.create", params: {} }
   if (m === "GET" && pathname === "/api/jobs") return { name: "jobs.list", params: {} }
 
@@ -912,6 +921,7 @@ function matchRoute(method, pathname) {
   if (m === "GET" && pathname === "/api/admin/governance") return { name: "admin.governance", params: {} }
   if (m === "GET" && pathname === "/api/admin/workers") return { name: "admin.workers.list", params: {} }
   if (m === "GET" && pathname === "/api/admin/assignments") return { name: "admin.assignments.list", params: {} }
+  if (m === "GET" && pathname === "/api/admin/evidence/export") return { name: "admin.evidence.export", params: {} }
   if (m === "GET" && pathname === "/api/admin/evidence") return { name: "admin.evidence.list", params: {} }
   if (m === "GET" && pathname === "/api/admin/pods") return { name: "admin.pods.list", params: {} }
   if (m === "GET" && pathname === "/api/admin/scheduler/preview") return { name: "admin.scheduler.preview", params: {} }
@@ -921,6 +931,15 @@ function matchRoute(method, pathname) {
   if (m === "POST" && pathname === "/api/admin/scheduler/interval/stop") return { name: "admin.scheduler.interval.stop", params: {} }
   if (m === "POST" && pathname === "/api/admin/scheduler/run") return { name: "admin.scheduler.run", params: {} }
 
+  // S32: scheduler engine routes
+  if (m === "GET"  && pathname === "/api/admin/scheduler") return { name: "admin.scheduler.get",  params: {} }
+  if (m === "POST" && pathname === "/api/admin/scheduler/start") return { name: "admin.scheduler.start", params: {} }
+  if (m === "POST" && pathname === "/api/admin/scheduler/stop")  return { name: "admin.scheduler.stop",  params: {} }
+  const schedPauseMatch  = pathname.match(/^\/api\/admin\/scheduler\/([^/]+)\/pause$/)
+  if (m === "POST" && schedPauseMatch)  return { name: "admin.scheduler.tenant.pause",  params: { tenant: schedPauseMatch[1]  } }
+  const schedResumeMatch = pathname.match(/^\/api\/admin\/scheduler\/([^/]+)\/resume$/)
+  if (m === "POST" && schedResumeMatch) return { name: "admin.scheduler.tenant.resume", params: { tenant: schedResumeMatch[1] } }
+
   if (m === "GET" && pathname === "/api/admin/principals") return { name: "admin.principals.list", params: {} }
   if (m === "POST" && pathname === "/api/admin/principals") return { name: "admin.principals.create", params: {} }
 
@@ -929,6 +948,22 @@ function matchRoute(method, pathname) {
   // S30: tenant registry
   if (m === "GET"  && pathname === "/api/admin/tenants") return { name: "admin.tenants.list",   params: {} }
   if (m === "POST" && pathname === "/api/admin/tenants") return { name: "admin.tenants.create", params: {} }
+
+  const tenantIdMatch = pathname.match(/^\/api\/admin\/tenants\/([^/]+)$/)
+  if (m === "GET"  && tenantIdMatch) return { name: "admin.tenants.get",     params: { id: tenantIdMatch[1] } }
+
+  const tenantDisableMatch = pathname.match(/^\/api\/admin\/tenants\/([^/]+)\/disable$/)
+  if (m === "POST" && tenantDisableMatch) return { name: "admin.tenants.disable", params: { id: tenantDisableMatch[1] } }
+
+  const tenantEnableMatch = pathname.match(/^\/api\/admin\/tenants\/([^/]+)\/enable$/)
+  if (m === "POST" && tenantEnableMatch) return { name: "admin.tenants.enable",  params: { id: tenantEnableMatch[1] } }
+
+  // S33: analytics routes — exact paths before /:tenant wildcard
+  if (m === "GET"  && pathname === "/api/admin/analytics")           return { name: "admin.analytics.list",      params: {} }
+  if (m === "POST" && pathname === "/api/admin/analytics/snapshot")  return { name: "admin.analytics.snapshot",  params: {} }
+  if (m === "GET"  && pathname === "/api/admin/analytics/snapshots") return { name: "admin.analytics.snapshots", params: {} }
+  const analyticsIdMatch = pathname.match(/^\/api\/admin\/analytics\/([^/]+)$/)
+  if (m === "GET"  && analyticsIdMatch) return { name: "admin.analytics.tenant", params: { id: analyticsIdMatch[1] } }
 
   return null
 }
@@ -1163,6 +1198,30 @@ const server = http.createServer(async (req, res) => {
     const tenant = getTenantStore(tenantId)
 
     if (route.name === "health") return ok(res, { service: "pro-work", health: "ok", time: nowIso(), ...bootMeta() }, 200)
+
+    // S34: public probes ──────────────────────────────────────────────────────
+    if (route.name === "api.health") {
+      return ok(res, {
+        status:   "healthy",
+        service:  "pro-work",
+        version:  SYSTEM_VERSION,
+        uptime_s: Math.floor(process.uptime()),
+        time:     nowIso()
+      })
+    }
+
+    if (route.name === "api.ready") {
+      const tenantCount = Object.keys(tenantRegistry).length
+      if (tenantCount === 0) {
+        return fail(res, "NOT_READY", "registry not initialised", 503)
+      }
+      return ok(res, {
+        status:       "ready",
+        tenant_count: tenantCount,
+        scheduler:    { enabled: Scheduler.snapshot().enabled }
+      })
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 
     if (route.name === "jobs.create") {
       const body = await readJson(req, res)
@@ -1662,6 +1721,49 @@ function runSchedulerForTenant(tenantId, tenant, limit, dryRun) {
       const evidenceResult = adminListEvidence(tenantId, url.searchParams)
       return ok(res, { tenant_id: tenantId, ...evidenceResult })
     }
+
+    // S34: evidence export — ZIP bundle of all data stores ───────────────────
+    if (route.name === "admin.evidence.export") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, "admin:governance:read")) return
+
+      const exportedAt = nowIso()
+      const files = {}
+
+      // manifest
+      files["manifest.json"] = Buffer.from(JSON.stringify({
+        exported_at:  exportedAt,
+        service:      "pro-work",
+        version:      SYSTEM_VERSION,
+        tenant_count: Object.keys(tenantRegistry).length,
+        tenants:      Object.keys(tenantRegistry)
+      }, null, 2), "utf8")
+
+      // per-tenant data stores
+      for (const [tid, entry] of Object.entries(tenantRegistry)) {
+        const pt = String((ap.principal.tenant_id) || "default")
+        if (pt !== "*" && pt !== tid) continue  // scope to principal's tenant
+
+        const t = store.tenants.has(tid) ? store.tenants.get(tid) : getTenantStore(tid)
+        files[`tenants/${tid}/workers.json`]     = Buffer.from(JSON.stringify(Array.from(t.wosWorkers.entries()),     null, 2), "utf8")
+        files[`tenants/${tid}/pods.json`]        = Buffer.from(JSON.stringify(Array.from(t.wosPods.entries()),        null, 2), "utf8")
+        files[`tenants/${tid}/assignments.json`] = Buffer.from(JSON.stringify(Array.from(t.wosAssignments.entries()), null, 2), "utf8")
+        files[`tenants/${tid}/evidence.json`]    = Buffer.from(JSON.stringify(t.wosEvidenceEvents,                    null, 2), "utf8")
+        files[`tenants/${tid}/meta.json`]        = Buffer.from(JSON.stringify(entry, null, 2), "utf8")
+      }
+
+      const zipBuf  = buildZip(files)
+      const fname   = `prowork-export-${exportedAt.slice(0, 19).replace(/:/g, "-")}.zip`
+      res.writeHead(200, {
+        "content-type":        "application/zip",
+        "content-disposition": `attachment; filename="${fname}"`,
+        "content-length":      String(zipBuf.length),
+        "cache-control":       "no-store"
+      })
+      return res.end(zipBuf)
+    }
+    // ─────────────────────────────────────────────────────────────────────────
     
     if (route.name === "admin.scheduler.status") {
       const ap = Admin.authenticate(req)
@@ -1923,7 +2025,19 @@ if (route.name === "admin.scheduler.preview") {
       const ap = Admin.authenticate(req)
       if (!ap.ok) return failFromAdmin(res, ap)
       if (!requireAdminPerm(res, ap.principal, "admin:tenants:read")) return
-      return ok(res, { tenants: Object.values(tenantRegistry) })
+      const tenants = Object.values(tenantRegistry).map(entry => {
+        const t = store.tenants.has(entry.tenant_id) ? store.tenants.get(entry.tenant_id) : null
+        return {
+          ...entry,
+          stats: {
+            workers:     t ? t.wosWorkers.size          : 0,
+            pods:        t ? t.wosPods.size              : 0,
+            assignments: t ? t.wosAssignments.size       : 0,
+            evidence:    t ? t.wosEvidenceEvents.length  : 0
+          }
+        }
+      })
+      return ok(res, { tenants })
     }
 
     if (route.name === "admin.tenants.create") {
@@ -1941,10 +2055,223 @@ if (route.name === "admin.scheduler.preview") {
         created_at: new Date().toISOString(), notes: String(body.notes || "") }
       tenantRegistry[tid] = entry
       saveTenantRegistry()
-      getTenantStore(tid)  // pre-init in-memory store
+      getTenantStore(tid)       // pre-init in-memory store
+      Scheduler.trackTenant(tid) // S32: register in scheduler queue
       return ok(res, entry, 201)
     }
+
+    if (route.name === "admin.tenants.get") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, "admin:tenants:read")) return
+      const tid = route.params.id
+      const entry = tenantRegistry[tid]
+      if (!entry) return fail(res, "TENANT_NOT_FOUND", `tenant "${tid}" is not registered`, 404)
+      const t = store.tenants.has(tid) ? store.tenants.get(tid) : null
+      return ok(res, {
+        ...entry,
+        stats: {
+          workers:     t ? t.wosWorkers.size          : 0,
+          pods:        t ? t.wosPods.size              : 0,
+          assignments: t ? t.wosAssignments.size       : 0,
+          evidence:    t ? t.wosEvidenceEvents.length  : 0
+        }
+      })
+    }
+
+    if (route.name === "admin.tenants.disable") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, "admin:tenants:write")) return
+      if (String(ap.principal.tenant_id || "") !== "*")
+        return fail(res, "FORBIDDEN", "only global superadmin can disable tenants", 403)
+      const tid = route.params.id
+      if (!tenantRegistry[tid]) return fail(res, "TENANT_NOT_FOUND", `tenant "${tid}" is not registered`, 404)
+      tenantRegistry[tid] = { ...tenantRegistry[tid], status: "disabled" }
+      saveTenantRegistry()
+      emitWosEvidenceEvent(tid, {
+        actor: ap.principal.name || ap.principal.id,
+        action: "tenant.disabled",
+        entity_type: "tenant",
+        entity_id: tid,
+        snapshot: null
+      })
+      return ok(res, { tenant_id: tid, status: "disabled" })
+    }
+
+    if (route.name === "admin.tenants.enable") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, "admin:tenants:write")) return
+      if (String(ap.principal.tenant_id || "") !== "*")
+        return fail(res, "FORBIDDEN", "only global superadmin can enable tenants", 403)
+      const tid = route.params.id
+      if (!tenantRegistry[tid]) return fail(res, "TENANT_NOT_FOUND", `tenant "${tid}" is not registered`, 404)
+      tenantRegistry[tid] = { ...tenantRegistry[tid], status: "active" }
+      saveTenantRegistry()
+      emitWosEvidenceEvent(tid, {
+        actor: ap.principal.name || ap.principal.id,
+        action: "tenant.enabled",
+        entity_type: "tenant",
+        entity_id: tid,
+        snapshot: null
+      })
+      return ok(res, { tenant_id: tid, status: "active" })
+    }
+
+    // S32: scheduler engine handlers ────────────────────────────────────────
+    if (route.name === "admin.scheduler.get") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, "admin:workers:read")) return
+      const snap = Scheduler.snapshot()
+      // merge registry tenants not yet tracked into the tenants list
+      const trackedIds = new Set(snap.tenants.map(t => t.tenant_id))
+      const extra = Object.keys(tenantRegistry)
+        .filter(id => !trackedIds.has(id))
+        .map(id => ({ tenant_id: id, paused: false, paused_at: null, resumed_at: null, last_run: null, last_error: null }))
+      return ok(res, { ...snap, tenants: [...snap.tenants, ...extra].sort((a, b) => a.tenant_id.localeCompare(b.tenant_id)) })
+    }
+
+    if (route.name === "admin.scheduler.start") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, "admin:workers:read")) return
+      if (String(ap.principal.tenant_id || "") !== "*")
+        return fail(res, "FORBIDDEN", "only global superadmin can start the scheduler", 403)
+      const body = await readJson(req, res)
+      if (!body) return
+      const intervalMs = body && Number.isFinite(Number(body.interval_ms)) ? Number(body.interval_ms) : undefined
+      const snap = Scheduler.start(intervalMs)
+      emitWosEvidenceEvent("default", {
+        actor: ap.principal.name || ap.principal.id,
+        action: "scheduler.started", entity_type: "scheduler", entity_id: "global",
+        snapshot: { interval_ms: snap.interval_ms }
+      })
+      return ok(res, snap)
+    }
+
+    if (route.name === "admin.scheduler.stop") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, "admin:workers:read")) return
+      if (String(ap.principal.tenant_id || "") !== "*")
+        return fail(res, "FORBIDDEN", "only global superadmin can stop the scheduler", 403)
+      const snap = Scheduler.stop()
+      emitWosEvidenceEvent("default", {
+        actor: ap.principal.name || ap.principal.id,
+        action: "scheduler.stopped", entity_type: "scheduler", entity_id: "global",
+        snapshot: null
+      })
+      return ok(res, snap)
+    }
+
+    if (route.name === "admin.scheduler.tenant.pause") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, "admin:workers:read")) return
+      if (String(ap.principal.tenant_id || "") !== "*")
+        return fail(res, "FORBIDDEN", "only global superadmin can pause tenant queues", 403)
+      const tid = route.params.tenant
+      if (!tenantRegistry[tid]) return fail(res, "TENANT_NOT_FOUND", `tenant "${tid}" is not registered`, 404)
+      const result = Scheduler.pause(tid)
+      emitWosEvidenceEvent(tid, {
+        actor: ap.principal.name || ap.principal.id,
+        action: "scheduler.tenant.paused", entity_type: "scheduler.tenant", entity_id: tid,
+        snapshot: null
+      })
+      return ok(res, result)
+    }
+
+    if (route.name === "admin.scheduler.tenant.resume") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, "admin:workers:read")) return
+      if (String(ap.principal.tenant_id || "") !== "*")
+        return fail(res, "FORBIDDEN", "only global superadmin can resume tenant queues", 403)
+      const tid = route.params.tenant
+      if (!tenantRegistry[tid]) return fail(res, "TENANT_NOT_FOUND", `tenant "${tid}" is not registered`, 404)
+      const result = Scheduler.resume(tid)
+      emitWosEvidenceEvent(tid, {
+        actor: ap.principal.name || ap.principal.id,
+        action: "scheduler.tenant.resumed", entity_type: "scheduler.tenant", entity_id: tid,
+        snapshot: null
+      })
+      return ok(res, result)
+    }
     // ────────────────────────────────────────────────────────────────────────
+
+    // S33: analytics handlers ─────────────────────────────────────────────────
+    if (route.name === "admin.analytics.list") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, "admin:workers:read")) return
+      const ids = Object.keys(tenantRegistry)
+      const metrics = ids.map(tid => {
+        const t = store.tenants.has(tid) ? store.tenants.get(tid) : getTenantStore(tid)
+        return Analytics.computeTenantMetrics(tid, t)
+      })
+      emitWosEvidenceEvent("default", {
+        actor: ap.principal.name || ap.principal.id,
+        action: "analytics.queried", entity_type: "analytics", entity_id: "global",
+        snapshot: { tenant_count: ids.length }
+      })
+      return ok(res, {
+        computed_at: new Date().toISOString(),
+        aggregate:   Analytics.aggregateMetrics(metrics),
+        tenants:     metrics
+      })
+    }
+
+    if (route.name === "admin.analytics.tenant") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, "admin:workers:read")) return
+      const tid = route.params.id
+      if (!tenantRegistry[tid]) return fail(res, "TENANT_NOT_FOUND", `tenant "${tid}" is not registered`, 404)
+      if (!requireTenantAccess(res, ap.principal, tid)) return
+      const t = store.tenants.has(tid) ? store.tenants.get(tid) : getTenantStore(tid)
+      const metrics = Analytics.computeTenantMetrics(tid, t)
+      emitWosEvidenceEvent(tid, {
+        actor: ap.principal.name || ap.principal.id,
+        action: "analytics.queried", entity_type: "analytics", entity_id: tid,
+        snapshot: { tenant_id: tid }
+      })
+      return ok(res, metrics)
+    }
+
+    if (route.name === "admin.analytics.snapshot") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, "admin:workers:read")) return
+      const ids = Object.keys(tenantRegistry)
+      const metrics = ids.map(tid => {
+        const t = store.tenants.has(tid) ? store.tenants.get(tid) : getTenantStore(tid)
+        return Analytics.computeTenantMetrics(tid, t)
+      })
+      const snapshots = Analytics.appendSnapshot(metrics)
+      emitWosEvidenceEvent("default", {
+        actor: ap.principal.name || ap.principal.id,
+        action: "analytics.snapshot.created", entity_type: "analytics.snapshot", entity_id: "global",
+        snapshot: { tenant_count: ids.length, snapshot_count: snapshots.length }
+      })
+      return ok(res, {
+        snapshotted_at:  new Date().toISOString(),
+        tenant_count:    ids.length,
+        snapshot_count:  snapshots.length,
+        aggregate:       Analytics.aggregateMetrics(metrics),
+        tenants:         metrics
+      }, 201)
+    }
+
+    if (route.name === "admin.analytics.snapshots") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, "admin:workers:read")) return
+      const snapshots = Analytics.loadSnapshots()
+      return ok(res, { count: snapshots.length, snapshots })
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 
     return methodNotAllowed(res)
   } catch (e) {
@@ -1955,6 +2282,18 @@ if (route.name === "admin.scheduler.preview") {
 
 loadAllTenants()
 loadTenantRegistry()
+
+// S34: init scheduler engine — wired to SchedulerJobs.runForTenant
+Scheduler.init({
+  getActiveTenants: () => Array.from(store.tenants.keys()),
+  runForTenant: (tid) => {
+    if (!isTenantActive(tid)) return
+    const t = getTenantStore(tid)
+    const result = SchedulerJobs.runForTenant(tid, t)
+    if (result.assigned > 0) schedulePersist(tid)
+  }
+})
+Scheduler.start()
 
 server.listen(PORT, HOST, () => {
   console.log(`server running: http://${HOST}:${PORT}`)
