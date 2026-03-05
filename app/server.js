@@ -8,6 +8,7 @@ const fs = require("fs")
 const Admin = require("./lib/admin")
 const AdminPerms = require("./lib/admin_permissions")
 const Scheduler = require("./scheduler")
+const Analytics = require("./analytics")
 
 const UI_DIST = path.join(__dirname, "frontend", "dist")
 
@@ -948,6 +949,13 @@ function matchRoute(method, pathname) {
 
   const tenantEnableMatch = pathname.match(/^\/api\/admin\/tenants\/([^/]+)\/enable$/)
   if (m === "POST" && tenantEnableMatch) return { name: "admin.tenants.enable",  params: { id: tenantEnableMatch[1] } }
+
+  // S33: analytics routes — exact paths before /:tenant wildcard
+  if (m === "GET"  && pathname === "/api/admin/analytics")           return { name: "admin.analytics.list",      params: {} }
+  if (m === "POST" && pathname === "/api/admin/analytics/snapshot")  return { name: "admin.analytics.snapshot",  params: {} }
+  if (m === "GET"  && pathname === "/api/admin/analytics/snapshots") return { name: "admin.analytics.snapshots", params: {} }
+  const analyticsIdMatch = pathname.match(/^\/api\/admin\/analytics\/([^/]+)$/)
+  if (m === "GET"  && analyticsIdMatch) return { name: "admin.analytics.tenant", params: { id: analyticsIdMatch[1] } }
 
   return null
 }
@@ -2117,6 +2125,78 @@ if (route.name === "admin.scheduler.preview") {
       return ok(res, result)
     }
     // ────────────────────────────────────────────────────────────────────────
+
+    // S33: analytics handlers ─────────────────────────────────────────────────
+    if (route.name === "admin.analytics.list") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, "admin:workers:read")) return
+      const ids = Object.keys(tenantRegistry)
+      const metrics = ids.map(tid => {
+        const t = store.tenants.has(tid) ? store.tenants.get(tid) : getTenantStore(tid)
+        return Analytics.computeTenantMetrics(tid, t)
+      })
+      emitWosEvidenceEvent("default", {
+        actor: ap.principal.name || ap.principal.id,
+        action: "analytics.queried", entity_type: "analytics", entity_id: "global",
+        snapshot: { tenant_count: ids.length }
+      })
+      return ok(res, {
+        computed_at: new Date().toISOString(),
+        aggregate:   Analytics.aggregateMetrics(metrics),
+        tenants:     metrics
+      })
+    }
+
+    if (route.name === "admin.analytics.tenant") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, "admin:workers:read")) return
+      const tid = route.params.id
+      if (!tenantRegistry[tid]) return fail(res, "TENANT_NOT_FOUND", `tenant "${tid}" is not registered`, 404)
+      if (!requireTenantAccess(res, ap.principal, tid)) return
+      const t = store.tenants.has(tid) ? store.tenants.get(tid) : getTenantStore(tid)
+      const metrics = Analytics.computeTenantMetrics(tid, t)
+      emitWosEvidenceEvent(tid, {
+        actor: ap.principal.name || ap.principal.id,
+        action: "analytics.queried", entity_type: "analytics", entity_id: tid,
+        snapshot: { tenant_id: tid }
+      })
+      return ok(res, metrics)
+    }
+
+    if (route.name === "admin.analytics.snapshot") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, "admin:workers:read")) return
+      const ids = Object.keys(tenantRegistry)
+      const metrics = ids.map(tid => {
+        const t = store.tenants.has(tid) ? store.tenants.get(tid) : getTenantStore(tid)
+        return Analytics.computeTenantMetrics(tid, t)
+      })
+      const snapshots = Analytics.appendSnapshot(metrics)
+      emitWosEvidenceEvent("default", {
+        actor: ap.principal.name || ap.principal.id,
+        action: "analytics.snapshot.created", entity_type: "analytics.snapshot", entity_id: "global",
+        snapshot: { tenant_count: ids.length, snapshot_count: snapshots.length }
+      })
+      return ok(res, {
+        snapshotted_at:  new Date().toISOString(),
+        tenant_count:    ids.length,
+        snapshot_count:  snapshots.length,
+        aggregate:       Analytics.aggregateMetrics(metrics),
+        tenants:         metrics
+      }, 201)
+    }
+
+    if (route.name === "admin.analytics.snapshots") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, "admin:workers:read")) return
+      const snapshots = Analytics.loadSnapshots()
+      return ok(res, { count: snapshots.length, snapshots })
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 
     return methodNotAllowed(res)
   } catch (e) {
