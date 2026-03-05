@@ -12,6 +12,8 @@ const UI_DIST = path.join(__dirname, "frontend", "dist")
 
 const HOST = process.env.APP_HOST || "127.0.0.1"
 const PORT = Number(process.env.APP_PORT || "3010")
+// S30: when false (default), WOS write endpoints (POST/PATCH) require Bearer auth
+const WOS_PUBLIC_WRITE = process.env.WOS_PUBLIC_WRITE === "true"
 
 const BOOT_ID = crypto.randomUUID()
 const STARTED_AT_ISO = nowIso()
@@ -1334,6 +1336,12 @@ const server = http.createServer(async (req, res) => {
     // S30: enforce tenant registry on all WOS routes
     if (route.name.startsWith("wos.")) {
       if (!requireTenantActive(res, tenantId)) return
+      // S30: auth gate for WOS writes when WOS_PUBLIC_WRITE=false (default)
+      if (!WOS_PUBLIC_WRITE && (req.method === "POST" || req.method === "PATCH")) {
+        const ap = Admin.authenticate(req)
+        if (!ap.ok) return failFromAdmin(res, ap)
+        if (!requireTenantAccess(res, ap.principal, tenantId)) return
+      }
     }
 
     if (route.name === "wos.workers.create") {

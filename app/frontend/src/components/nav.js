@@ -7,6 +7,10 @@ export function setTenantOptions(options) {
   _tenantOptions = Array.isArray(options) ? options : null
 }
 
+export function clearTenantOptions() {
+  _tenantOptions = null
+}
+
 const TABS = [
   { key: "dashboard",   label: "Dashboard"   },
   { key: "workers",     label: "Workers"      },
@@ -93,6 +97,7 @@ export function renderNav(activeKey, onSignOut, onTenantChange) {
   btn.textContent = "Sign out"
   btn.addEventListener("click", () => {
     setToken("")
+    clearTenantOptions()
     if (_signOutCb) _signOutCb()
   })
   right.appendChild(btn)
