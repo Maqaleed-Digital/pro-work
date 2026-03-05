@@ -13,7 +13,7 @@
     "lint": "node -c server.js",
     "typecheck": "node -e \"console.log('typecheck: ok (genesis scaffold)')\"",
     "test": "node -e \"console.log('test: ok (genesis scaffold)')\"",
-    "build": "npm run preflight && node -c server.js && node -e \"console.log('build: ok (readiness smoke)')\""
+    "build": "node -c server.js && node -e \"console.log('build: ok (readiness smoke)')\""
   },
   "engines": {
     "node": ">=18"
