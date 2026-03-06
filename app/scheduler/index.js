@@ -13,8 +13,9 @@
 
 const fs   = require("fs")
 const path = require("path")
+const { getAppDataDir } = require("../lib/data_paths")
 
-const STATE_PATH        = path.join(__dirname, "..", "data", "scheduler.json")
+const STATE_PATH        = path.join(getAppDataDir(), "scheduler.json")
 const DEFAULT_INTERVAL  = 30000  // 30 s
 
 function nowIso() { return new Date().toISOString() }

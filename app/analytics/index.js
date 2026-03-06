@@ -14,8 +14,9 @@
 
 const fs   = require("fs")
 const path = require("path")
+const { getAppDataDir } = require("../lib/data_paths")
 
-const SNAPSHOTS_PATH = path.join(__dirname, "..", "data", "analytics_snapshots.json")
+const SNAPSHOTS_PATH = path.join(getAppDataDir(), "analytics_snapshots.json")
 const MAX_SNAPSHOTS  = 100   // rolling window — oldest entries trimmed first
 
 // ── metric computation ────────────────────────────────────────────────────────
