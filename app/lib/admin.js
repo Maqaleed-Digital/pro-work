@@ -106,7 +106,8 @@ function authenticate(req) {
 
   // Bootstrap token passthrough: if ADMIN_BOOTSTRAP_TOKEN is set and matches,
   // grant synthetic superadmin access without requiring a DB principal.
-  const bootToken = String(process.env.ADMIN_BOOTSTRAP_TOKEN || "").trim()
+  // S35: prefer ADMIN_API_TOKEN; ADMIN_BOOTSTRAP_TOKEN kept as legacy alias
+  const bootToken = String(process.env.ADMIN_API_TOKEN || process.env.ADMIN_BOOTSTRAP_TOKEN || "").trim()
   if (bootToken && auth.data.token === bootToken) {
     const dbPath = principalsFilePath()
     const loaded = loadDbFromPath(dbPath)

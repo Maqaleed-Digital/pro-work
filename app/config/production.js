@@ -12,7 +12,7 @@ const pkg = (() => {
 
 module.exports = {
   // ── server ──────────────────────────────────────────────────────────────
-  port:          Number(process.env.APP_PORT  || "3010"),
+  port:          Number(process.env.PORT || process.env.APP_PORT || "3010"),
   host:          process.env.APP_HOST         || "127.0.0.1",
   // In production set APP_HOST=0.0.0.0 to bind all interfaces
   tlsEnabled:    process.env.TLS_ENABLED      === "true",
@@ -30,7 +30,7 @@ module.exports = {
   analyticsSnapshotMax:    100,
 
   // ── CORS ────────────────────────────────────────────────────────────────
-  corsOrigins: (process.env.CORS_ORIGINS || "").split(",").filter(Boolean),
+  corsOrigins: (process.env.CORS_ALLOWED_ORIGINS || process.env.CORS_ORIGINS || "").split(",").filter(Boolean),
 
   // ── meta ────────────────────────────────────────────────────────────────
   appName:    pkg.name    || "pro-work-app",
