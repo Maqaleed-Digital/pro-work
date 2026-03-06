@@ -109,6 +109,29 @@ function createExecutionEventHooks({ publisher, clock = () => new Date().toISOSt
         requires_approval: false,
       }));
     },
+
+    // Sprint A additions
+    emitExecutionJobCreated(args) {
+      return publisher.publish(baseEnvelope({
+        ...args,
+        event_type: 'EXECUTION_JOB_CREATED',
+        aggregate_type: 'EXECUTION_JOB',
+        sourceModule: 'execution_jobs',
+        trust_level: 'STANDARD',
+        requires_approval: false,
+      }));
+    },
+
+    emitDeliverableSubmitted(args) {
+      return publisher.publish(baseEnvelope({
+        ...args,
+        event_type: 'DELIVERABLE_SUBMITTED',
+        aggregate_type: 'DELIVERABLE',
+        sourceModule: 'deliverables',
+        trust_level: 'STANDARD',
+        requires_approval: false,
+      }));
+    },
   };
 }
 
