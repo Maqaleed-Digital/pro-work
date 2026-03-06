@@ -21,3 +21,8 @@ package-lock.json
 .vscode/
 
 app/server.js.bak.*
+
+# S35: runtime data — managed via PROWORK_DATA_DIR in production
+app/data/tenants.json
+app/data/scheduler.json
+app/data/analytics_snapshots.json

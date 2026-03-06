@@ -12,6 +12,10 @@ const Analytics      = require("./analytics")
 const SchedulerJobs  = require("./wos/scheduler_jobs")
 const ProductionConfig = require("./config/production")
 const { buildZip }   = require("./lib/zip")
+const { validateProductionConfig } = require("./config/validate")
+const { getDataDir, getAppDataDir } = require("./lib/data_paths")
+
+validateProductionConfig()
 
 const UI_DIST = path.join(__dirname, "frontend", "dist")
 
@@ -19,6 +23,17 @@ const HOST = process.env.APP_HOST || "127.0.0.1"
 const PORT = Number(process.env.APP_PORT || "3010")
 // S30: when false (default), WOS write endpoints (POST/PATCH) require Bearer auth
 const WOS_PUBLIC_WRITE = process.env.WOS_PUBLIC_WRITE === "true"
+
+// S35: security middleware
+const TRUSTED_PROXY = process.env.TRUSTED_PROXY === "1" || process.env.TRUSTED_PROXY === "true"
+const BODY_LIMIT    = 512 * 1024  // 512 KiB
+const _CORS_ORIGINS = new Set(
+  (process.env.CORS_ALLOWED_ORIGINS || process.env.CORS_ORIGINS || "").split(",").filter(Boolean)
+)
+const _RL_WINDOW_MS = 60_000
+const _RL_ADMIN_MAX = 120   // req/min on /api/admin/*
+const _RL_WRITE_MAX = 60    // req/min on public write methods
+const _rateCounts   = new Map()  // ip → { ts, count }
 
 const BOOT_ID = crypto.randomUUID()
 const STARTED_AT_ISO = nowIso()
@@ -82,6 +97,57 @@ function requireTenantAccess(res, principal, tenantId) {
 }
 
 
+// S35: security middleware helpers ──────────────────────────────────────────
+
+function clientIp(req) {
+  if (TRUSTED_PROXY) {
+    const xff = req.headers["x-forwarded-for"]
+    if (xff) return String(xff).split(",")[0].trim()
+  }
+  return (req.socket && req.socket.remoteAddress) || "unknown"
+}
+
+function setSecureHeaders(res) {
+  res.setHeader("X-Content-Type-Options", "nosniff")
+  res.setHeader("X-Frame-Options", "DENY")
+  res.setHeader("X-XSS-Protection", "0")
+  res.setHeader("Referrer-Policy", "no-referrer")
+  res.setHeader("Permissions-Policy", "interest-cohort=()")
+}
+
+function applyCors(req, res) {
+  const origin = String(req.headers["origin"] || "").trim()
+  if (!origin) return true
+  if (_CORS_ORIGINS.size > 0 && !_CORS_ORIGINS.has(origin)) {
+    res.writeHead(403, { "content-type": "application/json; charset=utf-8" })
+    res.end(JSON.stringify({ ok: false, error: { code: "CORS_DENIED", message: "Origin not allowed" } }))
+    return false
+  }
+  res.setHeader("Access-Control-Allow-Origin", origin)
+  res.setHeader("Vary", "Origin")
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS")
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Tenant-Id")
+  res.setHeader("Access-Control-Max-Age", "600")
+  return true
+}
+
+function checkRateLimit(req, res, max) {
+  const ip  = clientIp(req)
+  const now = Date.now()
+  let e = _rateCounts.get(ip)
+  if (!e || now - e.ts > _RL_WINDOW_MS) { e = { ts: now, count: 0 }; _rateCounts.set(ip, e) }
+  e.count++
+  if (e.count > max) {
+    const retryAfter = String(Math.ceil((e.ts + _RL_WINDOW_MS - now) / 1000))
+    res.writeHead(429, { "content-type": "application/json; charset=utf-8", "retry-after": retryAfter })
+    res.end(JSON.stringify({ ok: false, error: { code: "RATE_LIMITED", message: "Too many requests" } }))
+    return false
+  }
+  return true
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 async function readJson(req, res) {
   const ct = String(req.headers["content-type"] || "").toLowerCase()
   if (!ct.includes("application/json")) {
@@ -90,7 +156,15 @@ async function readJson(req, res) {
   }
 
   const chunks = []
-  for await (const chunk of req) chunks.push(chunk)
+  let total = 0
+  for await (const chunk of req) {
+    total += chunk.length
+    if (total > BODY_LIMIT) {
+      fail(res, "PAYLOAD_TOO_LARGE", `body exceeds ${BODY_LIMIT} byte limit`, 413)
+      return null
+    }
+    chunks.push(chunk)
+  }
   const raw = Buffer.concat(chunks).toString("utf8").trim()
   if (!raw) {
     fail(res, "VALIDATION_ERROR", "body: JSON required", 422)
@@ -152,7 +226,7 @@ S29-PERSISTENCE: per-tenant JSON file storage
 data/tenants/<tenantId>/{workers,pods,assignments,evidence}.json
 ========================================================= */
 
-const DATA_DIR = path.join(__dirname, "..", "data")
+const DATA_DIR = getDataDir()
 
 function tenantDataDir(tenantId) {
   return path.join(DATA_DIR, "tenants", tenantId)
@@ -209,7 +283,7 @@ function loadAllTenants() {
 }
 
 // S30: tenant registry ──────────────────────────────────────────────────────
-const TENANT_REGISTRY_PATH = path.join(__dirname, "data", "tenants.json")
+const TENANT_REGISTRY_PATH = path.join(getAppDataDir(), "tenants.json")
 let tenantRegistry = {}  // { [tenantId]: { tenant_id, name, status, created_at, notes } }
 const TENANT_ID_RE = /^[a-z0-9][a-z0-9_-]{1,31}$/
 
@@ -1179,6 +1253,11 @@ const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, `http://${req.headers.host || HOST}`)
     const pathname = url.pathname
 
+    // S35: security headers + CORS on every response
+    setSecureHeaders(res)
+    if (!applyCors(req, res)) return
+    if (req.method === "OPTIONS") { res.writeHead(204); return res.end() }
+
     // S28: Admin UI static serve
     if (req.method === "GET" && pathname === "/admin") {
       return serveStatic(res, path.join(UI_DIST, "index.html"), "text/html")
@@ -1193,6 +1272,13 @@ const server = http.createServer(async (req, res) => {
 
     const route = matchRoute(req.method || "GET", pathname)
     if (!route) return fail(res, "NOT_FOUND", "Route not found", 404)
+
+    // S35: rate limiting
+    if (pathname.startsWith("/api/admin")) {
+      if (!checkRateLimit(req, res, _RL_ADMIN_MAX)) return
+    } else if (req.method !== "GET" && req.method !== "HEAD" && pathname.startsWith("/api/")) {
+      if (!checkRateLimit(req, res, _RL_WRITE_MAX)) return
+    }
 
     const tenantId = resolveTenantId(req)
     const tenant = getTenantStore(tenantId)
