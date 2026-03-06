@@ -15,6 +15,23 @@ const { buildZip }   = require("./lib/zip")
 const { validateProductionConfig } = require("./config/validate")
 const { getDataDir, getAppDataDir } = require("./lib/data_paths")
 
+// S36: env-driven config helpers ─────────────────────────────────────────────
+const ENV = process.env
+
+function envInt(name, def) {
+  const v = ENV[name]
+  if (!v) return def
+  const n = parseInt(v, 10)
+  return Number.isFinite(n) ? n : def
+}
+
+function envBool(name, def = false) {
+  const v = ENV[name]
+  if (v === undefined) return def
+  return v === "1" || v === "true"
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 validateProductionConfig()
 
 const UI_DIST = path.join(__dirname, "frontend", "dist")
@@ -24,16 +41,16 @@ const PORT = Number(process.env.APP_PORT || "3010")
 // S30: when false (default), WOS write endpoints (POST/PATCH) require Bearer auth
 const WOS_PUBLIC_WRITE = process.env.WOS_PUBLIC_WRITE === "true"
 
-// S35: security middleware
-const TRUSTED_PROXY = process.env.TRUSTED_PROXY === "1" || process.env.TRUSTED_PROXY === "true"
-const BODY_LIMIT    = 512 * 1024  // 512 KiB
-const _CORS_ORIGINS = new Set(
-  (process.env.CORS_ALLOWED_ORIGINS || process.env.CORS_ORIGINS || "").split(",").filter(Boolean)
+// S35/S36: security middleware — all limits configurable via env vars
+const TRUSTED_PROXY        = envBool("TRUSTED_PROXY", false)
+const JSON_BODY_LIMIT      = envInt("JSON_BODY_LIMIT", 512 * 1024)   // default 512 KiB
+const RATE_LIMIT_WINDOW_MS = envInt("RATE_LIMIT_WINDOW_MS", 60_000)
+const RATE_LIMIT_ADMIN_MAX = envInt("RATE_LIMIT_MAX_REQUESTS", 120)  // req/window on /api/admin/*
+const RATE_LIMIT_WRITE_MAX = envInt("ADMIN_RATE_LIMIT_MAX_REQUESTS", 60) // req/window on public writes
+const _CORS_ORIGINS        = new Set(
+  (ENV.CORS_ALLOWED_ORIGINS || ENV.CORS_ORIGINS || "").split(",").filter(Boolean)
 )
-const _RL_WINDOW_MS = 60_000
-const _RL_ADMIN_MAX = 120   // req/min on /api/admin/*
-const _RL_WRITE_MAX = 60    // req/min on public write methods
-const _rateCounts   = new Map()  // ip → { ts, count }
+const _rateCounts          = new Map()  // ip → { ts, count }
 
 const BOOT_ID = crypto.randomUUID()
 const STARTED_AT_ISO = nowIso()
@@ -135,10 +152,10 @@ function checkRateLimit(req, res, max) {
   const ip  = clientIp(req)
   const now = Date.now()
   let e = _rateCounts.get(ip)
-  if (!e || now - e.ts > _RL_WINDOW_MS) { e = { ts: now, count: 0 }; _rateCounts.set(ip, e) }
+  if (!e || now - e.ts > RATE_LIMIT_WINDOW_MS) { e = { ts: now, count: 0 }; _rateCounts.set(ip, e) }
   e.count++
   if (e.count > max) {
-    const retryAfter = String(Math.ceil((e.ts + _RL_WINDOW_MS - now) / 1000))
+    const retryAfter = String(Math.ceil((e.ts + RATE_LIMIT_WINDOW_MS - now) / 1000))
     res.writeHead(429, { "content-type": "application/json; charset=utf-8", "retry-after": retryAfter })
     res.end(JSON.stringify({ ok: false, error: { code: "RATE_LIMITED", message: "Too many requests" } }))
     return false
@@ -159,8 +176,8 @@ async function readJson(req, res) {
   let total = 0
   for await (const chunk of req) {
     total += chunk.length
-    if (total > BODY_LIMIT) {
-      fail(res, "PAYLOAD_TOO_LARGE", `body exceeds ${BODY_LIMIT} byte limit`, 413)
+    if (total > JSON_BODY_LIMIT) {
+      fail(res, "PAYLOAD_TOO_LARGE", `body exceeds ${JSON_BODY_LIMIT} byte limit`, 413)
       return null
     }
     chunks.push(chunk)
@@ -1275,9 +1292,9 @@ const server = http.createServer(async (req, res) => {
 
     // S35: rate limiting
     if (pathname.startsWith("/api/admin")) {
-      if (!checkRateLimit(req, res, _RL_ADMIN_MAX)) return
+      if (!checkRateLimit(req, res, RATE_LIMIT_ADMIN_MAX)) return
     } else if (req.method !== "GET" && req.method !== "HEAD" && pathname.startsWith("/api/")) {
-      if (!checkRateLimit(req, res, _RL_WRITE_MAX)) return
+      if (!checkRateLimit(req, res, RATE_LIMIT_WRITE_MAX)) return
     }
 
     const tenantId = resolveTenantId(req)
