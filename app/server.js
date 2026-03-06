@@ -7,8 +7,11 @@ const path = require("path")
 const fs = require("fs")
 const Admin = require("./lib/admin")
 const AdminPerms = require("./lib/admin_permissions")
-const Scheduler = require("./scheduler")
-const Analytics = require("./analytics")
+const Scheduler      = require("./scheduler")
+const Analytics      = require("./analytics")
+const SchedulerJobs  = require("./wos/scheduler_jobs")
+const ProductionConfig = require("./config/production")
+const { buildZip }   = require("./lib/zip")
 
 const UI_DIST = path.join(__dirname, "frontend", "dist")
 
@@ -847,6 +850,10 @@ function transitionWorkerStatus(tenantId, id, toStatus, actor, actionName) {
 function matchRoute(method, pathname) {
   const m = method.toUpperCase()
 
+  // S34: public probes — no auth required
+  if (m === "GET" && pathname === "/api/health") return { name: "api.health",  params: {} }
+  if (m === "GET" && pathname === "/api/ready")  return { name: "api.ready",   params: {} }
+
   if (m === "POST" && pathname === "/api/jobs") return { name: "jobs.create", params: {} }
   if (m === "GET" && pathname === "/api/jobs") return { name: "jobs.list", params: {} }
 
@@ -914,6 +921,7 @@ function matchRoute(method, pathname) {
   if (m === "GET" && pathname === "/api/admin/governance") return { name: "admin.governance", params: {} }
   if (m === "GET" && pathname === "/api/admin/workers") return { name: "admin.workers.list", params: {} }
   if (m === "GET" && pathname === "/api/admin/assignments") return { name: "admin.assignments.list", params: {} }
+  if (m === "GET" && pathname === "/api/admin/evidence/export") return { name: "admin.evidence.export", params: {} }
   if (m === "GET" && pathname === "/api/admin/evidence") return { name: "admin.evidence.list", params: {} }
   if (m === "GET" && pathname === "/api/admin/pods") return { name: "admin.pods.list", params: {} }
   if (m === "GET" && pathname === "/api/admin/scheduler/preview") return { name: "admin.scheduler.preview", params: {} }
@@ -1190,6 +1198,30 @@ const server = http.createServer(async (req, res) => {
     const tenant = getTenantStore(tenantId)
 
     if (route.name === "health") return ok(res, { service: "pro-work", health: "ok", time: nowIso(), ...bootMeta() }, 200)
+
+    // S34: public probes ──────────────────────────────────────────────────────
+    if (route.name === "api.health") {
+      return ok(res, {
+        status:   "healthy",
+        service:  "pro-work",
+        version:  SYSTEM_VERSION,
+        uptime_s: Math.floor(process.uptime()),
+        time:     nowIso()
+      })
+    }
+
+    if (route.name === "api.ready") {
+      const tenantCount = Object.keys(tenantRegistry).length
+      if (tenantCount === 0) {
+        return fail(res, "NOT_READY", "registry not initialised", 503)
+      }
+      return ok(res, {
+        status:       "ready",
+        tenant_count: tenantCount,
+        scheduler:    { enabled: Scheduler.snapshot().enabled }
+      })
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 
     if (route.name === "jobs.create") {
       const body = await readJson(req, res)
@@ -1689,6 +1721,49 @@ function runSchedulerForTenant(tenantId, tenant, limit, dryRun) {
       const evidenceResult = adminListEvidence(tenantId, url.searchParams)
       return ok(res, { tenant_id: tenantId, ...evidenceResult })
     }
+
+    // S34: evidence export — ZIP bundle of all data stores ───────────────────
+    if (route.name === "admin.evidence.export") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, "admin:governance:read")) return
+
+      const exportedAt = nowIso()
+      const files = {}
+
+      // manifest
+      files["manifest.json"] = Buffer.from(JSON.stringify({
+        exported_at:  exportedAt,
+        service:      "pro-work",
+        version:      SYSTEM_VERSION,
+        tenant_count: Object.keys(tenantRegistry).length,
+        tenants:      Object.keys(tenantRegistry)
+      }, null, 2), "utf8")
+
+      // per-tenant data stores
+      for (const [tid, entry] of Object.entries(tenantRegistry)) {
+        const pt = String((ap.principal.tenant_id) || "default")
+        if (pt !== "*" && pt !== tid) continue  // scope to principal's tenant
+
+        const t = store.tenants.has(tid) ? store.tenants.get(tid) : getTenantStore(tid)
+        files[`tenants/${tid}/workers.json`]     = Buffer.from(JSON.stringify(Array.from(t.wosWorkers.entries()),     null, 2), "utf8")
+        files[`tenants/${tid}/pods.json`]        = Buffer.from(JSON.stringify(Array.from(t.wosPods.entries()),        null, 2), "utf8")
+        files[`tenants/${tid}/assignments.json`] = Buffer.from(JSON.stringify(Array.from(t.wosAssignments.entries()), null, 2), "utf8")
+        files[`tenants/${tid}/evidence.json`]    = Buffer.from(JSON.stringify(t.wosEvidenceEvents,                    null, 2), "utf8")
+        files[`tenants/${tid}/meta.json`]        = Buffer.from(JSON.stringify(entry, null, 2), "utf8")
+      }
+
+      const zipBuf  = buildZip(files)
+      const fname   = `prowork-export-${exportedAt.slice(0, 19).replace(/:/g, "-")}.zip`
+      res.writeHead(200, {
+        "content-type":        "application/zip",
+        "content-disposition": `attachment; filename="${fname}"`,
+        "content-length":      String(zipBuf.length),
+        "cache-control":       "no-store"
+      })
+      return res.end(zipBuf)
+    }
+    // ─────────────────────────────────────────────────────────────────────────
     
     if (route.name === "admin.scheduler.status") {
       const ap = Admin.authenticate(req)
@@ -2208,11 +2283,15 @@ if (route.name === "admin.scheduler.preview") {
 loadAllTenants()
 loadTenantRegistry()
 
-// S32: init scheduler engine — wire deps after stores/registry are loaded
-// runForTenant is a no-op here; on-demand scheduling runs via POST /api/admin/scheduler/run
+// S34: init scheduler engine — wired to SchedulerJobs.runForTenant
 Scheduler.init({
   getActiveTenants: () => Array.from(store.tenants.keys()),
-  runForTenant: (_tid) => {}
+  runForTenant: (tid) => {
+    if (!isTenantActive(tid)) return
+    const t = getTenantStore(tid)
+    const result = SchedulerJobs.runForTenant(tid, t)
+    if (result.assigned > 0) schedulePersist(tid)
+  }
 })
 Scheduler.start()
 
