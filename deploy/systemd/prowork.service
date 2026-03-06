@@ -1,24 +1,20 @@
 [Unit]
-Description=ProWork API Server
-Documentation=https://github.com/Maqaleed-Digital/pro-work
+Description=ProWork Server
 After=network.target
-Wants=network-online.target
 
 [Service]
 Type=simple
 User=prowork
-Group=prowork
-WorkingDirectory=/opt/prowork/app
-ExecStart=/usr/bin/node server.js
-Restart=on-failure
-RestartSec=5s
+WorkingDirectory=/opt/prowork
+EnvironmentFile=/opt/prowork/.env.production
+ExecStart=/usr/bin/node app/server.js
+Restart=always
+RestartSec=5
+KillSignal=SIGINT
+TimeoutStopSec=30
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=prowork
-
-# Environment — copy .env.production.example to /etc/prowork/prowork.env and fill in values
-EnvironmentFile=/etc/prowork/prowork.env
-Environment=NODE_ENV=production
 
 # Systemd hardening
 NoNewPrivileges=true
