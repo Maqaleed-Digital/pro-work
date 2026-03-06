@@ -19,6 +19,9 @@ const TABS = [
   { key: "evidence",    label: "Evidence"     },
   { key: "scheduler",   label: "Scheduler"    },
   { key: "governance",  label: "Governance"   },
+  { key: "tenants",     label: "Tenants"      },
+  { key: "analytics",   label: "Analytics"    },
+  { key: "system",      label: "System"       },
 ]
 
 let _signOutCb = null

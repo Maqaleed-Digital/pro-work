@@ -1,0 +1,29 @@
+[Unit]
+Description=ProWork Server
+After=network.target
+
+[Service]
+Type=simple
+User=prowork
+WorkingDirectory=/opt/prowork
+EnvironmentFile=/opt/prowork/.env.production
+ExecStart=/usr/bin/node app/server.js
+Restart=always
+RestartSec=5
+KillSignal=SIGINT
+TimeoutStopSec=30
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=prowork
+
+# Systemd hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+CapabilityBoundingSet=
+RestrictNamespaces=true
+RestrictRealtime=true
+
+[Install]
+WantedBy=multi-user.target

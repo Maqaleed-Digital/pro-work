@@ -39,3 +39,38 @@ jobs:
 
       - name: Test
         run: npm test
+
+      - name: Config validate smoke
+        run: |
+          result=0
+          NODE_ENV=production node -e \
+            "require('./config/validate').validateProductionConfig()" 2>&1 || result=$?
+          [ "$result" -ne 0 ] || { echo "ERROR: should have rejected missing vars" >&2; exit 1; }
+          echo "CONFIG_VALIDATE: correctly rejected missing production vars"
+          NODE_ENV=development node -e \
+            "require('./config/validate').validateProductionConfig(); console.log('dev skip: ok')"
+
+      - name: Backup script smoke
+        run: |
+          TMPBK="$(mktemp -d)"
+          BACKUP_DEST="$TMPBK" bash ../scripts/backup_data.sh
+          ls "$TMPBK"/*.tar.gz
+          ls "$TMPBK"/*.sha256
+          ls "$TMPBK"/*.manifest.json
+          echo "BACKUP_SMOKE: ok"
+          rm -rf "$TMPBK"
+
+      - name: Smoke – health + ready probes
+        run: |
+          node server.js &
+          SERVER_PID=$!
+          for i in $(seq 1 15); do
+            sleep 1
+            curl -sf http://127.0.0.1:3010/api/health >/dev/null 2>&1 && break
+          done
+          curl -sf http://127.0.0.1:3010/api/health | grep '"status"'
+          curl -sf http://127.0.0.1:3010/api/ready  | grep '"status"'
+          kill $SERVER_PID || true
+        env:
+          NODE_ENV: test
+          APP_PORT: "3010"
