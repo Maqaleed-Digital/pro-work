@@ -9,43 +9,43 @@ function createHiringRouter({ hiring }) {
     async handle(req) {
       const { method, path, body } = req;
 
-      // Compensation
-      if (method === 'POST' && path === '/hiring/compensation/draft')
-        return json(201, await hiring.compensationService.draftPackage(body));
-      if (method === 'POST' && path === '/hiring/compensation/approve')
-        return json(200, await hiring.compensationService.approvePackage(body));
-      if (method === 'GET'  && path === '/hiring/compensation')
-        return json(200, await hiring.compensationService.listPackages());
+      // Hiring cases
+      if (method === 'POST' && path === '/hiring/cases')
+        return json(201, await hiring.hiringCaseService.openHiringCase(body));
+      if (method === 'POST' && path === '/hiring/cases/decision')
+        return json(200, await hiring.hiringCaseService.recordDecision(body));
+      if (method === 'GET'  && path === '/hiring/cases')
+        return json(200, await hiring.hiringCaseService.listCases());
 
-      // Offers
-      if (method === 'POST' && path === '/hiring/offers')
-        return json(201, await hiring.offerService.createOffer(body));
-      if (method === 'POST' && path === '/hiring/offers/send')
-        return json(200, await hiring.offerService.sendOffer(body));
-      if (method === 'POST' && path === '/hiring/offers/withdraw')
-        return json(200, await hiring.offerService.withdrawOffer(body));
-      if (method === 'GET'  && path === '/hiring/offers')
-        return json(200, await hiring.offerService.listOffers());
+      // Compensation validation
+      if (method === 'POST' && path === '/hiring/compensation/validate')
+        return json(200, await hiring.compensationService.validateCompensation(body));
 
       // Approvals
       if (method === 'POST' && path === '/hiring/approvals/request')
         return json(201, await hiring.approvalService.requestApproval(body));
-      if (method === 'POST' && path === '/hiring/approvals/record')
-        return json(200, await hiring.approvalService.recordApproval(body));
+      if (method === 'POST' && path === '/hiring/approvals/approve')
+        return json(200, await hiring.approvalService.approveOffer(body));
       if (method === 'GET'  && path === '/hiring/approvals')
         return json(200, await hiring.approvalService.listApprovals());
 
-      // Candidate acceptance
-      if (method === 'POST' && path === '/hiring/acceptance')
-        return json(201, await hiring.acceptanceService.recordAcceptance(body));
-      if (method === 'GET'  && path === '/hiring/acceptance')
-        return json(200, await hiring.acceptanceService.listAcceptances());
+      // Offers
+      if (method === 'POST' && path === '/hiring/offers')
+        return json(201, await hiring.offerService.draftOffer(body));
+      if (method === 'POST' && path === '/hiring/offers/send')
+        return json(200, await hiring.offerService.sendOffer(body));
+      if (method === 'GET'  && path === '/hiring/offers')
+        return json(200, await hiring.offerService.listOffers());
 
-      // Hiring decisions
-      if (method === 'POST' && path === '/hiring/decisions')
-        return json(201, await hiring.decisionService.recordDecision(body));
-      if (method === 'GET'  && path === '/hiring/decisions')
-        return json(200, await hiring.decisionService.listDecisions());
+      // Acceptance
+      if (method === 'POST' && path === '/hiring/acceptance/accept')
+        return json(200, await hiring.acceptanceService.acceptOffer(body));
+      if (method === 'POST' && path === '/hiring/acceptance/decline')
+        return json(200, await hiring.acceptanceService.declineOffer(body));
+
+      // Qiwa contract mapping
+      if (method === 'POST' && path === '/hiring/qiwa/map')
+        return json(200, await hiring.qiwaMappingService.mapContract(body));
 
       return json(404, { error: 'NOT_FOUND', path, method });
     },

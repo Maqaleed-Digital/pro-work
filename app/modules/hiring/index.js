@@ -1,18 +1,20 @@
 'use strict';
 
-const { createCompensationService, InMemoryCompensationStore } = require('./compensation_service');
-const { createOfferService,        InMemoryOfferStore        } = require('./offer_service');
-const { createApprovalService,     InMemoryApprovalStore     } = require('./approval_service');
-const { createAcceptanceService,   InMemoryAcceptanceStore   } = require('./acceptance_service');
-const { createDecisionService,     InMemoryDecisionStore     } = require('./decision_service');
+const { createHiringCaseService, InMemoryHiringCaseStore } = require('./hiring_case_service');
+const { createCompensationService                        } = require('./compensation_service');
+const { createApprovalService,     InMemoryApprovalStore } = require('./approval_service');
+const { createOfferService,        InMemoryOfferStore    } = require('./offer_service');
+const { createAcceptanceService                          } = require('./acceptance_service');
+const { createQiwaMappingService                         } = require('./qiwa_mapping_service');
 
 function createHiringModule({ hooks }) {
   return {
-    compensationService: createCompensationService({ store: new InMemoryCompensationStore(), hooks }),
-    offerService:        createOfferService(       { store: new InMemoryOfferStore(),        hooks }),
-    approvalService:     createApprovalService(    { store: new InMemoryApprovalStore(),     hooks }),
-    acceptanceService:   createAcceptanceService(  { store: new InMemoryAcceptanceStore(),   hooks }),
-    decisionService:     createDecisionService(    { store: new InMemoryDecisionStore(),     hooks }),
+    hiringCaseService:   createHiringCaseService( { store: new InMemoryHiringCaseStore(), hooks }),
+    compensationService: createCompensationService({ hooks }),
+    approvalService:     createApprovalService(    { store: new InMemoryApprovalStore(),  hooks }),
+    offerService:        createOfferService(       { store: new InMemoryOfferStore(),      hooks }),
+    acceptanceService:   createAcceptanceService(  { hooks }),
+    qiwaMappingService:  createQiwaMappingService(  { hooks }),
   };
 }
 

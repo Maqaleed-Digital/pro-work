@@ -25,11 +25,12 @@ node --test \
   tests/event_bus.envelope.test.js \
   tests/event_bus.publisher.test.js \
   tests/trust_engine.consumer.test.js \
-  tests/hiring.compensation_service.test.js \
-  tests/hiring.offer_service.test.js \
-  tests/hiring.approval_service.test.js \
-  tests/hiring.acceptance_service.test.js \
-  tests/hiring.decision_service.test.js \
+  tests/hiring.case.test.js \
+  tests/hiring.compensation.test.js \
+  tests/hiring.approval.test.js \
+  tests/hiring.offer.test.js \
+  tests/hiring.acceptance.test.js \
+  tests/hiring.qiwa_mapping.test.js \
   tests/hiring.router.test.js \
   tests/hiring.trust_integration.test.js \
   2>&1 | tee "${OUT_DIR}/test_run.txt"
@@ -48,11 +49,12 @@ node --test \
 {
   shasum -a 256 \
     app/modules/event_bus/schema_registry.js \
+    app/modules/hiring/hiring_case_service.js \
     app/modules/hiring/compensation_service.js \
-    app/modules/hiring/offer_service.js \
     app/modules/hiring/approval_service.js \
+    app/modules/hiring/offer_service.js \
     app/modules/hiring/acceptance_service.js \
-    app/modules/hiring/decision_service.js \
+    app/modules/hiring/qiwa_mapping_service.js \
     app/modules/hiring/index.js \
     app/api/hiring_router.js \
     app/storage/migrations/20260307_sprint_d_sovereign_hiring.sql
@@ -72,12 +74,12 @@ cat > "${OUT_DIR}/MANIFEST.json" <<EOF
   "ts_utc": "${TS_UTC}",
   "evidence_pack_templates": ["EP-WOS-HIRING-01"],
   "trust_sensitive_events": [
-    "COMPENSATION_PACKAGE_APPROVED",
-    "HIRING_OFFER_SENT",
-    "HIRING_OFFER_WITHDRAWN",
-    "HIRING_APPROVAL_RECORDED",
-    "CANDIDATE_ACCEPTANCE_RECORDED",
-    "HIRING_DECISION_RECORDED"
+    "HIRING_DECISION_RECORDED",
+    "OFFER_APPROVED",
+    "OFFER_ACCEPTED",
+    "CONTRACT_MIRROR_MAPPED",
+    "HIRING_CONTRACT_SIGNED",
+    "HIRING_CONTRACT_ACTIVATED"
   ]
 }
 EOF
