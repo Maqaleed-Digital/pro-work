@@ -3,6 +3,11 @@ set -euo pipefail
 
 cd /opt/prowork || exit 1
 
+if [ ! -d baseline ]; then
+  echo "ERROR: baseline directory missing — run scripts/prowork_baseline_freeze.sh first"
+  exit 1
+fi
+
 PHASE="PROWORK-SPRINT-B-SOVEREIGN-RECRUITING"
 TS_UTC="$(date -u +"%Y%m%dT%H%M%SZ")"
 OUT_DIR="evidence_output/${PHASE}/${TS_UTC}"
