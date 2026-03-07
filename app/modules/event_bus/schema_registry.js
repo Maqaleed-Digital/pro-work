@@ -2,6 +2,98 @@
 
 const CORE_EVENT_SCHEMAS = {
 
+  // ── Sprint C: Sovereign Onboarding ───────────────────────────────────────────
+
+  ONBOARDING_STARTED: {
+    event_version: '1.0',
+    aggregate_type: 'ONBOARDING_CASE',
+    producer_service: 'onboarding',
+    consumer_services: ['analytics'],
+    trust_sensitive: false,
+    required: ['onboarding_case_id', 'worker_id', 'checklist_template'],
+  },
+  ONBOARDING_CHECKLIST_ITEM_COMPLETED: {
+    event_version: '1.0',
+    aggregate_type: 'ONBOARDING_CASE',
+    producer_service: 'onboarding',
+    consumer_services: ['analytics'],
+    trust_sensitive: false,
+    required: ['checklist_item_id', 'onboarding_case_id', 'item_type', 'title'],
+  },
+  DOCUMENT_VERIFIED: {
+    event_version: '1.0',
+    aggregate_type: 'ONBOARDING_CASE',
+    producer_service: 'onboarding',
+    consumer_services: ['trust_engine', 'analytics'],
+    trust_sensitive: true,
+    required: ['document_id', 'worker_id', 'onboarding_case_id', 'document_type', 'verification_status'],
+  },
+  IBAN_CAPTURED: {
+    event_version: '1.0',
+    aggregate_type: 'ONBOARDING_CASE',
+    producer_service: 'onboarding',
+    consumer_services: ['analytics'],
+    trust_sensitive: false,
+    required: ['worker_id', 'onboarding_case_id', 'bank_confirmation_status'],
+  },
+  WPS_READINESS_GENERATED: {
+    event_version: '1.0',
+    aggregate_type: 'ONBOARDING_CASE',
+    producer_service: 'onboarding',
+    consumer_services: ['trust_engine', 'analytics'],
+    trust_sensitive: true,
+    required: ['artifact_id', 'worker_id', 'onboarding_case_id', 'structure_valid', 'line_count', 'approver_count'],
+  },
+  CONTRACT_DRAFTED: {
+    event_version: '1.0',
+    aggregate_type: 'ONBOARDING_CASE',
+    producer_service: 'onboarding',
+    consumer_services: ['analytics'],
+    trust_sensitive: false,
+    required: ['contract_id', 'worker_id', 'role_title', 'probation_days'],
+  },
+  CONTRACT_SIGNED: {
+    event_version: '1.0',
+    aggregate_type: 'ONBOARDING_CASE',
+    producer_service: 'onboarding',
+    consumer_services: ['trust_engine', 'analytics'],
+    trust_sensitive: true,
+    required: ['contract_id', 'onboarding_case_id', 'previous_status', 'next_status'],
+  },
+  CONTRACT_ACTIVATED: {
+    event_version: '1.0',
+    aggregate_type: 'ONBOARDING_CASE',
+    producer_service: 'onboarding',
+    consumer_services: ['trust_engine', 'analytics'],
+    trust_sensitive: true,
+    required: ['contract_id', 'onboarding_case_id', 'previous_status', 'next_status'],
+  },
+  CONSENT_ACKNOWLEDGED: {
+    event_version: '1.0',
+    aggregate_type: 'ONBOARDING_CASE',
+    producer_service: 'onboarding',
+    consumer_services: ['analytics'],
+    trust_sensitive: false,
+    required: ['consent_id', 'worker_id', 'consent_type', 'consent_version'],
+  },
+  PROBATION_PACK_GENERATED: {
+    event_version: '1.0',
+    aggregate_type: 'ONBOARDING_CASE',
+    producer_service: 'onboarding',
+    consumer_services: ['trust_engine', 'analytics'],
+    trust_sensitive: true,
+    required: ['probation_case_id', 'worker_id', 'onboarding_case_id', 'task_completion_count', 'manager_review_count'],
+  },
+  PROBATION_DECISION_RECORDED: {
+    event_version: '1.0',
+    aggregate_type: 'ONBOARDING_CASE',
+    producer_service: 'onboarding',
+    consumer_services: ['trust_engine', 'analytics'],
+    trust_sensitive: true,
+    required: ['probation_case_id', 'worker_id', 'onboarding_case_id', 'decision', 'reason_code', 'extension_days'],
+  },
+
+
   // ── Sprint B: Sovereign Recruiting (BRD V3) ─────────────────────────────────
 
   CANDIDATE_CREATED: {
