@@ -1,6 +1,82 @@
 'use strict';
 
 const CORE_EVENT_SCHEMAS = {
+
+  // ── Sprint B: Sovereign Recruiting (BRD V3) ─────────────────────────────────
+
+  CANDIDATE_CREATED: {
+    event_version: '1.0',
+    aggregate_type: 'CANDIDATE',
+    producer_service: 'recruiting',
+    consumer_services: ['analytics'],
+    trust_sensitive: false,
+    required: ['candidate_id', 'candidate_type', 'full_name', 'nationality_code', 'availability_status', 'preferred_role_family', 'skill_count'],
+  },
+  CANDIDATE_UPDATED: {
+    event_version: '1.0',
+    aggregate_type: 'CANDIDATE',
+    producer_service: 'recruiting',
+    consumer_services: ['analytics'],
+    trust_sensitive: false,
+    required: ['candidate_id', 'current_status', 'availability_status', 'skill_count'],
+  },
+  REQUISITION_CREATED: {
+    event_version: '1.0',
+    aggregate_type: 'REQUISITION',
+    producer_service: 'recruiting',
+    consumer_services: ['analytics'],
+    trust_sensitive: false,
+    required: ['requisition_id', 'establishment_id', 'title', 'role_family', 'contract_type', 'employment_type', 'internal_first', 'skill_count'],
+  },
+  REQUISITION_STATUS_CHANGED: {
+    event_version: '1.0',
+    aggregate_type: 'REQUISITION',
+    producer_service: 'recruiting',
+    consumer_services: ['analytics'],
+    trust_sensitive: false,
+    required: ['requisition_id', 'previous_status', 'next_status', 'role_family'],
+  },
+  CANDIDATE_MATCHED: {
+    event_version: '1.0',
+    aggregate_type: 'REQUISITION',
+    producer_service: 'recruiting',
+    consumer_services: ['analytics'],
+    trust_sensitive: false,
+    required: ['requisition_id', 'candidate_id', 'final_score', 'candidate_type', 'missing_skill_count'],
+  },
+  CANDIDATE_SHORTLISTED: {
+    event_version: '1.0',
+    aggregate_type: 'REQUISITION',
+    producer_service: 'recruiting',
+    consumer_services: ['trust_engine', 'analytics'],
+    trust_sensitive: true,
+    required: ['requisition_id', 'candidate_id', 'shortlist_reason', 'reviewer_outcome'],
+  },
+  NITAQAT_PREVIEW_GENERATED: {
+    event_version: '1.0',
+    aggregate_type: 'CANDIDATE',
+    producer_service: 'recruiting',
+    consumer_services: ['trust_engine', 'analytics'],
+    trust_sensitive: true,
+    required: ['candidate_id', 'requisition_id', 'movement_band', 'confidence_band', 'override_applied', 'driver_count'],
+  },
+  OCCUPATION_MATCH_VALIDATED: {
+    event_version: '1.0',
+    aggregate_type: 'CANDIDATE',
+    producer_service: 'recruiting',
+    consumer_services: ['trust_engine', 'analytics'],
+    trust_sensitive: true,
+    required: ['candidate_id', 'requisition_id', 'valid', 'issue_count', 'recommended_occupation_code'],
+  },
+  AI_MATCH_EXPLANATION_LOGGED: {
+    event_version: '1.0',
+    aggregate_type: 'REQUISITION',
+    producer_service: 'recruiting',
+    consumer_services: ['trust_engine', 'analytics'],
+    trust_sensitive: true,
+    required: ['requisition_id', 'candidate_id', 'final_score', 'explanation', 'reviewer_required'],
+  },
+
   PROJECT_CREATED: {
     event_version: '1.0',
     aggregate_type: 'PROJECT',
@@ -129,25 +205,20 @@ function getSchema(eventType) {
 
 function validatePayload(eventType, payload) {
   const schema = getSchema(eventType);
-  if (!schema) {
-    const err = new Error(`Unregistered event type: ${eventType}`);
-    err.name = 'EventSchemaRegistryError';
-    throw err;
-  }
-  for (const field of schema.required) {
-    if (!(field in payload)) {
-      const err = new Error(`Missing payload field for ${eventType}: ${field}`);
-      err.name = 'EventSchemaValidationError';
-      throw err;
+  if (!schema) return { valid: false, errors: [`Unknown event type: ${eventType}`] };
+  const errors = [];
+  for (const field of (schema.required || [])) {
+    if (payload[field] === undefined || payload[field] === null) {
+      errors.push(`Missing required field: ${field}`);
     }
   }
-  return true;
+  return { valid: errors.length === 0, errors };
 }
 
 function listSchemas() {
-  return Object.entries(CORE_EVENT_SCHEMAS).map(([eventType, schema]) => ({
-    event_type: eventType,
-    ...schema,
+  return Object.keys(CORE_EVENT_SCHEMAS).map(event_type => ({
+    event_type,
+    ...CORE_EVENT_SCHEMAS[event_type],
   }));
 }
 

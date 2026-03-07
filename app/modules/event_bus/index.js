@@ -31,9 +31,18 @@ function createEventPublisher({ eventStore }) {
   return {
     async publish(event) {
       const normalized = normalizeEnvelope(event);
-      validatePayload(normalized.event_type, normalized.payload);
 
       const schema = getSchema(normalized.event_type);
+      if (!schema) {
+        throw new Error(`Unregistered event type: ${normalized.event_type}`);
+      }
+
+      const validation = validatePayload(normalized.event_type, normalized.payload);
+      if (!validation.valid) {
+        const missing = (schema.required || []).find(f => normalized.payload[f] === undefined || normalized.payload[f] === null);
+        throw new Error(`Missing payload field for ${normalized.event_type}: ${missing}`);
+      }
+
       if (normalized.aggregate_type !== schema.aggregate_type) {
         throw new Error(`aggregate_type mismatch for ${normalized.event_type}`);
       }
