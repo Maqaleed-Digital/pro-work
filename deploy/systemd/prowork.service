@@ -1,0 +1,21 @@
+[Unit]
+Description=ProWork Application Service
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/prowork
+ExecStart=/usr/bin/node app/server.js
+EnvironmentFile=/opt/prowork/.env.production
+Restart=always
+RestartSec=5
+KillSignal=SIGINT
+TimeoutStopSec=30
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/prowork /var/lib/prowork /var/log/prowork
+
+[Install]
+WantedBy=multi-user.target
