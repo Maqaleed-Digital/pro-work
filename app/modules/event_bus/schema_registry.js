@@ -2,6 +2,80 @@
 
 const CORE_EVENT_SCHEMAS = {
 
+  WORKER_STATUS_CHANGED: {
+    event_version: '1.0',
+    aggregate_type: 'WORKER',
+    producer_service: 'lifecycle',
+    consumer_services: ['analytics'],
+    trust_sensitive: false,
+    required: ['worker_id', 'previous_status', 'next_status'],
+  },
+  LIFECYCLE_ALERT_RAISED: {
+    event_version: '1.0',
+    aggregate_type: 'WORKER',
+    producer_service: 'lifecycle',
+    consumer_services: ['analytics', 'notification_processor'],
+    trust_sensitive: false,
+    required: ['worker_id', 'alert_code', 'severity'],
+  },
+  ESB_CALCULATION_EXECUTED: {
+    event_version: '1.0',
+    aggregate_type: 'OFFBOARDING_CASE',
+    producer_service: 'lifecycle',
+    consumer_services: ['trust_engine', 'analytics'],
+    trust_sensitive: true,
+    required: ['offboarding_case_id', 'policy_version', 'months_of_service', 'last_base_wage', 'calculated_amount'],
+  },
+  OFFBOARDING_INITIATED: {
+    event_version: '1.0',
+    aggregate_type: 'OFFBOARDING_CASE',
+    producer_service: 'lifecycle',
+    consumer_services: ['analytics'],
+    trust_sensitive: false,
+    required: ['offboarding_case_id', 'worker_id', 'status'],
+  },
+  OFFBOARDING_CHECKLIST_ITEM_COMPLETED: {
+    event_version: '1.0',
+    aggregate_type: 'OFFBOARDING_CASE',
+    producer_service: 'lifecycle',
+    consumer_services: ['analytics'],
+    trust_sensitive: false,
+    required: ['item_id', 'offboarding_case_id', 'title'],
+  },
+  HANDOVER_RECORDED: {
+    event_version: '1.0',
+    aggregate_type: 'OFFBOARDING_CASE',
+    producer_service: 'lifecycle',
+    consumer_services: ['trust_engine', 'analytics'],
+    trust_sensitive: true,
+    required: ['handover_id', 'offboarding_case_id', 'worker_id', 'asset_type'],
+  },
+  FINAL_SETTLEMENT_CHECKLIST_COMPLETED: {
+    event_version: '1.0',
+    aggregate_type: 'OFFBOARDING_CASE',
+    producer_service: 'lifecycle',
+    consumer_services: ['trust_engine', 'analytics'],
+    trust_sensitive: true,
+    required: ['offboarding_case_id', 'checklist_status', 'approver_count'],
+  },
+  OFFBOARDING_EVIDENCE_PACK_GENERATED: {
+    event_version: '1.0',
+    aggregate_type: 'OFFBOARDING_CASE',
+    producer_service: 'lifecycle',
+    consumer_services: ['trust_engine', 'analytics'],
+    trust_sensitive: true,
+    required: ['offboarding_case_id', 'evidence_pack_id', 'handover_count'],
+  },
+  OFFBOARDING_COMPLETED: {
+    event_version: '1.0',
+    aggregate_type: 'OFFBOARDING_CASE',
+    producer_service: 'lifecycle',
+    consumer_services: ['trust_engine', 'analytics'],
+    trust_sensitive: true,
+    required: ['offboarding_case_id', 'worker_id', 'status'],
+  },
+
+
   // ── Sprint D: Sovereign Hiring ────────────────────────────────────────────────
 
   HIRING_CASE_OPENED: {
