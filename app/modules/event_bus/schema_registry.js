@@ -2,6 +2,82 @@
 
 const CORE_EVENT_SCHEMAS = {
 
+  // ── Sprint D: Sovereign Hiring ────────────────────────────────────────────────
+
+  COMPENSATION_PACKAGE_DRAFTED: {
+    event_version: '1.0',
+    aggregate_type: 'COMPENSATION_PACKAGE',
+    producer_service: 'hiring',
+    consumer_services: ['analytics'],
+    trust_sensitive: false,
+    required: ['package_id', 'requisition_id', 'candidate_id', 'base_salary', 'currency', 'allowance_count'],
+  },
+  COMPENSATION_PACKAGE_APPROVED: {
+    event_version: '1.0',
+    aggregate_type: 'COMPENSATION_PACKAGE',
+    producer_service: 'hiring',
+    consumer_services: ['trust_engine', 'analytics'],
+    trust_sensitive: true,
+    required: ['package_id', 'requisition_id', 'candidate_id', 'base_salary', 'currency', 'approved_by'],
+  },
+  HIRING_OFFER_CREATED: {
+    event_version: '1.0',
+    aggregate_type: 'HIRING_OFFER',
+    producer_service: 'hiring',
+    consumer_services: ['analytics'],
+    trust_sensitive: false,
+    required: ['offer_id', 'requisition_id', 'candidate_id', 'package_id'],
+  },
+  HIRING_OFFER_SENT: {
+    event_version: '1.0',
+    aggregate_type: 'HIRING_OFFER',
+    producer_service: 'hiring',
+    consumer_services: ['trust_engine', 'analytics'],
+    trust_sensitive: true,
+    required: ['offer_id', 'requisition_id', 'candidate_id', 'expiry_date', 'sent_by'],
+  },
+  HIRING_OFFER_WITHDRAWN: {
+    event_version: '1.0',
+    aggregate_type: 'HIRING_OFFER',
+    producer_service: 'hiring',
+    consumer_services: ['trust_engine', 'analytics'],
+    trust_sensitive: true,
+    required: ['offer_id', 'requisition_id', 'candidate_id', 'withdrawn_by', 'reason_code'],
+  },
+  HIRING_APPROVAL_REQUESTED: {
+    event_version: '1.0',
+    aggregate_type: 'HIRING_APPROVAL',
+    producer_service: 'hiring',
+    consumer_services: ['analytics'],
+    trust_sensitive: false,
+    required: ['approval_id', 'offer_id', 'requisition_id', 'requested_by', 'approver_id'],
+  },
+  HIRING_APPROVAL_RECORDED: {
+    event_version: '1.0',
+    aggregate_type: 'HIRING_APPROVAL',
+    producer_service: 'hiring',
+    consumer_services: ['trust_engine', 'analytics'],
+    trust_sensitive: true,
+    required: ['approval_id', 'offer_id', 'decision', 'approver_id'],
+  },
+  CANDIDATE_ACCEPTANCE_RECORDED: {
+    event_version: '1.0',
+    aggregate_type: 'HIRING_OFFER',
+    producer_service: 'hiring',
+    consumer_services: ['trust_engine', 'analytics'],
+    trust_sensitive: true,
+    required: ['acceptance_id', 'offer_id', 'candidate_id', 'response', 'responded_at'],
+  },
+  HIRING_DECISION_RECORDED: {
+    event_version: '1.0',
+    aggregate_type: 'HIRING_DECISION',
+    producer_service: 'hiring',
+    consumer_services: ['trust_engine', 'analytics'],
+    trust_sensitive: true,
+    required: ['decision_id', 'requisition_id', 'candidate_id', 'decision', 'decided_by'],
+  },
+
+
   // ── Sprint C: Sovereign Onboarding ───────────────────────────────────────────
 
   ONBOARDING_STARTED: {
