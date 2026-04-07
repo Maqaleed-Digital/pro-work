@@ -87,8 +87,9 @@ resource "google_compute_subnetwork" "connector_subnet" {
 }
 
 resource "google_vpc_access_connector" "serverless_connector" {
-  name   = "workcaptain-vpcconn"
-  region = var.region
+  name           = "workcaptain-vpcconn"
+  region         = var.region
+  max_throughput = 1000
   subnet {
     name = google_compute_subnetwork.connector_subnet.name
   }
