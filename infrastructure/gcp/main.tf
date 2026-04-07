@@ -81,6 +81,7 @@ resource "google_vpc_access_connector" "serverless_connector" {
 # CLOUD SQL
 # ─────────────────────────────────────────────────────────────────────────────
 resource "google_sql_database_instance" "postgres" {
+  depends_on          = [google_service_networking_connection.private_vpc_connection]
   name                = "workcaptain-pg"
   database_version    = "POSTGRES_16"
   region              = var.region
@@ -222,21 +223,33 @@ resource "google_service_account" "services" {
 resource "google_secret_manager_secret" "db_password" {
   secret_id = "db-password"
   replication {
-    auto {}
+    user_managed {
+      replicas {
+        location = var.region
+      }
+    }
   }
 }
 
 resource "google_secret_manager_secret" "redis_auth" {
   secret_id = "redis-auth"
   replication {
-    auto {}
+    user_managed {
+      replicas {
+        location = var.region
+      }
+    }
   }
 }
 
 resource "google_secret_manager_secret" "jwt_secret" {
   secret_id = "jwt-secret"
   replication {
-    auto {}
+    user_managed {
+      replicas {
+        location = var.region
+      }
+    }
   }
 }
 
@@ -406,3 +419,28 @@ resource "google_cloud_run_v2_service" "background_worker" {
     }
   }
 }
+
+
+resource "google_project_service" "servicenetworking" {
+  project            = var.project_id
+  service            = "servicenetworking.googleapis.com"
+  disable_on_destroy = false
+}
+
+
+resource "google_compute_global_address" "private_service_range" {
+  project       = var.project_id
+  name          = "workcaptain-psa-range"
+  purpose       = "VPC_PEERING"
+  address_type  = "INTERNAL"
+  prefix_length = 16
+  network       = google_compute_network.workcaptain_vpc.id
+}
+
+resource "google_service_networking_connection" "private_vpc_connection" {
+  network                 = google_compute_network.workcaptain_vpc.id
+  service                 = "servicenetworking.googleapis.com"
+  reserved_peering_ranges = [google_compute_global_address.private_service_range.name]
+  depends_on              = [google_project_service.servicenetworking]
+}
+

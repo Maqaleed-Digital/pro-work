@@ -32,6 +32,21 @@ RUN_TS="$(date -u +"%Y%m%dT%H%M%SZ")"
 RUN_DIR="$EVIDENCE_BASE/$RUN_TS"
 mkdir -p "$RUN_DIR"
 
+RUN_STATUS="FAIL"
+finalize_manifest() {
+  {
+    echo "RUN_DIR=$RUN_DIR"
+    echo "STATUS=$RUN_STATUS"
+    echo "PHASE=WORKCAPTAIN-PHASE-2-GCP-NONPROD-ACTIVATION"
+    echo "PROJECT_ID=$PROJECT_ID"
+    echo "REGION=$REGION"
+    echo "ENV=$ENV"
+    echo "STATE_BUCKET=$STATE_BUCKET"
+    echo "ARTIFACT_REGISTRY=$AR_REPO"
+  } > "$RUN_DIR/manifest.txt"
+}
+trap finalize_manifest EXIT
+
 {
   echo "PROJECT_ID=$PROJECT_ID"
   echo "REGION=$REGION"
@@ -66,6 +81,13 @@ echo "=== PROJECT CHECK ===" | tee "$RUN_DIR/project_check.txt"
 gcloud config get-value project | tee -a "$RUN_DIR/project_check.txt"
 gcloud projects describe "$PROJECT_ID" > "$RUN_DIR/project_describe.txt" 2>&1
 gcloud billing projects describe "$PROJECT_ID" > "$RUN_DIR/billing_describe.txt" 2>&1
+
+echo "=== REQUIRED SERVICES ===" | tee "$RUN_DIR/services_enable_status.txt"
+gcloud services enable \
+  servicenetworking.googleapis.com \
+  secretmanager.googleapis.com \
+  --project="$PROJECT_ID" > "$RUN_DIR/services_enable.txt" 2>&1
+echo "SERVICES_ENABLE_STATUS=PASS" | tee -a "$RUN_DIR/services_enable_status.txt"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # REMOTE STATE BUCKET BOOTSTRAP
@@ -139,6 +161,15 @@ BACKEND
   terraform validate
 ) > "$RUN_DIR/validate.txt" 2>&1
 
+if gcloud artifacts repositories describe "$AR_REPO" \
+  --project="$PROJECT_ID" \
+  --location="$REGION" >/dev/null 2>&1; then
+  (
+    cd "$TF_ROOT"
+    terraform import -input=false google_artifact_registry_repository.registry "projects/$PROJECT_ID/locations/$REGION/repositories/$AR_REPO"
+  ) > "$RUN_DIR/artifact_registry_import.txt" 2>&1 || true
+fi
+
 (
   cd "$TF_ROOT"
   terraform plan -input=false -var-file="env/dev/dev.tfvars" -out="workcaptain-dev.tfplan"
@@ -157,16 +188,7 @@ BACKEND
 # ─────────────────────────────────────────────────────────────────────────────
 # MANIFEST
 # ─────────────────────────────────────────────────────────────────────────────
-{
-  echo "RUN_DIR=$RUN_DIR"
-  echo "STATUS=PASS"
-  echo "PHASE=WORKCAPTAIN-PHASE-2-GCP-NONPROD-ACTIVATION"
-  echo "PROJECT_ID=$PROJECT_ID"
-  echo "REGION=$REGION"
-  echo "ENV=$ENV"
-  echo "STATE_BUCKET=$STATE_BUCKET"
-  echo "ARTIFACT_REGISTRY=$AR_REPO"
-} > "$RUN_DIR/manifest.txt"
+RUN_STATUS="PASS"
 
 echo "ACTIVATION_RUN_DIR=$RUN_DIR"
 echo "ACTIVATION_STATUS=PASS"
