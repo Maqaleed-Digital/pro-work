@@ -1,0 +1,2 @@
+bucket = "workcaptain-tfstate"
+prefix = "nonprod/dev"
