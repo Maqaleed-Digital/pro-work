@@ -94,7 +94,9 @@ resource "google_sql_database_instance" "postgres" {
       enabled                        = true
       point_in_time_recovery_enabled = true
       start_time                     = "02:00"
-      retained_backups               = 14
+      backup_retention_settings {
+        retained_backups = 14
+      }
     }
 
     ip_configuration {
@@ -219,17 +221,23 @@ resource "google_service_account" "services" {
 # ─────────────────────────────────────────────────────────────────────────────
 resource "google_secret_manager_secret" "db_password" {
   secret_id = "db-password"
-  replication { auto {} }
+  replication {
+    auto {}
+  }
 }
 
 resource "google_secret_manager_secret" "redis_auth" {
   secret_id = "redis-auth"
-  replication { auto {} }
+  replication {
+    auto {}
+  }
 }
 
 resource "google_secret_manager_secret" "jwt_secret" {
   secret_id = "jwt-secret"
-  replication { auto {} }
+  replication {
+    auto {}
+  }
 }
 
 # ─────────────────────────────────────────────────────────────────────────────

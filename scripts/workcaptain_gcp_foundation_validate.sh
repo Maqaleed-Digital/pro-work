@@ -100,12 +100,29 @@ VARS
 ) > "$RUN_DIR/fmt.txt" 2>&1
 
 # ─────────────────────────────────────────────────────────────────────────────
-# INIT — backend=false in local mode, normal init in dev mode
+# INIT — local mode swaps GCS backend for local state via override file;
+#        dev mode uses normal init against the real GCS backend
 # ─────────────────────────────────────────────────────────────────────────────
+LOCAL_BACKEND_OVERRIDE="$TF_ROOT/local_backend_override.tf"
+
+cleanup_override() {
+  rm -f "$LOCAL_BACKEND_OVERRIDE"
+}
+
 if [ "$MODE" = "local" ]; then
+  # Write override file that replaces the GCS backend with a local one.
+  # Terraform override files take precedence over the base config.
+  cat > "$LOCAL_BACKEND_OVERRIDE" <<'TFOVERRIDE'
+terraform {
+  backend "local" {
+    path = "/tmp/workcaptain-local-validation.tfstate"
+  }
+}
+TFOVERRIDE
+  trap cleanup_override EXIT
   (
     cd "$TF_ROOT"
-    terraform init -input=false -backend=false
+    terraform init -input=false -reconfigure
   ) > "$RUN_DIR/init.txt" 2>&1
 else
   (
