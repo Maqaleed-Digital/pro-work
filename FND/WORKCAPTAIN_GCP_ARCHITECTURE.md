@@ -60,8 +60,9 @@ Google Cloud is now the default deployment target for WorkCaptain.
 - Logs / metrics / traces: Cloud Logging + Cloud Monitoring
 - AI model access: Vertex AI
 - Identity / access boundary: IAM + service accounts + app RBAC
-- Edge / TLS: Global HTTPS Load Balancer + managed certificates
-- CDN / static acceleration: optional Cloud CDN for public assets
+- Edge / TLS: Global external Application Load Balancer + managed certificates (Phase 3+)
+- CDN / static acceleration: optional Cloud CDN for public assets (Phase 3+)
+- Phase 2 nonprod: Cloud Run default *.run.app endpoints (no load balancer required)
 
 ---
 
@@ -214,10 +215,16 @@ All platform services emit and consume events over Pub/Sub.
 
 ## 12. Regional Strategy
 
-| Region | Purpose |
-|---|---|
-| me-central1 (Doha) | KSA / GCC production (primary) |
-| europe-west1 (Belgium) | EU-based customers / DR |
+| Region | Purpose | Status |
+|---|---|---|
+| me-central2 (Dammam, KSA) | KSA-sovereign nonprod and production primary | ACTIVE — confirmed UP, Cloud Run supported, CNTXT-gated access |
+| me-central1 (Doha, Qatar) | Fallback if a required service is unavailable in me-central2 | FALLBACK only |
+| europe-west1 (Belgium) | EU-based customers / DR | Future |
+
+Rules:
+- me-central2 is the default for all deployments.
+- me-central1 is used only if a specific service proves unavailable in me-central2 after testing.
+- Any fallback to me-central1 must be documented as an exception with the service name and reason.
 
 Regional selection follows data residency requirements and customer SLA obligations.
 

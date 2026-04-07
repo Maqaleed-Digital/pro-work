@@ -102,16 +102,32 @@ This phase is complete only if:
 
 ---
 
-## 7. Next Step
+## 7. Explicit Out-of-Scope for This Phase
+
+The following are intentionally deferred:
+
+- Global external Application Load Balancer — deferred to Phase 3
+- Serverless NEG configuration — deferred to Phase 3
+- Custom domain and managed TLS certificate — deferred to Phase 3
+- Cloud Armor — deferred to Phase 3
+- CDN — deferred to Phase 3
+
+Services are accessible via Cloud Run default *.run.app endpoints only during this phase.
+
+---
+
+## 8. Next Step
 
 If this phase succeeds, proceed to:
 
 WORKCAPTAIN-PHASE-3-RUNTIME-HARDENING-AND-ACCESS-CONTROL
 
 That phase should cover:
+- Global external Application Load Balancer with serverless NEG
+- Custom domain, managed TLS certificate
 - IAM hardening
-- secret rotation posture
-- service exposure policy
-- auth-gated verification paths
-- observability dashboards
-- controlled public/private access model
+- Secret rotation posture
+- Service exposure policy
+- Auth-gated verification paths
+- Observability dashboards
+- Cloud Armor ingress policy
