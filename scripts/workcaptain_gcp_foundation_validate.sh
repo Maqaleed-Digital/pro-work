@@ -127,7 +127,7 @@ TFOVERRIDE
 else
   (
     cd "$TF_ROOT"
-    terraform init -input=false
+    terraform init -input=false -reconfigure
   ) > "$RUN_DIR/init.txt" 2>&1
 fi
 
