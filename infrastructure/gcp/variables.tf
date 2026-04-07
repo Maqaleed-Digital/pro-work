@@ -19,3 +19,28 @@ variable "db_tier" {
   type        = string
   default     = "db-g1-small"
 }
+
+variable "enable_load_balancer" {
+  type    = bool
+  default = false
+}
+
+variable "enable_cloud_armor" {
+  type    = bool
+  default = false
+}
+
+variable "restrict_public_access" {
+  type    = bool
+  default = false
+}
+
+variable "cloud_armor_policy_name" {
+  type    = string
+  default = "workcaptain-nonprod-baseline"
+}
+
+variable "lb_domain_name" {
+  type    = string
+  default = "nonprod.workcaptain.local"
+}

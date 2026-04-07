@@ -465,3 +465,25 @@ resource "google_service_networking_connection" "private_vpc_connection" {
   depends_on              = [google_project_service.servicenetworking]
 }
 
+resource "google_compute_security_policy" "workcaptain_nonprod_baseline" {
+  count = var.enable_cloud_armor ? 1 : 0
+
+  project = var.project_id
+  name    = var.cloud_armor_policy_name
+
+  rule {
+    action   = "allow"
+    priority = 2147483647
+    match {
+      versioned_expr = "SRC_IPS_V1"
+      config {
+        src_ip_ranges = ["*"]
+      }
+    }
+    description = "default allow baseline for nonprod"
+  }
+}
+
+output "cloud_armor_policy_name" {
+  value = var.enable_cloud_armor ? google_compute_security_policy.workcaptain_nonprod_baseline[0].name : null
+}
