@@ -44,3 +44,13 @@ variable "lb_domain_name" {
   type    = string
   default = "nonprod.workcaptain.local"
 }
+
+variable "internal_alpha_enabled" {
+  type    = bool
+  default = false
+}
+
+variable "real_runtime_cutover" {
+  type    = bool
+  default = false
+}

@@ -488,3 +488,11 @@ resource "google_compute_security_policy" "workcaptain_nonprod_baseline" {
 output "cloud_armor_policy_name" {
   value = var.enable_cloud_armor ? google_compute_security_policy.workcaptain_nonprod_baseline[0].name : null
 }
+
+output "internal_alpha_enabled" {
+  value = var.internal_alpha_enabled
+}
+
+output "real_runtime_cutover" {
+  value = var.real_runtime_cutover
+}
