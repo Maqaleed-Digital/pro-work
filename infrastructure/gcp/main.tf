@@ -73,11 +73,24 @@ resource "google_compute_subnetwork" "workcaptain_subnet" {
   }
 }
 
+resource "google_compute_subnetwork" "connector_subnet" {
+  name          = "workcaptain-connector"
+  ip_cidr_range = "10.10.1.0/28"
+  region        = var.region
+  network       = google_compute_network.workcaptain_vpc.id
+
+  log_config {
+    aggregation_interval = "INTERVAL_5_MIN"
+    flow_sampling        = 0.5
+    metadata             = "EXCLUDE_ALL_METADATA"
+  }
+}
+
 resource "google_vpc_access_connector" "serverless_connector" {
   name   = "workcaptain-vpcconn"
   region = var.region
   subnet {
-    name = google_compute_subnetwork.workcaptain_subnet.name
+    name = google_compute_subnetwork.connector_subnet.name
   }
   min_instances = 2
   max_instances = 10
