@@ -166,7 +166,7 @@ if gcloud artifacts repositories describe "$AR_REPO" \
   --location="$REGION" >/dev/null 2>&1; then
   (
     cd "$TF_ROOT"
-    terraform import -input=false google_artifact_registry_repository.registry "projects/$PROJECT_ID/locations/$REGION/repositories/$AR_REPO"
+    terraform import -input=false -var-file="env/dev/dev.tfvars" google_artifact_registry_repository.registry "projects/$PROJECT_ID/locations/$REGION/repositories/$AR_REPO"
   ) > "$RUN_DIR/artifact_registry_import.txt" 2>&1 || true
 fi
 

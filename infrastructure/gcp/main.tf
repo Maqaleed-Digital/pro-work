@@ -65,6 +65,12 @@ resource "google_compute_subnetwork" "workcaptain_subnet" {
   ip_cidr_range = "10.10.0.0/24"
   region        = var.region
   network       = google_compute_network.workcaptain_vpc.id
+
+  log_config {
+    aggregation_interval = "INTERVAL_5_SEC"
+    flow_sampling        = 0.5
+    metadata             = "INCLUDE_ALL_METADATA"
+  }
 }
 
 resource "google_vpc_access_connector" "serverless_connector" {
