@@ -273,6 +273,15 @@ resource "google_secret_manager_secret" "jwt_secret" {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
+# SECRET MANAGER IAM — api-service SA needs access to db-password
+# ─────────────────────────────────────────────────────────────────────────────
+resource "google_secret_manager_secret_iam_member" "api_service_db_password" {
+  secret_id = google_secret_manager_secret.db_password.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.services["api_service"].email}"
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
 # CLOUD RUN — api-service
 # ─────────────────────────────────────────────────────────────────────────────
 resource "google_cloud_run_v2_service" "api_service" {
@@ -302,15 +311,8 @@ resource "google_cloud_run_v2_service" "api_service" {
         value = var.env
       }
 
-      env {
-        name = "DB_PASSWORD"
-        value_source {
-          secret_key_ref {
-            secret  = google_secret_manager_secret.db_password.secret_id
-            version = "latest"
-          }
-        }
-      }
+      # DB_PASSWORD secret env omitted in nonprod placeholder — no secret version exists yet.
+      # Re-enable in Phase 3 once real secrets are provisioned.
 
       env {
         name  = "REDIS_HOST"
