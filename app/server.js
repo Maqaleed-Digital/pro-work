@@ -14,6 +14,7 @@ const SovereignRegistry    = require("./lib/sovereign_registry")
 const TenantJurisdiction   = require("./lib/tenant_jurisdiction")
 const EvidenceGovernance   = require("./lib/evidence_governance")
 const DisclosureLegalHold  = require("./lib/disclosure_legal_hold")
+const ExternalReviewGateway = require("./lib/external_review_gateway")
 const Scheduler      = require("./scheduler")
 const Analytics      = require("./analytics")
 const SchedulerJobs  = require("./wos/scheduler_jobs")
@@ -254,6 +255,67 @@ function requireLegalHoldClear(res, tenantId, correlationId) {
     return false
   }
   return true
+}
+
+// Phase 18: resolve external review session — fail closed on missing/expired/revoked/consumed/scope-mismatch/cross-tenant/jurisdiction
+function requireExternalReview(res, sessionId, requiredScope, requestTenantId, requestJurisdiction, correlationId) {
+  if (!sessionId) {
+    Logger.info("external.review.session.missing", { required_scope: requiredScope, correlation_id: correlationId })
+    fail(res, "EXTERNAL_REVIEW_SESSION_REQUIRED", "X-Review-Session-Id header required for external review access", 403)
+    return null
+  }
+  const sResult = ExternalReviewGateway.resolveReviewSession(sessionId)
+  Logger.info("external.review.session.resolved", {
+    review_session_id: sessionId, ok: sResult.ok,
+    reason: sResult.reason || "active", correlation_id: correlationId,
+  })
+  if (!sResult.ok) {
+    fail(res, "EXTERNAL_REVIEW_SESSION_DENIED", `external review session denied: ${sResult.reason}`, 403)
+    return null
+  }
+  const session = sResult.session
+  // reviewer type check
+  const rtCheck = ExternalReviewGateway.validateReviewerType(session.reviewer_type)
+  if (!rtCheck.ok) {
+    Logger.info("external.review.reviewer_type.denied", { reviewer_type: session.reviewer_type, correlation_id: correlationId })
+    fail(res, "EXTERNAL_REVIEW_REVIEWER_DENIED", `external review denied: ${rtCheck.reason}`, 403)
+    return null
+  }
+  // scope check
+  const scopeCheck = ExternalReviewGateway.validateReviewScope(session.review_scope, requiredScope)
+  Logger.info("external.review.scope.checked", {
+    session_scope: session.review_scope, required_scope: requiredScope,
+    ok: scopeCheck.ok, reason: scopeCheck.reason || "in_scope", correlation_id: correlationId,
+  })
+  if (!scopeCheck.ok) {
+    fail(res, "EXTERNAL_REVIEW_SCOPE_DENIED", `external review scope denied: ${scopeCheck.reason}`, 403)
+    return null
+  }
+  // cross-tenant check
+  if (requestTenantId) {
+    const ctCheck = ExternalReviewGateway.validateCrossTenant(session.tenant_id, requestTenantId)
+    Logger.info("external.review.tenant.checked", {
+      session_tenant: session.tenant_id, request_tenant: requestTenantId,
+      ok: ctCheck.ok, reason: ctCheck.reason || "same_tenant", correlation_id: correlationId,
+    })
+    if (!ctCheck.ok) {
+      fail(res, "EXTERNAL_REVIEW_CROSS_TENANT", `external review denied: ${ctCheck.reason}`, 403)
+      return null
+    }
+  }
+  // jurisdiction compatibility check
+  if (requestJurisdiction && session.jurisdiction_code) {
+    const jCheck = ExternalReviewGateway.validateJurisdictionCompatibility(requestJurisdiction, session.jurisdiction_code)
+    Logger.info("external.review.jurisdiction.checked", {
+      requested: requestJurisdiction, session_jurisdiction: session.jurisdiction_code,
+      ok: jCheck.ok, reason: jCheck.reason || "compatible", correlation_id: correlationId,
+    })
+    if (!jCheck.ok) {
+      fail(res, "EXTERNAL_REVIEW_JURISDICTION_DENIED", `external review denied: ${jCheck.reason}`, 403)
+      return null
+    }
+  }
+  return session
 }
 
 // Phase 12: authenticate and write audit deny record on auth failure for audited routes
@@ -1291,6 +1353,19 @@ function matchRoute(method, pathname) {
   // Phase 17: governed proof routes — disclosure + legal hold gated
   if (m === "POST" && pathname === "/api/ops/governed-disclosure") return { name: "ops.governed_disclosure", params: {} }
   if (m === "POST" && pathname === "/api/ops/governed-disposal")   return { name: "ops.governed_disposal",   params: {} }
+
+  // Phase 18: external review gateway admin routes
+  if (m === "GET"  && pathname === "/api/admin/external-review/export")   return { name: "external.review.export",          params: {} }
+  if (m === "POST" && pathname === "/api/admin/external-review/sessions")  return { name: "external.review.session.create",   params: {} }
+  const erRevokeMatch = pathname.match(/^\/api\/admin\/external-review\/sessions\/([^/]+)\/revoke$/)
+  if (m === "POST" && erRevokeMatch) {
+    return { name: "external.review.session.revoke", params: { sessionId: erRevokeMatch[1] } }
+  }
+  // Phase 18: external review proof routes (read-only, session-gated)
+  if (m === "GET"  && pathname === "/external-review/evidence")           return { name: "external.review.evidence",         params: {} }
+  if (m === "GET"  && pathname === "/external-review/audit")              return { name: "external.review.audit",            params: {} }
+  if (m === "GET"  && pathname === "/external-review/disclosure-export")  return { name: "external.review.disclosure_export",params: {} }
+  if (m === "POST" && pathname === "/external-review/mutation-test")      return { name: "external.review.mutation_test",    params: {} }
 
   return null
 }
@@ -3249,6 +3324,140 @@ if (route.name === "admin.scheduler.preview") {
         correlation_id:   correlationId,
         time:             nowIso(),
       }, 202)
+    }
+    // Phase 18: external review gateway admin routes ───────────────────────────
+    if (route.name === "external.review.export") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const artifact = ExternalReviewGateway.exportGateway()
+      Logger.info("external.review.gateway.exported", { actor: ap.principal.id, session_count: artifact.review_session_count, active_count: artifact.active_session_count, correlation_id: correlationId })
+      return ok(res, artifact)
+    }
+
+    if (route.name === "external.review.session.create") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const body = await readJson(req, res).catch(() => null)
+      if (!body) return fail(res, "INVALID_BODY", "JSON body required", 400)
+      const result = ExternalReviewGateway.createReviewSession({
+        reviewerType:    body.reviewer_type,
+        reviewScope:     body.review_scope,
+        tenantId:        body.tenant_id,
+        jurisdictionCode: body.jurisdiction_code,
+        disclosureBasis: body.disclosure_basis,
+        expiresAt:       body.expires_at,
+        evidenceVersion: body.evidence_version,
+      })
+      if (!result.ok) return fail(res, "EXTERNAL_REVIEW_SESSION_ERROR", `cannot create review session: ${result.reason}`, 422)
+      Logger.info("external.review.session.created", { actor: ap.principal.id, review_session_id: result.data.review_session_id, reviewer_type: result.data.reviewer_type, review_scope: result.data.review_scope, tenant_id: result.data.tenant_id, correlation_id: correlationId })
+      return ok(res, result.data, 201)
+    }
+
+    if (route.name === "external.review.session.revoke") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const result = ExternalReviewGateway.revokeReviewSession(route.params.sessionId)
+      if (!result.ok) return fail(res, "EXTERNAL_REVIEW_SESSION_ERROR", `cannot revoke session: ${result.reason}`, 422)
+      Logger.info("external.review.session.revoked", { actor: ap.principal.id, review_session_id: route.params.sessionId, correlation_id: correlationId })
+      return ok(res, result.data)
+    }
+
+    // Phase 18: external review proof routes — read-only, session-gated
+    if (route.name === "external.review.evidence") {
+      // GET /external-review/evidence — requires valid session with evidence.read scope
+      const sessionId        = req.headers["x-review-session-id"]  ? String(req.headers["x-review-session-id"]).trim()  : null
+      const requestTenantId  = req.headers["x-tenant-id"]          ? String(req.headers["x-tenant-id"]).trim()          : null
+      const requestJurisdiction = req.headers["x-jurisdiction-code"] ? String(req.headers["x-jurisdiction-code"]).trim() : null
+      const session = requireExternalReview(res, sessionId, ExternalReviewGateway.REVIEW_SCOPES.EVIDENCE_READ, requestTenantId, requestJurisdiction, correlationId)
+      if (!session) return
+      Logger.info("external.review.evidence.accessed", { review_session_id: sessionId, reviewer_type: session.reviewer_type, review_scope: session.review_scope, tenant_id: session.tenant_id, jurisdiction_code: session.jurisdiction_code, disclosure_basis: session.disclosure_basis, correlation_id: correlationId })
+      return ok(res, {
+        phase:              "phase-18",
+        action:             "external_review_evidence",
+        result:             "allowed",
+        reviewer_type:      session.reviewer_type,
+        review_scope:       session.review_scope,
+        review_session_id:  sessionId,
+        tenant_id:          session.tenant_id,
+        jurisdiction_code:  session.jurisdiction_code,
+        disclosure_basis:   session.disclosure_basis,
+        correlation_id:     correlationId,
+        time:               nowIso(),
+      })
+    }
+
+    if (route.name === "external.review.audit") {
+      // GET /external-review/audit — requires valid session with audit.read scope
+      const sessionId        = req.headers["x-review-session-id"]  ? String(req.headers["x-review-session-id"]).trim()  : null
+      const requestTenantId  = req.headers["x-tenant-id"]          ? String(req.headers["x-tenant-id"]).trim()          : null
+      const requestJurisdiction = req.headers["x-jurisdiction-code"] ? String(req.headers["x-jurisdiction-code"]).trim() : null
+      const session = requireExternalReview(res, sessionId, ExternalReviewGateway.REVIEW_SCOPES.AUDIT_READ, requestTenantId, requestJurisdiction, correlationId)
+      if (!session) return
+      Logger.info("external.review.audit.accessed", { review_session_id: sessionId, reviewer_type: session.reviewer_type, review_scope: session.review_scope, tenant_id: session.tenant_id, jurisdiction_code: session.jurisdiction_code, disclosure_basis: session.disclosure_basis, correlation_id: correlationId })
+      return ok(res, {
+        phase:             "phase-18",
+        action:            "external_review_audit",
+        result:            "allowed",
+        reviewer_type:     session.reviewer_type,
+        review_scope:      session.review_scope,
+        review_session_id: sessionId,
+        tenant_id:         session.tenant_id,
+        jurisdiction_code: session.jurisdiction_code,
+        disclosure_basis:  session.disclosure_basis,
+        correlation_id:    correlationId,
+        time:              nowIso(),
+      })
+    }
+
+    if (route.name === "external.review.disclosure_export") {
+      // GET /external-review/disclosure-export — requires valid session with disclosure.export.read scope
+      // Also: disclosure basis must be set on the session; active legal hold blocks export
+      const sessionId        = req.headers["x-review-session-id"]  ? String(req.headers["x-review-session-id"]).trim()  : null
+      const requestTenantId  = req.headers["x-tenant-id"]          ? String(req.headers["x-tenant-id"]).trim()          : null
+      const requestJurisdiction = req.headers["x-jurisdiction-code"] ? String(req.headers["x-jurisdiction-code"]).trim() : null
+      const session = requireExternalReview(res, sessionId, ExternalReviewGateway.REVIEW_SCOPES.DISCLOSURE_EXPORT_READ, requestTenantId, requestJurisdiction, correlationId)
+      if (!session) return
+      // Disclosure basis enforcement — session must carry a valid disclosure basis for export scope
+      if (!session.disclosure_basis) {
+        Logger.info("external.review.disclosure.missing_basis", { review_session_id: sessionId, correlation_id: correlationId })
+        return fail(res, "EXTERNAL_REVIEW_DISCLOSURE_REQUIRED", "review session disclosure_basis required for disclosure export", 403)
+      }
+      const dbCheck = DisclosureLegalHold.resolveDisclosureBasis(session.disclosure_basis)
+      Logger.info("external.review.disclosure.resolved", { disclosure_basis: session.disclosure_basis, ok: dbCheck.ok, reason: dbCheck.reason || "active", correlation_id: correlationId })
+      if (!dbCheck.ok) {
+        return fail(res, "EXTERNAL_REVIEW_DISCLOSURE_DENIED", `disclosure basis denied: ${dbCheck.reason}`, 403)
+      }
+      // Legal hold enforcement — active hold blocks disclosure export
+      const effectiveTenant = requestTenantId || session.tenant_id
+      const holdActive = DisclosureLegalHold.hasActiveLegalHold(effectiveTenant)
+      Logger.info("external.review.legal_hold.checked", { tenant_id: effectiveTenant, active_hold: holdActive, correlation_id: correlationId })
+      if (holdActive) {
+        return fail(res, "EXTERNAL_REVIEW_LEGAL_HOLD_ACTIVE", "active legal hold blocks external disclosure export", 403)
+      }
+      Logger.info("external.review.disclosure_export.accessed", { review_session_id: sessionId, reviewer_type: session.reviewer_type, review_scope: session.review_scope, tenant_id: session.tenant_id, disclosure_basis: session.disclosure_basis, jurisdiction_code: session.jurisdiction_code, correlation_id: correlationId })
+      return ok(res, {
+        phase:             "phase-18",
+        action:            "external_review_disclosure_export",
+        result:            "allowed",
+        reviewer_type:     session.reviewer_type,
+        review_scope:      session.review_scope,
+        review_session_id: sessionId,
+        tenant_id:         session.tenant_id,
+        jurisdiction_code: session.jurisdiction_code,
+        disclosure_basis:  session.disclosure_basis,
+        correlation_id:    correlationId,
+        time:              nowIso(),
+      })
+    }
+
+    if (route.name === "external.review.mutation_test") {
+      // POST /external-review/mutation-test — always denied (mutation through external gateway is disallowed)
+      const sessionId = req.headers["x-review-session-id"] ? String(req.headers["x-review-session-id"]).trim() : null
+      Logger.info("external.review.mutation.denied", { review_session_id: sessionId || null, correlation_id: correlationId })
+      return fail(res, "EXTERNAL_REVIEW_MUTATION_DENIED", "mutation operations are not permitted through the external review gateway", 403)
     }
     // ─────────────────────────────────────────────────────────────────────────
 
