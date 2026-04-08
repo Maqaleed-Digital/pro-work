@@ -16,6 +16,7 @@ const EvidenceGovernance   = require("./lib/evidence_governance")
 const DisclosureLegalHold  = require("./lib/disclosure_legal_hold")
 const ExternalReviewGateway  = require("./lib/external_review_gateway")
 const IncidentRegistry       = require("./lib/incident_registry")
+const ContinuityDR           = require("./lib/continuity_dr")
 const Scheduler      = require("./scheduler")
 const Analytics      = require("./analytics")
 const SchedulerJobs  = require("./wos/scheduler_jobs")
@@ -332,6 +333,54 @@ function requireContainmentClear(res, thresholdSeverity, correlationId) {
     return false
   }
   return true
+}
+
+// Phase 20: continuity mode enforcement — fail closed if mode is missing, unknown, or restricted
+function requireContinuityGovernance(res, declaredMode, correlationId) {
+  if (!declaredMode) {
+    Logger.info("continuity.governance.missing_mode", { correlation_id: correlationId })
+    fail(res, "CONTINUITY_MODE_REQUIRED", "X-Continuity-Mode header required for governed continuity path", 403)
+    return null
+  }
+  const mCheck = ContinuityDR.validateContinuityMode(declaredMode)
+  Logger.info("continuity.governance.resolved", {
+    continuity_mode: declaredMode, ok: mCheck.ok,
+    reason: mCheck.reason || "known_mode", correlation_id: correlationId,
+  })
+  if (!mCheck.ok) {
+    fail(res, "CONTINUITY_MODE_DENIED", `continuity mode check failed: ${mCheck.reason}`, 403)
+    return null
+  }
+  if (ContinuityDR.isRestrictedContinuityMode(mCheck.continuity_mode)) {
+    Logger.info("continuity.governance.restricted", { continuity_mode: mCheck.continuity_mode, correlation_id: correlationId })
+    fail(res, "CONTINUITY_MODE_RESTRICTED", `continuity mode "${mCheck.continuity_mode}" restricts this governed path`, 403)
+    return null
+  }
+  return mCheck
+}
+
+// Phase 20: DR recovery state enforcement — fail closed if state is missing, unknown, or restricts path
+function requireRecoveryStateGovernance(res, declaredState, correlationId) {
+  if (!declaredState) {
+    Logger.info("dr.governance.missing_state", { correlation_id: correlationId })
+    fail(res, "RECOVERY_STATE_REQUIRED", "X-Recovery-State header required for governed continuity path", 403)
+    return null
+  }
+  const sCheck = ContinuityDR.validateRecoveryState(declaredState)
+  Logger.info("dr.governance.resolved", {
+    recovery_state: declaredState, ok: sCheck.ok,
+    reason: sCheck.reason || "known_state", correlation_id: correlationId,
+  })
+  if (!sCheck.ok) {
+    fail(res, "RECOVERY_STATE_DENIED", `recovery state check failed: ${sCheck.reason}`, 403)
+    return null
+  }
+  if (ContinuityDR.isRestrictedRecoveryState(sCheck.recovery_state)) {
+    Logger.info("dr.governance.restricted", { recovery_state: sCheck.recovery_state, correlation_id: correlationId })
+    fail(res, "RECOVERY_STATE_RESTRICTED", `recovery state "${sCheck.recovery_state}" restricts this governed path`, 403)
+    return null
+  }
+  return sCheck
 }
 
 // Phase 12: authenticate and write audit deny record on auth failure for audited routes
@@ -1392,6 +1441,14 @@ function matchRoute(method, pathname) {
   }
   // Phase 19: containment-gated proof route
   if (m === "POST" && pathname === "/api/ops/governed-containment-exec")  return { name: "ops.governed_containment_exec", params: {} }
+
+  // Phase 20: continuity/DR governance admin routes
+  if (m === "GET"  && pathname === "/api/admin/continuity-governance")         return { name: "continuity.context",       params: {} }
+  if (m === "GET"  && pathname === "/api/admin/continuity-governance/export")  return { name: "continuity.export",        params: {} }
+  if (m === "POST" && pathname === "/api/admin/continuity-governance/mode")    return { name: "continuity.set_mode",      params: {} }
+  if (m === "POST" && pathname === "/api/admin/continuity-governance/recovery-state") return { name: "continuity.set_recovery_state", params: {} }
+  // Phase 20: continuity/DR-gated proof route
+  if (m === "POST" && pathname === "/api/ops/governed-continuity-exec")  return { name: "ops.governed_continuity_exec", params: {} }
 
   return null
 }
@@ -3551,6 +3608,81 @@ if (route.name === "admin.scheduler.preview") {
         containment_active:       IncidentRegistry.getActiveIncidents().length > 0,
         correlation_id:           correlationId,
         time:                     nowIso(),
+      }, 202)
+    }
+    // Phase 20: continuity/DR governance admin routes ─────────────────────────
+    if (route.name === "continuity.context") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const state = ContinuityDR.getGovernanceState()
+      Logger.info("continuity.governance.listed", { actor: ap.principal.id, continuity_mode: state.continuity_mode, recovery_state: state.recovery_state, correlation_id: correlationId })
+      return ok(res, { continuity_dr_version: ContinuityDR.CONTINUITY_DR_VERSION, ...state })
+    }
+
+    if (route.name === "continuity.export") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const artifact = ContinuityDR.exportGovernance()
+      Logger.info("continuity.governance.exported", { actor: ap.principal.id, continuity_mode: artifact.continuity_mode, recovery_state: artifact.recovery_state, correlation_id: correlationId })
+      return ok(res, artifact)
+    }
+
+    if (route.name === "continuity.set_mode") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const body = await readJson(req, res).catch(() => null)
+      if (!body) return fail(res, "INVALID_BODY", "JSON body required", 400)
+      const result = ContinuityDR.setContinuityMode(body.continuity_mode, ap.principal.id)
+      if (!result.ok) return fail(res, "CONTINUITY_ERROR", `cannot set continuity mode: ${result.reason}`, 422)
+      Logger.info("continuity.mode.set", { actor: ap.principal.id, previous_mode: result.previous_mode, current_mode: result.current_mode, correlation_id: correlationId })
+      return ok(res, result)
+    }
+
+    if (route.name === "continuity.set_recovery_state") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const body = await readJson(req, res).catch(() => null)
+      if (!body) return fail(res, "INVALID_BODY", "JSON body required", 400)
+      const result = ContinuityDR.setRecoveryState(body.recovery_state, ap.principal.id)
+      if (!result.ok) return fail(res, "CONTINUITY_ERROR", `cannot set recovery state: ${result.reason}`, 422)
+      Logger.info("continuity.recovery_state.set", { actor: ap.principal.id, previous_state: result.previous_state, current_state: result.current_state, correlation_id: correlationId })
+      return ok(res, result)
+    }
+
+    // Phase 20: governed continuity-exec proof route — continuity + DR gated
+    if (route.name === "ops.governed_continuity_exec") {
+      const _auditCtx = { correlation_id: correlationId, request_id: requestId, route: route.name, method: req.method, decision_type: AuthzAudit.DECISION_TYPES.OPS_EXECUTE, perm: AdminPerms.PERMS.OPS_EXECUTE }
+      const ap = authenticateAndAudit(req, _auditCtx)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_EXECUTE, _auditCtx)) return
+      // Phase 19: incident containment has precedence
+      if (!requireContainmentClear(res, IncidentRegistry.CONTAINMENT_THRESHOLDS.BLOCK_PRIVILEGED_EXECUTION, correlationId)) return
+      // Phase 20: continuity mode check
+      const declaredMode  = req.headers["x-continuity-mode"]  ? String(req.headers["x-continuity-mode"]).trim()  : null
+      const declaredState = req.headers["x-recovery-state"]   ? String(req.headers["x-recovery-state"]).trim()   : null
+      const mResult = requireContinuityGovernance(res, declaredMode, correlationId)
+      if (!mResult) return
+      const sResult = requireRecoveryStateGovernance(res, declaredState, correlationId)
+      if (!sResult) return
+      Logger.info("governed.continuity_exec.accepted", {
+        actor: ap.principal.id, role: ap.principal.role,
+        continuity_mode: mResult.continuity_mode, recovery_state: sResult.recovery_state,
+        correlation_id: correlationId,
+      })
+      return ok(res, {
+        phase:            "phase-20",
+        permission:       AdminPerms.PERMS.OPS_EXECUTE,
+        actor:            { id: ap.principal.id, role: ap.principal.role },
+        action:           "governed_continuity_exec",
+        result:           "accepted",
+        continuity_mode:  mResult.continuity_mode,
+        recovery_state:   sResult.recovery_state,
+        correlation_id:   correlationId,
+        time:             nowIso(),
       }, 202)
     }
     // ─────────────────────────────────────────────────────────────────────────
