@@ -7,6 +7,7 @@ const path = require("path")
 const fs = require("fs")
 const Admin = require("./lib/admin")
 const AdminPerms = require("./lib/admin_permissions")
+const Logger = require("./lib/logging/logger")
 const Scheduler      = require("./scheduler")
 const Analytics      = require("./analytics")
 const SchedulerJobs  = require("./wos/scheduler_jobs")
@@ -81,7 +82,14 @@ function failFromAdmin(res, adminErr) {
 
 
 function requireAdminPerm(res, principal, perm) {
-  if (AdminPerms.hasPerm(principal, perm)) return true
+  const decision = AdminPerms.checkPerm(principal, perm)
+  Logger.info("permission.decision", {
+    actor:      decision.actor,
+    role:       decision.role,
+    permission: decision.permission,
+    decision:   decision.decision,
+  })
+  if (decision.allowed) return true
   return failFromAdmin(res, AdminPerms.deny(perm))
 }
 
@@ -1038,6 +1046,12 @@ function matchRoute(method, pathname) {
   if (m === "GET"  && pathname === "/api/admin/analytics/snapshots") return { name: "admin.analytics.snapshots", params: {} }
   const analyticsIdMatch = pathname.match(/^\/api\/admin\/analytics\/([^/]+)$/)
   if (m === "GET"  && analyticsIdMatch) return { name: "admin.analytics.tenant", params: { id: analyticsIdMatch[1] } }
+
+  // Phase 11: permission-bound operational control routes
+  if (m === "GET"  && pathname === "/api/ops/status")   return { name: "ops.status",   params: {} }
+  if (m === "POST" && pathname === "/api/ops/execute")  return { name: "ops.execute",  params: {} }
+  if (m === "POST" && pathname === "/api/ops/retry")    return { name: "ops.retry",    params: {} }
+  if (m === "POST" && pathname === "/api/ops/override") return { name: "ops.override", params: {} }
 
   return null
 }
@@ -2356,6 +2370,70 @@ if (route.name === "admin.scheduler.preview") {
       if (!requireAdminPerm(res, ap.principal, "admin:workers:read")) return
       const snapshots = Analytics.loadSnapshots()
       return ok(res, { count: snapshots.length, snapshots })
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // Phase 11: permission-bound operational control handlers ─────────────────
+    // These are non-destructive governed validation routes.
+    // Each action requires explicit permission beyond route-level auth.
+
+    if (route.name === "ops.status") {
+      // ops.read (ops:status:read) — superadmin and ops
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_STATUS_READ)) return
+      return ok(res, {
+        phase:        "phase-11",
+        permission:   AdminPerms.PERMS.OPS_STATUS_READ,
+        actor:        { id: ap.principal.id, role: ap.principal.role },
+        status:       "operational",
+        time:         nowIso(),
+      })
+    }
+
+    if (route.name === "ops.execute") {
+      // ops.execute — superadmin and ops; auditor denied
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_EXECUTE)) return
+      return ok(res, {
+        phase:      "phase-11",
+        permission: AdminPerms.PERMS.OPS_EXECUTE,
+        actor:      { id: ap.principal.id, role: ap.principal.role },
+        action:     "execute",
+        result:     "accepted",
+        time:       nowIso(),
+      }, 202)
+    }
+
+    if (route.name === "ops.retry") {
+      // ops.retry — superadmin and ops; auditor denied
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_RETRY)) return
+      return ok(res, {
+        phase:      "phase-11",
+        permission: AdminPerms.PERMS.OPS_RETRY,
+        actor:      { id: ap.principal.id, role: ap.principal.role },
+        action:     "retry",
+        result:     "accepted",
+        time:       nowIso(),
+      }, 202)
+    }
+
+    if (route.name === "ops.override") {
+      // ops.override — superadmin only; ops and auditor denied
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      return ok(res, {
+        phase:      "phase-11",
+        permission: AdminPerms.PERMS.OPS_OVERRIDE,
+        actor:      { id: ap.principal.id, role: ap.principal.role },
+        action:     "override",
+        result:     "accepted",
+        time:       nowIso(),
+      }, 202)
     }
     // ─────────────────────────────────────────────────────────────────────────
 
