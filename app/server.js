@@ -7,7 +7,8 @@ const path = require("path")
 const fs = require("fs")
 const Admin = require("./lib/admin")
 const AdminPerms = require("./lib/admin_permissions")
-const Logger = require("./lib/logging/logger")
+const Logger      = require("./lib/logging/logger")
+const AuthzAudit  = require("./lib/authz_audit")
 const Scheduler      = require("./scheduler")
 const Analytics      = require("./analytics")
 const SchedulerJobs  = require("./wos/scheduler_jobs")
@@ -81,16 +82,57 @@ function failFromAdmin(res, adminErr) {
 }
 
 
-function requireAdminPerm(res, principal, perm) {
+// Phase 12: audit context shape = { correlation_id, request_id, route, method, decision_type }
+function requireAdminPerm(res, principal, perm, auditCtx) {
   const decision = AdminPerms.checkPerm(principal, perm)
   Logger.info("permission.decision", {
-    actor:      decision.actor,
-    role:       decision.role,
-    permission: decision.permission,
-    decision:   decision.decision,
+    actor:          decision.actor,
+    role:           decision.role,
+    permission:     decision.permission,
+    decision:       decision.decision,
+    correlation_id: auditCtx ? auditCtx.correlation_id : undefined,
+    request_id:     auditCtx ? auditCtx.request_id     : undefined,
   })
+  // Phase 12: append immutable audit record for captured privileged decisions
+  if (auditCtx) {
+    const outcome = decision.allowed ? AuthzAudit.OUTCOMES.ALLOW : AuthzAudit.OUTCOMES.DENY
+    AuthzAudit.appendRecord(AuthzAudit.createRecord({
+      correlation_id:      auditCtx.correlation_id,
+      request_id:          auditCtx.request_id,
+      route:               auditCtx.route   || "(unknown)",
+      method:              auditCtx.method  || "(unknown)",
+      actor_id:            decision.actor,
+      resolved_role:       decision.role,
+      relevant_permission: perm,
+      decision_type:       auditCtx.decision_type || (decision.allowed ? AuthzAudit.DECISION_TYPES.PERM_ALLOWED : AuthzAudit.DECISION_TYPES.PERM_DENIED),
+      decision_outcome:    outcome,
+      status_code:         decision.allowed ? 200 : 403,
+      reason_code:         decision.allowed ? "permission_granted" : `missing_permission:${perm}`,
+    }))
+  }
   if (decision.allowed) return true
   return failFromAdmin(res, AdminPerms.deny(perm))
+}
+
+// Phase 12: authenticate and write audit deny record on auth failure for audited routes
+function authenticateAndAudit(req, auditCtx) {
+  const ap = Admin.authenticate(req)
+  if (!ap.ok && auditCtx) {
+    AuthzAudit.appendRecord(AuthzAudit.createRecord({
+      correlation_id:      auditCtx.correlation_id,
+      request_id:          auditCtx.request_id,
+      route:               auditCtx.route  || "(unknown)",
+      method:              auditCtx.method || "(unknown)",
+      actor_id:            "(unauthenticated)",
+      resolved_role:       "(none)",
+      relevant_permission: auditCtx.perm  || "(none)",
+      decision_type:       AuthzAudit.DECISION_TYPES.PERM_DENIED,
+      decision_outcome:    AuthzAudit.OUTCOMES.DENY,
+      status_code:         401,
+      reason_code:         "authentication_failed",
+    }))
+  }
+  return ap
 }
 
 // S30: tenant-scoped principal access check
@@ -1263,12 +1305,18 @@ function wosSchedulerCtlSnapshot() {
 }
 
 const server = http.createServer(async (req, res) => {
+  // Phase 12: propagate or generate correlation/request IDs at request boundary
+  const correlationId = String(req.headers["x-correlation-id"] || AuthzAudit.generateCorrelationId())
+  const requestId     = String(req.headers["x-request-id"]     || AuthzAudit.generateRequestId())
+
   try {
     const url = new URL(req.url, `http://${req.headers.host || HOST}`)
     const pathname = url.pathname
 
     // S35: security headers + CORS on every response
     setSecureHeaders(res)
+    res.setHeader("X-Correlation-Id", correlationId)
+    res.setHeader("X-Request-Id",     requestId)
     if (!applyCors(req, res)) return
     if (req.method === "OPTIONS") { res.writeHead(204); return res.end() }
 
@@ -1584,9 +1632,10 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (route.name === "admin.stats") {
-      const ap = Admin.authenticate(req)
+      const _auditCtx = { correlation_id: correlationId, request_id: requestId, route: route.name, method: req.method, decision_type: AuthzAudit.DECISION_TYPES.ADMIN_READ, perm: "admin:stats:read" }
+      const ap = authenticateAndAudit(req, _auditCtx)
       if (!ap.ok) return failFromAdmin(res, ap)
-      if (!requireAdminPerm(res, ap.principal, "admin:stats:read")) return
+      if (!requireAdminPerm(res, ap.principal, "admin:stats:read", _auditCtx)) return
       // S24-C-RBAC
       const auth = ap  // S24-C: authenticated by guard above
       return ok(res, { ...bootMeta(), admin: { id: auth.principal.id, name: auth.principal.name, role: auth.principal.role }, ...adminStatsSnapshot(tenantId) }, 200)
@@ -1611,9 +1660,10 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (route.name === "admin.governance") {
-      const ap = Admin.authenticate(req)
+      const _auditCtx = { correlation_id: correlationId, request_id: requestId, route: route.name, method: req.method, decision_type: AuthzAudit.DECISION_TYPES.ADMIN_READ, perm: "admin:governance:read" }
+      const ap = authenticateAndAudit(req, _auditCtx)
       if (!ap.ok) return failFromAdmin(res, ap)
-      if (!requireAdminPerm(res, ap.principal, "admin:governance:read")) return
+      if (!requireAdminPerm(res, ap.principal, "admin:governance:read", _auditCtx)) return
       // S24-C-RBAC
       const auth = ap  // S24-C: authenticated by guard above
       return ok(res, { ...bootMeta(), admin: { id: auth.principal.id, name: auth.principal.name, role: auth.principal.role }, ...adminGovernanceSnapshot() }, 200)
@@ -2378,61 +2428,69 @@ if (route.name === "admin.scheduler.preview") {
     // Each action requires explicit permission beyond route-level auth.
 
     if (route.name === "ops.status") {
-      // ops.read (ops:status:read) — superadmin and ops
-      const ap = Admin.authenticate(req)
+      // ops.read — superadmin and ops; Phase 12 audited
+      const _auditCtx = { correlation_id: correlationId, request_id: requestId, route: route.name, method: req.method, decision_type: AuthzAudit.DECISION_TYPES.OPS_READ, perm: AdminPerms.PERMS.OPS_STATUS_READ }
+      const ap = authenticateAndAudit(req, _auditCtx)
       if (!ap.ok) return failFromAdmin(res, ap)
-      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_STATUS_READ)) return
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_STATUS_READ, _auditCtx)) return
       return ok(res, {
-        phase:        "phase-11",
+        phase:        "phase-12",
         permission:   AdminPerms.PERMS.OPS_STATUS_READ,
         actor:        { id: ap.principal.id, role: ap.principal.role },
         status:       "operational",
+        correlation_id: correlationId,
         time:         nowIso(),
       })
     }
 
     if (route.name === "ops.execute") {
-      // ops.execute — superadmin and ops; auditor denied
-      const ap = Admin.authenticate(req)
+      // ops.execute — superadmin and ops; auditor denied; Phase 12 audited
+      const _auditCtx = { correlation_id: correlationId, request_id: requestId, route: route.name, method: req.method, decision_type: AuthzAudit.DECISION_TYPES.OPS_EXECUTE, perm: AdminPerms.PERMS.OPS_EXECUTE }
+      const ap = authenticateAndAudit(req, _auditCtx)
       if (!ap.ok) return failFromAdmin(res, ap)
-      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_EXECUTE)) return
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_EXECUTE, _auditCtx)) return
       return ok(res, {
-        phase:      "phase-11",
-        permission: AdminPerms.PERMS.OPS_EXECUTE,
-        actor:      { id: ap.principal.id, role: ap.principal.role },
-        action:     "execute",
-        result:     "accepted",
-        time:       nowIso(),
+        phase:          "phase-12",
+        permission:     AdminPerms.PERMS.OPS_EXECUTE,
+        actor:          { id: ap.principal.id, role: ap.principal.role },
+        action:         "execute",
+        result:         "accepted",
+        correlation_id: correlationId,
+        time:           nowIso(),
       }, 202)
     }
 
     if (route.name === "ops.retry") {
-      // ops.retry — superadmin and ops; auditor denied
-      const ap = Admin.authenticate(req)
+      // ops.retry — superadmin and ops; auditor denied; Phase 12 audited
+      const _auditCtx = { correlation_id: correlationId, request_id: requestId, route: route.name, method: req.method, decision_type: AuthzAudit.DECISION_TYPES.OPS_RETRY, perm: AdminPerms.PERMS.OPS_RETRY }
+      const ap = authenticateAndAudit(req, _auditCtx)
       if (!ap.ok) return failFromAdmin(res, ap)
-      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_RETRY)) return
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_RETRY, _auditCtx)) return
       return ok(res, {
-        phase:      "phase-11",
-        permission: AdminPerms.PERMS.OPS_RETRY,
-        actor:      { id: ap.principal.id, role: ap.principal.role },
-        action:     "retry",
-        result:     "accepted",
-        time:       nowIso(),
+        phase:          "phase-12",
+        permission:     AdminPerms.PERMS.OPS_RETRY,
+        actor:          { id: ap.principal.id, role: ap.principal.role },
+        action:         "retry",
+        result:         "accepted",
+        correlation_id: correlationId,
+        time:           nowIso(),
       }, 202)
     }
 
     if (route.name === "ops.override") {
-      // ops.override — superadmin only; ops and auditor denied
-      const ap = Admin.authenticate(req)
+      // ops.override — superadmin only; ops and auditor denied; Phase 12 audited
+      const _auditCtx = { correlation_id: correlationId, request_id: requestId, route: route.name, method: req.method, decision_type: AuthzAudit.DECISION_TYPES.OPS_OVERRIDE, perm: AdminPerms.PERMS.OPS_OVERRIDE }
+      const ap = authenticateAndAudit(req, _auditCtx)
       if (!ap.ok) return failFromAdmin(res, ap)
-      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE, _auditCtx)) return
       return ok(res, {
-        phase:      "phase-11",
-        permission: AdminPerms.PERMS.OPS_OVERRIDE,
-        actor:      { id: ap.principal.id, role: ap.principal.role },
-        action:     "override",
-        result:     "accepted",
-        time:       nowIso(),
+        phase:          "phase-12",
+        permission:     AdminPerms.PERMS.OPS_OVERRIDE,
+        actor:          { id: ap.principal.id, role: ap.principal.role },
+        action:         "override",
+        result:         "accepted",
+        correlation_id: correlationId,
+        time:           nowIso(),
       }, 202)
     }
     // ─────────────────────────────────────────────────────────────────────────
