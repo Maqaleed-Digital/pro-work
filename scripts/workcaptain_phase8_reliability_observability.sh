@@ -70,7 +70,7 @@ if ! gcloud monitoring uptime describe "${UPTIME_CHECK_NAME}" --project="${WC_GC
     --path="/health" \
     --port=443 \
     --protocol=https \
-    --period=60 \
+    --period=1 \
     --timeout=10 > "${EVIDENCE_RUN_DIR}/uptime_check_create.log" 2>&1
 else
   gcloud monitoring uptime describe "${UPTIME_CHECK_NAME}" \
