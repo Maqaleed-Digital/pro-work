@@ -248,7 +248,7 @@ for _ in $(seq 1 60); do
   DOMAIN_STATUS="$(
     gcloud compute ssl-certificates describe "${WC_CERT_NAME}" \
       --project="${WC_GCP_PROJECT_ID}" --global \
-      --format="value(managed.domainStatus.${WC_DOMAIN})"
+      --format="value(managed.domainStatus['${WC_DOMAIN}'])"
   )"
   echo "CERT_STATUS=${CERT_STATUS}" >> "${EVIDENCE_RUN_DIR}/cert_status.log"
   echo "DOMAIN_STATUS=${DOMAIN_STATUS}" >> "${EVIDENCE_RUN_DIR}/cert_status.log"
