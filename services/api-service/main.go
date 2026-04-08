@@ -17,11 +17,21 @@ func main() {
 
 	http.HandleFunc("/health", handleHealth)
 	http.HandleFunc("/ready", handleReady)
-	http.HandleFunc("/admin", handleAdminForbidden)
-	http.HandleFunc("/admin/", handleAdminForbidden)
+	http.HandleFunc("/admin", handleAdmin)
+	http.HandleFunc("/admin/", handleAdmin)
+	http.HandleFunc("/auth/identity", handleIdentity)
 	http.HandleFunc("/", handleRoot)
 
 	http.ListenAndServe(":"+port, nil)
+}
+
+func validToken(r *http.Request) bool {
+	token := os.Getenv("API_OPERATOR_TOKEN")
+	if token == "" {
+		return false
+	}
+	auth := r.Header.Get("Authorization")
+	return auth == "Bearer "+token
 }
 
 func handleHealth(w http.ResponseWriter, r *http.Request) {
@@ -42,11 +52,31 @@ func handleReady(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func handleAdminForbidden(w http.ResponseWriter, r *http.Request) {
+func handleAdmin(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusForbidden)
+	if !validToken(r) {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"status": "unauthorized"})
+		return
+	}
 	json.NewEncoder(w).Encode(map[string]string{
-		"status": "forbidden",
+		"status":  "ok",
+		"service": serviceName,
+		"access":  "admin",
+	})
+}
+
+func handleIdentity(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if !validToken(r) {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"status": "unauthorized"})
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]string{
+		"subject": "operator",
+		"role":    "admin",
+		"service": serviceName,
 	})
 }
 
