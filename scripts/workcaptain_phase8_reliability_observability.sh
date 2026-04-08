@@ -69,7 +69,7 @@ if ! gcloud monitoring uptime describe "${UPTIME_CHECK_NAME}" --project="${WC_GC
     --resource-labels="host=api.workcaptain.ai,project_id=${WC_GCP_PROJECT_ID}" \
     --path="/health" \
     --port=443 \
-    --protocol=HTTPS \
+    --protocol=https \
     --period=60 \
     --timeout=10 > "${EVIDENCE_RUN_DIR}/uptime_check_create.log" 2>&1
 else
