@@ -7,9 +7,10 @@ const path = require("path")
 const fs = require("fs")
 const Admin = require("./lib/admin")
 const AdminPerms = require("./lib/admin_permissions")
-const Logger          = require("./lib/logging/logger")
-const AuthzAudit      = require("./lib/authz_audit")
-const ApprovalControl = require("./lib/approval_control")
+const Logger            = require("./lib/logging/logger")
+const AuthzAudit        = require("./lib/authz_audit")
+const ApprovalControl   = require("./lib/approval_control")
+const SovereignRegistry = require("./lib/sovereign_registry")
 const Scheduler      = require("./scheduler")
 const Analytics      = require("./analytics")
 const SchedulerJobs  = require("./wos/scheduler_jobs")
@@ -113,6 +114,21 @@ function requireAdminPerm(res, principal, perm, auditCtx) {
   }
   if (decision.allowed) return true
   return failFromAdmin(res, AdminPerms.deny(perm))
+}
+
+// Phase 14: resolve sovereign control, log decision, return false and send 403 if not active
+function requireSovereignControl(res, key, correlationId) {
+  const check = SovereignRegistry.resolveControl(key)
+  Logger.info("sovereign.control.resolved", {
+    control_key:     check.control_key,
+    control_version: check.control_version,
+    ok:              check.ok,
+    reason:          check.reason || "active",
+    correlation_id:  correlationId,
+  })
+  if (check.ok) return check
+  fail(res, "POLICY_CONTROL_MISSING", `sovereign control not active: ${key} (${check.reason})`, 403)
+  return null
 }
 
 // Phase 12: authenticate and write audit deny record on auth failure for audited routes
@@ -1102,8 +1118,16 @@ function matchRoute(method, pathname) {
   if (m === "POST" && approvalIdMatch) {
     return { name: `approvals.request.${approvalIdMatch[2]}`, params: { id: approvalIdMatch[1] } }
   }
-  if (m === "POST" && pathname === "/api/ops/force-execute")       return { name: "ops.force_execute",       params: {} }
-  if (m === "POST" && pathname === "/api/admin/config-change")     return { name: "admin.config_change",     params: {} }
+  if (m === "POST" && pathname === "/api/ops/force-execute")   return { name: "ops.force_execute",   params: {} }
+  if (m === "POST" && pathname === "/api/admin/config-change") return { name: "admin.config_change", params: {} }
+
+  // Phase 14: sovereign control registry routes
+  if (m === "GET"  && pathname === "/api/admin/policy-registry")        return { name: "policy.registry.list",   params: {} }
+  if (m === "GET"  && pathname === "/api/admin/policy-registry/export") return { name: "policy.registry.export", params: {} }
+  const policyKeyMatch = pathname.match(/^\/api\/admin\/policy-registry\/(.+)\/(disable|enable)$/)
+  if (m === "POST" && policyKeyMatch) {
+    return { name: `policy.registry.${policyKeyMatch[2]}`, params: { key: decodeURIComponent(policyKeyMatch[1]) } }
+  }
 
   return null
 }
@@ -2493,6 +2517,9 @@ if (route.name === "admin.scheduler.preview") {
       const ap = authenticateAndAudit(req, _auditCtx)
       if (!ap.ok) return failFromAdmin(res, ap)
       if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE, _auditCtx)) return
+      // Phase 14: sovereign registry check
+      const _reg14ovr = requireSovereignControl(res, SovereignRegistry.CONTROL_KEYS.OPS_OVERRIDE_REQUIRES_APPROVAL, correlationId)
+      if (!_reg14ovr) return
       // Phase 13: approval gate
       const body13 = await readJson(req, res).catch(() => null)
       const aprId  = body13 && body13.approval_request_id ? String(body13.approval_request_id) : null
@@ -2500,14 +2527,16 @@ if (route.name === "admin.scheduler.preview") {
       const aprCheck = ApprovalControl.validateApproval(aprId, ap.principal.id, ApprovalControl.APPROVAL_ACTIONS.OPS_OVERRIDE)
       if (!aprCheck.ok) return fail(res, "APPROVAL_INVALID", `approval denied: ${aprCheck.reason}`, 403)
       ApprovalControl.consumeApproval(aprId, ap.principal.id)
-      Logger.info("approval.consumed", { approval_request_id: aprId, actor: ap.principal.id, role: ap.principal.role, action: "ops.override", correlation_id: correlationId })
+      Logger.info("approval.consumed", { approval_request_id: aprId, actor: ap.principal.id, role: ap.principal.role, action: "ops.override", control_key: _reg14ovr.control_key, control_version: _reg14ovr.control_version, correlation_id: correlationId })
       return ok(res, {
-        phase:               "phase-13",
+        phase:               "phase-14",
         permission:          AdminPerms.PERMS.OPS_OVERRIDE,
         actor:               { id: ap.principal.id, role: ap.principal.role },
         action:              "override",
         result:              "accepted",
         approval_request_id: aprId,
+        control_key:         _reg14ovr.control_key,
+        control_version:     _reg14ovr.control_version,
         correlation_id:      correlationId,
         time:                nowIso(),
       }, 202)
@@ -2575,53 +2604,100 @@ if (route.name === "admin.scheduler.preview") {
     }
 
     if (route.name === "ops.force_execute") {
-      // POST /api/ops/force-execute — ops or superadmin; approval-bound
+      // POST /api/ops/force-execute — ops or superadmin; Phase 14 registry-checked; Phase 13 approval-bound
       const _auditCtx = { correlation_id: correlationId, request_id: requestId, route: route.name, method: req.method, decision_type: AuthzAudit.DECISION_TYPES.OPS_EXECUTE, perm: AdminPerms.PERMS.OPS_EXECUTE }
       const ap = authenticateAndAudit(req, _auditCtx)
       if (!ap.ok) return failFromAdmin(res, ap)
       if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_EXECUTE, _auditCtx)) return
+      const _reg14fe = requireSovereignControl(res, SovereignRegistry.CONTROL_KEYS.OPS_FORCE_EXECUTE_REQUIRES_APPROVAL, correlationId)
+      if (!_reg14fe) return
       const body = await readJson(req, res).catch(() => null)
       const aprId = body && body.approval_request_id ? String(body.approval_request_id) : null
       if (!aprId) return fail(res, "APPROVAL_REQUIRED", "approval_request_id required for ops.force_execute", 403)
       const aprCheck = ApprovalControl.validateApproval(aprId, ap.principal.id, ApprovalControl.APPROVAL_ACTIONS.OPS_FORCE_EXECUTE)
       if (!aprCheck.ok) return fail(res, "APPROVAL_INVALID", `approval denied: ${aprCheck.reason}`, 403)
       ApprovalControl.consumeApproval(aprId, ap.principal.id)
-      Logger.info("approval.consumed", { approval_request_id: aprId, actor: ap.principal.id, action: "ops.force_execute", correlation_id: correlationId })
+      Logger.info("approval.consumed", { approval_request_id: aprId, actor: ap.principal.id, action: "ops.force_execute", control_key: _reg14fe.control_key, control_version: _reg14fe.control_version, correlation_id: correlationId })
       return ok(res, {
-        phase:               "phase-13",
+        phase:               "phase-14",
         permission:          AdminPerms.PERMS.OPS_EXECUTE,
         actor:               { id: ap.principal.id, role: ap.principal.role },
         action:              "force_execute",
         result:              "accepted",
         approval_request_id: aprId,
+        control_key:         _reg14fe.control_key,
+        control_version:     _reg14fe.control_version,
         correlation_id:      correlationId,
         time:                nowIso(),
       }, 202)
     }
 
     if (route.name === "admin.config_change") {
-      // POST /api/admin/config-change — superadmin only; approval-bound
+      // POST /api/admin/config-change — superadmin only; Phase 14 registry-checked; Phase 13 approval-bound
       const _auditCtx = { correlation_id: correlationId, request_id: requestId, route: route.name, method: req.method, decision_type: AuthzAudit.DECISION_TYPES.ADMIN_READ, perm: AdminPerms.PERMS.ADMIN_GOVERNANCE_READ }
       const ap = authenticateAndAudit(req, _auditCtx)
       if (!ap.ok) return failFromAdmin(res, ap)
       if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.ADMIN_GOVERNANCE_READ, _auditCtx)) return
+      const _reg14cc = requireSovereignControl(res, SovereignRegistry.CONTROL_KEYS.ADMIN_CONFIG_CHANGE_REQUIRES_APPROVAL, correlationId)
+      if (!_reg14cc) return
       const body = await readJson(req, res).catch(() => null)
       const aprId = body && body.approval_request_id ? String(body.approval_request_id) : null
       if (!aprId) return fail(res, "APPROVAL_REQUIRED", "approval_request_id required for admin.config_change", 403)
       const aprCheck = ApprovalControl.validateApproval(aprId, ap.principal.id, ApprovalControl.APPROVAL_ACTIONS.ADMIN_CONFIG_CHANGE)
       if (!aprCheck.ok) return fail(res, "APPROVAL_INVALID", `approval denied: ${aprCheck.reason}`, 403)
       ApprovalControl.consumeApproval(aprId, ap.principal.id)
-      Logger.info("approval.consumed", { approval_request_id: aprId, actor: ap.principal.id, action: "admin.config_change", correlation_id: correlationId })
+      Logger.info("approval.consumed", { approval_request_id: aprId, actor: ap.principal.id, action: "admin.config_change", control_key: _reg14cc.control_key, control_version: _reg14cc.control_version, correlation_id: correlationId })
       return ok(res, {
-        phase:               "phase-13",
+        phase:               "phase-14",
         action:              "config_change",
         result:              "accepted",
         approval_request_id: aprId,
+        control_key:         _reg14cc.control_key,
+        control_version:     _reg14cc.control_version,
         correlation_id:      correlationId,
         time:                nowIso(),
       }, 202)
     }
-    // ─────────────────────────────────────────────────────────────────────────
+
+    // Phase 14: sovereign control registry admin routes ───────────────────────
+    if (route.name === "policy.registry.list") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const entries = SovereignRegistry.getRegistry()
+      const version = SovereignRegistry.resolveControl(SovereignRegistry.CONTROL_KEYS.SOVEREIGN_REGISTRY_VERSION)
+      Logger.info("sovereign.registry.listed", { actor: ap.principal.id, control_count: entries.length, registry_version: SovereignRegistry.REGISTRY_VERSION, correlation_id: correlationId })
+      return ok(res, { registry_version: SovereignRegistry.REGISTRY_VERSION, control_count: entries.length, entries, version_control: version.entry || null })
+    }
+
+    if (route.name === "policy.registry.export") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const artifact = SovereignRegistry.exportRegistry()
+      Logger.info("sovereign.registry.exported", { actor: ap.principal.id, control_count: artifact.control_count, correlation_id: correlationId })
+      return ok(res, artifact)
+    }
+
+    if (route.name === "policy.registry.disable") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const result = SovereignRegistry.setControlStatus(route.params.key, SovereignRegistry.STATUSES.DISABLED)
+      if (!result.ok) return fail(res, "POLICY_CONTROL_ERROR", `cannot disable control: ${result.reason}`, 422)
+      Logger.info("sovereign.control.disabled", { actor: ap.principal.id, control_key: route.params.key, correlation_id: correlationId })
+      return ok(res, result)
+    }
+
+    if (route.name === "policy.registry.enable") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const result = SovereignRegistry.setControlStatus(route.params.key, SovereignRegistry.STATUSES.ACTIVE)
+      if (!result.ok) return fail(res, "POLICY_CONTROL_ERROR", `cannot enable control: ${result.reason}`, 422)
+      Logger.info("sovereign.control.enabled", { actor: ap.principal.id, control_key: route.params.key, correlation_id: correlationId })
+      return ok(res, result)
+    }
     // ─────────────────────────────────────────────────────────────────────────
 
     return methodNotAllowed(res)
@@ -2633,7 +2709,8 @@ if (route.name === "admin.scheduler.preview") {
 
 loadAllTenants()
 loadTenantRegistry()
-ApprovalControl.loadState()  // Phase 13: hydrate approval state from JSONL
+ApprovalControl.loadState()   // Phase 13: hydrate approval state from JSONL
+SovereignRegistry.loadRegistry()  // Phase 14: load sovereign control registry
 
 // S34: init scheduler engine — wired to SchedulerJobs.runForTenant
 Scheduler.init({
