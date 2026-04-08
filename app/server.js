@@ -12,6 +12,7 @@ const AuthzAudit        = require("./lib/authz_audit")
 const ApprovalControl   = require("./lib/approval_control")
 const SovereignRegistry    = require("./lib/sovereign_registry")
 const TenantJurisdiction   = require("./lib/tenant_jurisdiction")
+const EvidenceGovernance   = require("./lib/evidence_governance")
 const Scheduler      = require("./scheduler")
 const Analytics      = require("./analytics")
 const SchedulerJobs  = require("./wos/scheduler_jobs")
@@ -179,6 +180,43 @@ function requireJurisdictionGovernance(res, jurisdictionCode, tenantJurisdiction
     return null
   }
   return jCheck
+}
+
+// Phase 16: resolve residency context — fail closed if unknown/inactive or incompatible with jurisdiction
+function requireResidencyGovernance(res, residencyRegion, jurisdictionCode, correlationId) {
+  const rCheck = EvidenceGovernance.resolveResidency(residencyRegion)
+  Logger.info("residency.governance.resolved", {
+    residency_region: residencyRegion, ok: rCheck.ok,
+    reason: rCheck.reason || "active", correlation_id: correlationId,
+  })
+  if (!rCheck.ok) {
+    fail(res, "RESIDENCY_DENIED", `residency check failed: ${rCheck.reason}`, 403)
+    return null
+  }
+  const compatCheck = EvidenceGovernance.validateResidencyCompatibility(residencyRegion, jurisdictionCode)
+  if (!compatCheck.ok) {
+    Logger.info("residency.governance.incompatible", {
+      residency_region: residencyRegion, jurisdiction_code: jurisdictionCode,
+      reason: compatCheck.reason, correlation_id: correlationId,
+    })
+    fail(res, "RESIDENCY_INCOMPATIBLE", `residency incompatible with jurisdiction: ${compatCheck.reason}`, 403)
+    return null
+  }
+  return rCheck
+}
+
+// Phase 16: resolve retention context — fail closed if unknown or inactive
+function requireRetentionGovernance(res, retentionClass, correlationId) {
+  const rcCheck = EvidenceGovernance.resolveRetention(retentionClass)
+  Logger.info("retention.governance.resolved", {
+    retention_class: retentionClass, ok: rcCheck.ok,
+    reason: rcCheck.reason || "active", correlation_id: correlationId,
+  })
+  if (!rcCheck.ok) {
+    fail(res, "RETENTION_DENIED", `retention check failed: ${rcCheck.reason}`, 403)
+    return null
+  }
+  return rcCheck
 }
 
 // Phase 12: authenticate and write audit deny record on auth failure for audited routes
@@ -1190,6 +1228,18 @@ function matchRoute(method, pathname) {
   // Phase 15: governed proof routes — tenant/jurisdiction-gated privileged operation validators
   if (m === "POST" && pathname === "/api/ops/governed-override")        return { name: "ops.governed_override",        params: {} }
   if (m === "POST" && pathname === "/api/ops/governed-force-execute")   return { name: "ops.governed_force_execute",   params: {} }
+
+  // Phase 16: evidence governance admin routes
+  if (m === "GET"  && pathname === "/api/admin/evidence-governance")            return { name: "evidence.governance.list",      params: {} }
+  if (m === "GET"  && pathname === "/api/admin/evidence-governance/export")     return { name: "evidence.governance.export",     params: {} }
+  if (m === "GET"  && pathname === "/api/admin/evidence-governance/residency")  return { name: "evidence.governance.residency",  params: {} }
+  if (m === "GET"  && pathname === "/api/admin/evidence-governance/retention")  return { name: "evidence.governance.retention",  params: {} }
+  const egRetentionMatch = pathname.match(/^\/api\/admin\/evidence-governance\/retention\/(.+)\/(disable|enable)$/)
+  if (m === "POST" && egRetentionMatch) {
+    return { name: `evidence.governance.retention.${egRetentionMatch[2]}`, params: { retentionClass: decodeURIComponent(egRetentionMatch[1]) } }
+  }
+  // Phase 16: governed evidence write proof route — residency + retention gated
+  if (m === "POST" && pathname === "/api/ops/governed-evidence-write") return { name: "ops.governed_evidence_write", params: {} }
 
   return null
 }
@@ -2905,6 +2955,117 @@ if (route.name === "admin.scheduler.preview") {
         control_version:     _regFe.control_version,
         correlation_id:      correlationId,
         time:                nowIso(),
+      }, 202)
+    }
+    // Phase 16: evidence governance admin routes ─────────────────────────────
+    if (route.name === "evidence.governance.list") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const state = EvidenceGovernance.getGovernanceState()
+      Logger.info("evidence.governance.listed", { actor: ap.principal.id, residency_region_count: state.regions.length, retention_class_count: state.retention_classes.length, correlation_id: correlationId })
+      return ok(res, { evidence_governance_version: EvidenceGovernance.EVIDENCE_GOVERNANCE_VERSION, ...state })
+    }
+
+    if (route.name === "evidence.governance.export") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const artifact = EvidenceGovernance.exportGovernance()
+      Logger.info("evidence.governance.exported", { actor: ap.principal.id, residency_region_count: artifact.residency_region_count, retention_class_count: artifact.retention_class_count, correlation_id: correlationId })
+      return ok(res, artifact)
+    }
+
+    if (route.name === "evidence.governance.residency") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const regions = Object.values(EvidenceGovernance.RESIDENCY_REGIONS)
+      Logger.info("evidence.governance.residency.listed", { actor: ap.principal.id, count: regions.length, correlation_id: correlationId })
+      return ok(res, { evidence_governance_version: EvidenceGovernance.EVIDENCE_GOVERNANCE_VERSION, residency_region_count: regions.length, residency_regions: regions })
+    }
+
+    if (route.name === "evidence.governance.retention") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const state = EvidenceGovernance.getGovernanceState()
+      Logger.info("evidence.governance.retention.listed", { actor: ap.principal.id, count: state.retention_classes.length, correlation_id: correlationId })
+      return ok(res, { evidence_governance_version: EvidenceGovernance.EVIDENCE_GOVERNANCE_VERSION, retention_class_count: state.retention_classes.length, retention_classes: state.retention_classes })
+    }
+
+    if (route.name === "evidence.governance.retention.disable") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const result = EvidenceGovernance.setRetentionStatus(route.params.retentionClass, "inactive")
+      if (!result.ok) return fail(res, "RETENTION_ERROR", `cannot disable retention class: ${result.reason}`, 422)
+      Logger.info("evidence.governance.retention.disabled", { actor: ap.principal.id, retention_class: route.params.retentionClass, correlation_id: correlationId })
+      return ok(res, result)
+    }
+
+    if (route.name === "evidence.governance.retention.enable") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const result = EvidenceGovernance.setRetentionStatus(route.params.retentionClass, "active")
+      if (!result.ok) return fail(res, "RETENTION_ERROR", `cannot enable retention class: ${result.reason}`, 422)
+      Logger.info("evidence.governance.retention.enabled", { actor: ap.principal.id, retention_class: route.params.retentionClass, correlation_id: correlationId })
+      return ok(res, result)
+    }
+
+    // Phase 16: governed evidence write proof route — residency + retention gated
+    if (route.name === "ops.governed_evidence_write") {
+      // POST /api/ops/governed-evidence-write — ops or superadmin; tenant + jurisdiction + residency + retention gated
+      const _auditCtx = { correlation_id: correlationId, request_id: requestId, route: route.name, method: req.method, decision_type: AuthzAudit.DECISION_TYPES.OPS_EXECUTE, perm: AdminPerms.PERMS.OPS_EXECUTE }
+      const ap = authenticateAndAudit(req, _auditCtx)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_EXECUTE, _auditCtx)) return
+      // Phase 15: tenant/jurisdiction check
+      const requestTenantId  = req.headers["x-tenant-id"]       ? String(req.headers["x-tenant-id"]).trim()       : null
+      const jurisdictionCode = req.headers["x-jurisdiction-code"] ? String(req.headers["x-jurisdiction-code"]).trim() : null
+      if (!requestTenantId) return fail(res, "TENANT_REQUIRED", "X-Tenant-Id required for governed evidence write", 403)
+      const tgResult = requireTenantGovernance(res, String(ap.principal.tenant_id || "*"), requestTenantId, correlationId)
+      if (!tgResult) return
+      if (!jurisdictionCode) return fail(res, "JURISDICTION_REQUIRED", "X-Jurisdiction-Code required for governed evidence write", 403)
+      const jResult = requireJurisdictionGovernance(res, jurisdictionCode, tgResult.jurisdiction_code, correlationId)
+      if (!jResult) return
+      // Phase 16: residency check
+      const residencyRegion = req.headers["x-residency-region"] ? String(req.headers["x-residency-region"]).trim() : null
+      if (!residencyRegion) {
+        Logger.info("residency.governance.missing", { tenant_id: requestTenantId, correlation_id: correlationId })
+        return fail(res, "RESIDENCY_REQUIRED", "X-Residency-Region required for governed evidence write", 403)
+      }
+      const rResult = requireResidencyGovernance(res, residencyRegion, jurisdictionCode, correlationId)
+      if (!rResult) return
+      // Phase 16: retention check
+      const retentionClass = req.headers["x-retention-class"] ? String(req.headers["x-retention-class"]).trim() : null
+      if (!retentionClass) {
+        Logger.info("retention.governance.missing", { tenant_id: requestTenantId, correlation_id: correlationId })
+        return fail(res, "RETENTION_REQUIRED", "X-Retention-Class required for governed evidence write", 403)
+      }
+      const rcResult = requireRetentionGovernance(res, retentionClass, correlationId)
+      if (!rcResult) return
+      Logger.info("governed.evidence.write.accepted", {
+        actor: ap.principal.id, role: ap.principal.role,
+        tenant_id: requestTenantId, jurisdiction_code: jurisdictionCode,
+        residency_region: residencyRegion, retention_class: retentionClass,
+        retention_days: rcResult.entry.retention_days,
+        correlation_id: correlationId,
+      })
+      return ok(res, {
+        phase:             "phase-16",
+        permission:        AdminPerms.PERMS.OPS_EXECUTE,
+        actor:             { id: ap.principal.id, role: ap.principal.role },
+        action:            "governed_evidence_write",
+        result:            "accepted",
+        tenant_id:         requestTenantId,
+        jurisdiction_code: jurisdictionCode,
+        residency_region:  residencyRegion,
+        retention_class:   retentionClass,
+        retention_days:    rcResult.entry.retention_days,
+        correlation_id:    correlationId,
+        time:              nowIso(),
       }, 202)
     }
     // ─────────────────────────────────────────────────────────────────────────
