@@ -14,7 +14,8 @@ const SovereignRegistry    = require("./lib/sovereign_registry")
 const TenantJurisdiction   = require("./lib/tenant_jurisdiction")
 const EvidenceGovernance   = require("./lib/evidence_governance")
 const DisclosureLegalHold  = require("./lib/disclosure_legal_hold")
-const ExternalReviewGateway = require("./lib/external_review_gateway")
+const ExternalReviewGateway  = require("./lib/external_review_gateway")
+const IncidentRegistry       = require("./lib/incident_registry")
 const Scheduler      = require("./scheduler")
 const Analytics      = require("./analytics")
 const SchedulerJobs  = require("./wos/scheduler_jobs")
@@ -316,6 +317,21 @@ function requireExternalReview(res, sessionId, requiredScope, requestTenantId, r
     }
   }
   return session
+}
+
+// Phase 19: containment enforcement — fail closed if any active incident meets/exceeds threshold severity
+function requireContainmentClear(res, thresholdSeverity, correlationId) {
+  const blocked = IncidentRegistry.hasActiveIncidentAtOrAbove(thresholdSeverity)
+  const highest = IncidentRegistry.getHighestActiveSeverity()
+  Logger.info("containment.checked", {
+    threshold_severity: thresholdSeverity, blocked, highest_active_severity: highest || "none",
+    correlation_id: correlationId,
+  })
+  if (blocked) {
+    fail(res, "CONTAINMENT_ACTIVE", `incident containment blocks this operation (severity >= ${thresholdSeverity})`, 403)
+    return false
+  }
+  return true
 }
 
 // Phase 12: authenticate and write audit deny record on auth failure for audited routes
@@ -1366,6 +1382,16 @@ function matchRoute(method, pathname) {
   if (m === "GET"  && pathname === "/external-review/audit")              return { name: "external.review.audit",            params: {} }
   if (m === "GET"  && pathname === "/external-review/disclosure-export")  return { name: "external.review.disclosure_export",params: {} }
   if (m === "POST" && pathname === "/external-review/mutation-test")      return { name: "external.review.mutation_test",    params: {} }
+
+  // Phase 19: incident containment governance admin routes
+  if (m === "GET"  && pathname === "/api/admin/incidents/export")         return { name: "incidents.export",           params: {} }
+  if (m === "POST" && pathname === "/api/admin/incidents")                return { name: "incidents.declare",          params: {} }
+  const incidentIdMatch = pathname.match(/^\/api\/admin\/incidents\/([^/]+)\/(contain|resolve)$/)
+  if (m === "POST" && incidentIdMatch) {
+    return { name: `incidents.${incidentIdMatch[2]}`, params: { incidentId: incidentIdMatch[1] } }
+  }
+  // Phase 19: containment-gated proof route
+  if (m === "POST" && pathname === "/api/ops/governed-containment-exec")  return { name: "ops.governed_containment_exec", params: {} }
 
   return null
 }
@@ -3458,6 +3484,74 @@ if (route.name === "admin.scheduler.preview") {
       const sessionId = req.headers["x-review-session-id"] ? String(req.headers["x-review-session-id"]).trim() : null
       Logger.info("external.review.mutation.denied", { review_session_id: sessionId || null, correlation_id: correlationId })
       return fail(res, "EXTERNAL_REVIEW_MUTATION_DENIED", "mutation operations are not permitted through the external review gateway", 403)
+    }
+    // Phase 19: incident containment governance ────────────────────────────────
+    if (route.name === "incidents.export") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const artifact = IncidentRegistry.exportGovernance()
+      Logger.info("incidents.exported", { actor: ap.principal.id, incident_count: artifact.incident_count, active_incident_count: artifact.active_incident_count, highest_active_severity: artifact.highest_active_severity || "none", containment_active: artifact.containment_active, correlation_id: correlationId })
+      return ok(res, artifact)
+    }
+
+    if (route.name === "incidents.declare") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const body = await readJson(req, res).catch(() => null)
+      if (!body) return fail(res, "INVALID_BODY", "JSON body required", 400)
+      const result = IncidentRegistry.declareIncident({ severity: body.severity, scope: body.scope, notes: body.notes })
+      if (!result.ok) return fail(res, "INCIDENT_ERROR", `cannot declare incident: ${result.reason}`, 422)
+      Logger.info("incident.declared", { actor: ap.principal.id, incident_id: result.data.incident_id, incident_severity: result.data.incident_severity, incident_scope: result.data.incident_scope, correlation_id: correlationId })
+      return ok(res, result.data, 201)
+    }
+
+    if (route.name === "incidents.contain") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const result = IncidentRegistry.containIncident(route.params.incidentId)
+      if (!result.ok) return fail(res, "INCIDENT_ERROR", `cannot contain incident: ${result.reason}`, 422)
+      Logger.info("incident.contained", { actor: ap.principal.id, incident_id: route.params.incidentId, correlation_id: correlationId })
+      return ok(res, result.data)
+    }
+
+    if (route.name === "incidents.resolve") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const result = IncidentRegistry.resolveIncident(route.params.incidentId)
+      if (!result.ok) return fail(res, "INCIDENT_ERROR", `cannot resolve incident: ${result.reason}`, 422)
+      Logger.info("incident.resolved", { actor: ap.principal.id, incident_id: route.params.incidentId, correlation_id: correlationId })
+      return ok(res, result.data)
+    }
+
+    // Phase 19: governed containment-exec proof route — blocked by critical incident
+    if (route.name === "ops.governed_containment_exec") {
+      const _auditCtx = { correlation_id: correlationId, request_id: requestId, route: route.name, method: req.method, decision_type: AuthzAudit.DECISION_TYPES.OPS_EXECUTE, perm: AdminPerms.PERMS.OPS_EXECUTE }
+      const ap = authenticateAndAudit(req, _auditCtx)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_EXECUTE, _auditCtx)) return
+      // Phase 19: containment check — critical incidents block privileged execution
+      if (!requireContainmentClear(res, IncidentRegistry.CONTAINMENT_THRESHOLDS.BLOCK_PRIVILEGED_EXECUTION, correlationId)) return
+      const highest = IncidentRegistry.getHighestActiveSeverity()
+      Logger.info("governed.containment_exec.accepted", {
+        actor: ap.principal.id, role: ap.principal.role,
+        highest_active_severity: highest || "none", containment_active: IncidentRegistry.getActiveIncidents().length > 0,
+        correlation_id: correlationId,
+      })
+      return ok(res, {
+        phase:                    "phase-19",
+        permission:               AdminPerms.PERMS.OPS_EXECUTE,
+        actor:                    { id: ap.principal.id, role: ap.principal.role },
+        action:                   "governed_containment_exec",
+        result:                   "accepted",
+        highest_active_severity:  highest || "none",
+        containment_active:       IncidentRegistry.getActiveIncidents().length > 0,
+        correlation_id:           correlationId,
+        time:                     nowIso(),
+      }, 202)
     }
     // ─────────────────────────────────────────────────────────────────────────
 
