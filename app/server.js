@@ -7,8 +7,9 @@ const path = require("path")
 const fs = require("fs")
 const Admin = require("./lib/admin")
 const AdminPerms = require("./lib/admin_permissions")
-const Logger      = require("./lib/logging/logger")
-const AuthzAudit  = require("./lib/authz_audit")
+const Logger          = require("./lib/logging/logger")
+const AuthzAudit      = require("./lib/authz_audit")
+const ApprovalControl = require("./lib/approval_control")
 const Scheduler      = require("./scheduler")
 const Analytics      = require("./analytics")
 const SchedulerJobs  = require("./wos/scheduler_jobs")
@@ -1090,10 +1091,19 @@ function matchRoute(method, pathname) {
   if (m === "GET"  && analyticsIdMatch) return { name: "admin.analytics.tenant", params: { id: analyticsIdMatch[1] } }
 
   // Phase 11: permission-bound operational control routes
-  if (m === "GET"  && pathname === "/api/ops/status")   return { name: "ops.status",   params: {} }
-  if (m === "POST" && pathname === "/api/ops/execute")  return { name: "ops.execute",  params: {} }
-  if (m === "POST" && pathname === "/api/ops/retry")    return { name: "ops.retry",    params: {} }
-  if (m === "POST" && pathname === "/api/ops/override") return { name: "ops.override", params: {} }
+  if (m === "GET"  && pathname === "/api/ops/status")        return { name: "ops.status",        params: {} }
+  if (m === "POST" && pathname === "/api/ops/execute")       return { name: "ops.execute",       params: {} }
+  if (m === "POST" && pathname === "/api/ops/retry")         return { name: "ops.retry",         params: {} }
+  if (m === "POST" && pathname === "/api/ops/override")      return { name: "ops.override",      params: {} }
+
+  // Phase 13: approval-bound privileged operation routes
+  if (m === "POST" && pathname === "/api/approvals/request") return { name: "approvals.request.create", params: {} }
+  const approvalIdMatch = pathname.match(/^\/api\/approvals\/([^/]+)\/(approve|deny)$/)
+  if (m === "POST" && approvalIdMatch) {
+    return { name: `approvals.request.${approvalIdMatch[2]}`, params: { id: approvalIdMatch[1] } }
+  }
+  if (m === "POST" && pathname === "/api/ops/force-execute")       return { name: "ops.force_execute",       params: {} }
+  if (m === "POST" && pathname === "/api/admin/config-change")     return { name: "admin.config_change",     params: {} }
 
   return null
 }
@@ -2478,21 +2488,140 @@ if (route.name === "admin.scheduler.preview") {
     }
 
     if (route.name === "ops.override") {
-      // ops.override — superadmin only; ops and auditor denied; Phase 12 audited
+      // ops.override — superadmin only; Phase 12 audited; Phase 13 approval-bound
       const _auditCtx = { correlation_id: correlationId, request_id: requestId, route: route.name, method: req.method, decision_type: AuthzAudit.DECISION_TYPES.OPS_OVERRIDE, perm: AdminPerms.PERMS.OPS_OVERRIDE }
       const ap = authenticateAndAudit(req, _auditCtx)
       if (!ap.ok) return failFromAdmin(res, ap)
       if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE, _auditCtx)) return
+      // Phase 13: approval gate
+      const body13 = await readJson(req, res).catch(() => null)
+      const aprId  = body13 && body13.approval_request_id ? String(body13.approval_request_id) : null
+      if (!aprId) return fail(res, "APPROVAL_REQUIRED", "approval_request_id required for ops.override", 403)
+      const aprCheck = ApprovalControl.validateApproval(aprId, ap.principal.id, ApprovalControl.APPROVAL_ACTIONS.OPS_OVERRIDE)
+      if (!aprCheck.ok) return fail(res, "APPROVAL_INVALID", `approval denied: ${aprCheck.reason}`, 403)
+      ApprovalControl.consumeApproval(aprId, ap.principal.id)
+      Logger.info("approval.consumed", { approval_request_id: aprId, actor: ap.principal.id, role: ap.principal.role, action: "ops.override", correlation_id: correlationId })
       return ok(res, {
-        phase:          "phase-12",
-        permission:     AdminPerms.PERMS.OPS_OVERRIDE,
-        actor:          { id: ap.principal.id, role: ap.principal.role },
-        action:         "override",
-        result:         "accepted",
-        correlation_id: correlationId,
-        time:           nowIso(),
+        phase:               "phase-13",
+        permission:          AdminPerms.PERMS.OPS_OVERRIDE,
+        actor:               { id: ap.principal.id, role: ap.principal.role },
+        action:              "override",
+        result:              "accepted",
+        approval_request_id: aprId,
+        correlation_id:      correlationId,
+        time:                nowIso(),
       }, 202)
     }
+
+    // Phase 13: approval-bound proof routes ───────────────────────────────────
+    if (route.name === "approvals.request.create") {
+      // POST /api/approvals/request — ops or superadmin can request; auditor denied
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_STATUS_READ)) return
+      const body = await readJson(req, res)
+      if (!body) return
+      const result = ApprovalControl.createApprovalRequest({
+        correlation_id:      correlationId,
+        request_id:          requestId,
+        requester_actor_id:  ap.principal.id,
+        requester_role:      ap.principal.role,
+        action_type:         body.action_type,
+        target_route:        body.target_route || route.name,
+        reason:              body.reason || "",
+      })
+      if (!result.ok) return fail(res, result.error.code, result.error.message, 403)
+      ApprovalControl.appendApprovalRequest(result.data)
+      Logger.info("approval.request.created", { approval_request_id: result.data.approval_request_id, actor: ap.principal.id, action_type: result.data.action_type, correlation_id: correlationId })
+      return ok(res, result.data, 201)
+    }
+
+    if (route.name === "approvals.request.approve") {
+      // POST /api/approvals/:id/approve — superadmin or eligible approver role
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_STATUS_READ)) return
+      const body = await readJson(req, res).catch(() => null)
+      const result = ApprovalControl.createApprovalDecision({
+        approval_request_id: route.params.id,
+        approver_actor_id:   ap.principal.id,
+        approver_role:       ap.principal.role,
+        decision_outcome:    ApprovalControl.OUTCOMES.APPROVED,
+        decision_reason:     (body && body.reason) || "approved",
+      })
+      if (!result.ok) return fail(res, result.error.code, result.error.message, 403)
+      ApprovalControl.appendApprovalDecision(result.data)
+      Logger.info("approval.decision.approved", { approval_decision_id: result.data.approval_decision_id, approval_request_id: route.params.id, approver: ap.principal.id, correlation_id: correlationId })
+      return ok(res, result.data, 200)
+    }
+
+    if (route.name === "approvals.request.deny") {
+      // POST /api/approvals/:id/deny
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_STATUS_READ)) return
+      const body = await readJson(req, res).catch(() => null)
+      const result = ApprovalControl.createApprovalDecision({
+        approval_request_id: route.params.id,
+        approver_actor_id:   ap.principal.id,
+        approver_role:       ap.principal.role,
+        decision_outcome:    ApprovalControl.OUTCOMES.DENIED,
+        decision_reason:     (body && body.reason) || "denied",
+      })
+      if (!result.ok) return fail(res, result.error.code, result.error.message, 403)
+      ApprovalControl.appendApprovalDecision(result.data)
+      Logger.info("approval.decision.denied", { approval_decision_id: result.data.approval_decision_id, approval_request_id: route.params.id, approver: ap.principal.id, correlation_id: correlationId })
+      return ok(res, result.data, 200)
+    }
+
+    if (route.name === "ops.force_execute") {
+      // POST /api/ops/force-execute — ops or superadmin; approval-bound
+      const _auditCtx = { correlation_id: correlationId, request_id: requestId, route: route.name, method: req.method, decision_type: AuthzAudit.DECISION_TYPES.OPS_EXECUTE, perm: AdminPerms.PERMS.OPS_EXECUTE }
+      const ap = authenticateAndAudit(req, _auditCtx)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_EXECUTE, _auditCtx)) return
+      const body = await readJson(req, res).catch(() => null)
+      const aprId = body && body.approval_request_id ? String(body.approval_request_id) : null
+      if (!aprId) return fail(res, "APPROVAL_REQUIRED", "approval_request_id required for ops.force_execute", 403)
+      const aprCheck = ApprovalControl.validateApproval(aprId, ap.principal.id, ApprovalControl.APPROVAL_ACTIONS.OPS_FORCE_EXECUTE)
+      if (!aprCheck.ok) return fail(res, "APPROVAL_INVALID", `approval denied: ${aprCheck.reason}`, 403)
+      ApprovalControl.consumeApproval(aprId, ap.principal.id)
+      Logger.info("approval.consumed", { approval_request_id: aprId, actor: ap.principal.id, action: "ops.force_execute", correlation_id: correlationId })
+      return ok(res, {
+        phase:               "phase-13",
+        permission:          AdminPerms.PERMS.OPS_EXECUTE,
+        actor:               { id: ap.principal.id, role: ap.principal.role },
+        action:              "force_execute",
+        result:              "accepted",
+        approval_request_id: aprId,
+        correlation_id:      correlationId,
+        time:                nowIso(),
+      }, 202)
+    }
+
+    if (route.name === "admin.config_change") {
+      // POST /api/admin/config-change — superadmin only; approval-bound
+      const _auditCtx = { correlation_id: correlationId, request_id: requestId, route: route.name, method: req.method, decision_type: AuthzAudit.DECISION_TYPES.ADMIN_READ, perm: AdminPerms.PERMS.ADMIN_GOVERNANCE_READ }
+      const ap = authenticateAndAudit(req, _auditCtx)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.ADMIN_GOVERNANCE_READ, _auditCtx)) return
+      const body = await readJson(req, res).catch(() => null)
+      const aprId = body && body.approval_request_id ? String(body.approval_request_id) : null
+      if (!aprId) return fail(res, "APPROVAL_REQUIRED", "approval_request_id required for admin.config_change", 403)
+      const aprCheck = ApprovalControl.validateApproval(aprId, ap.principal.id, ApprovalControl.APPROVAL_ACTIONS.ADMIN_CONFIG_CHANGE)
+      if (!aprCheck.ok) return fail(res, "APPROVAL_INVALID", `approval denied: ${aprCheck.reason}`, 403)
+      ApprovalControl.consumeApproval(aprId, ap.principal.id)
+      Logger.info("approval.consumed", { approval_request_id: aprId, actor: ap.principal.id, action: "admin.config_change", correlation_id: correlationId })
+      return ok(res, {
+        phase:               "phase-13",
+        action:              "config_change",
+        result:              "accepted",
+        approval_request_id: aprId,
+        correlation_id:      correlationId,
+        time:                nowIso(),
+      }, 202)
+    }
+    // ─────────────────────────────────────────────────────────────────────────
     // ─────────────────────────────────────────────────────────────────────────
 
     return methodNotAllowed(res)
@@ -2504,6 +2633,7 @@ if (route.name === "admin.scheduler.preview") {
 
 loadAllTenants()
 loadTenantRegistry()
+ApprovalControl.loadState()  // Phase 13: hydrate approval state from JSONL
 
 // S34: init scheduler engine — wired to SchedulerJobs.runForTenant
 Scheduler.init({
