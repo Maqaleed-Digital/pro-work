@@ -18,6 +18,7 @@ const ExternalReviewGateway  = require("./lib/external_review_gateway")
 const IncidentRegistry       = require("./lib/incident_registry")
 const ContinuityDR           = require("./lib/continuity_dr")
 const RestorationRegistry    = require("./lib/restoration_registry")
+const ControlAttestation     = require("./lib/control_attestation")
 const Scheduler      = require("./scheduler")
 const Analytics      = require("./analytics")
 const SchedulerJobs  = require("./wos/scheduler_jobs")
@@ -1484,6 +1485,15 @@ function matchRoute(method, pathname) {
   }
   // Phase 21: restoration-gated proof route
   if (m === "POST" && pathname === "/api/ops/governed-restoration-exec") return { name: "ops.governed_restoration_exec", params: {} }
+
+  // Phase 22: control attestation admin routes
+  if (m === "GET"  && pathname === "/api/admin/control-attestation")         return { name: "attestation.context", params: {} }
+  if (m === "GET"  && pathname === "/api/admin/control-attestation/export")  return { name: "attestation.export",  params: {} }
+  if (m === "POST" && pathname === "/api/admin/control-attestation/record")  return { name: "attestation.record",  params: {} }
+  // Phase 22: compliance report admin routes
+  if (m === "GET"  && pathname === "/api/admin/compliance-report")           return { name: "report.context",   params: {} }
+  if (m === "GET"  && pathname === "/api/admin/compliance-report/export")    return { name: "report.export",    params: {} }
+  if (m === "POST" && pathname === "/api/admin/compliance-report/generate")  return { name: "report.generate",  params: {} }
 
   return null
 }
@@ -3817,6 +3827,89 @@ if (route.name === "admin.scheduler.preview") {
         time:                     nowIso(),
       }, 202)
     }
+    // Phase 22: control attestation + compliance reporting admin routes ────────
+    if (route.name === "attestation.context") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const state = ControlAttestation.getAttestationState()
+      Logger.info("attestation.context.loaded", { actor: ap.principal.id, attestation_count: state.attestation_count, correlation_id: correlationId })
+      return ok(res, state)
+    }
+
+    if (route.name === "attestation.export") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const artifact = ControlAttestation.exportAttestation()
+      Logger.info("attestation.exported", { actor: ap.principal.id, attestation_count: artifact.attestation_count, correlation_id: correlationId })
+      return ok(res, artifact)
+    }
+
+    if (route.name === "attestation.record") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const body = await readJson(req, res).catch(() => null)
+      if (!body) return fail(res, "INVALID_BODY", "JSON body required", 400)
+      const result = ControlAttestation.recordAttestation({
+        controlId:     body.control_id,
+        controlFamily: body.control_family,
+        status:        body.status,
+        scope:         body.scope,
+        evidenceRef:   body.evidence_ref,
+        policyVersion: body.policy_version,
+      })
+      if (!result.ok) return fail(res, "ATTESTATION_ERROR", `attestation rejected: ${result.reason}`, 422)
+      Logger.info("attestation.recorded", {
+        actor: ap.principal.id, control_id: result.data.control_id,
+        control_family: result.data.control_family, attestation_status: result.data.attestation_status,
+        attestation_id: result.data.attestation_id, correlation_id: correlationId,
+      })
+      return ok(res, result.data, 201)
+    }
+
+    if (route.name === "report.context") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const state = ControlAttestation.getReportState()
+      Logger.info("report.context.loaded", { actor: ap.principal.id, report_count: state.report_count, correlation_id: correlationId })
+      return ok(res, state)
+    }
+
+    if (route.name === "report.export") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const artifact = ControlAttestation.exportReports()
+      Logger.info("report.exported", { actor: ap.principal.id, report_count: artifact.report_count, correlation_id: correlationId })
+      return ok(res, artifact)
+    }
+
+    if (route.name === "report.generate") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const body = await readJson(req, res).catch(() => null)
+      if (!body) return fail(res, "INVALID_BODY", "JSON body required", 400)
+      const result = ControlAttestation.generateReport({
+        reportType:        body.report_type,
+        reportScope:       body.report_scope,
+        tenantId:          body.tenant_id,
+        jurisdictionCode:  body.jurisdiction_code,
+        policyVersion:     body.policy_version,
+      })
+      if (!result.ok) return fail(res, "REPORT_ERROR", `report generation rejected: ${result.reason}`, 422)
+      Logger.info("report.generated", {
+        actor: ap.principal.id, report_id: result.data.report_id,
+        report_type: result.data.report_type, report_scope: result.data.report_scope,
+        report_status: result.data.report_status, attestation_count: result.data.attestation_count,
+        correlation_id: correlationId,
+      })
+      return ok(res, result.data, 201)
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
 
     return methodNotAllowed(res)
