@@ -155,7 +155,7 @@ else
   echo "${EXISTING_BACKEND_ALERT}" > "${EVIDENCE_RUN_DIR}/backend_alert_existing.txt"
 fi
 
-gcloud monitoring uptime-checks list \
+gcloud monitoring uptime list-configs \
   --project="${WC_GCP_PROJECT_ID}" > "${EVIDENCE_RUN_DIR}/uptime_checks_list.txt"
 
 gcloud monitoring policies list \
@@ -176,7 +176,7 @@ Baseline alerting:
 - backend Cloud Run 5xx signal alert baseline
 
 Inspection points:
-- gcloud monitoring uptime-checks list
+- gcloud monitoring uptime list-configs
 - gcloud monitoring policies list
 - gcloud run services describe <service> --region me-central2
 EOFNOTE
