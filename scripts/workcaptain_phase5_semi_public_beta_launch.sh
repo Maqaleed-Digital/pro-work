@@ -130,11 +130,15 @@ if ! gcloud compute backend-services describe "${WC_BACKEND_SERVICE_NAME}" \
     --load-balancing-scheme=EXTERNAL_MANAGED \
     --protocol=HTTP \
     --port-name=http \
-    --timeout=30s \
-    --security-policy="${WC_ARMOR_POLICY_NAME}"
+    --timeout=30s
 else
   log "Backend service already exists: ${WC_BACKEND_SERVICE_NAME}"
 fi
+
+run_capture attach_armor_to_backend gcloud compute backend-services update "${WC_BACKEND_SERVICE_NAME}" \
+  --project="${WC_GCP_PROJECT_ID}" \
+  --global \
+  --security-policy="${WC_ARMOR_POLICY_NAME}"
 
 if ! gcloud compute backend-services describe "${WC_BACKEND_SERVICE_NAME}" \
   --project="${WC_GCP_PROJECT_ID}" --global \
