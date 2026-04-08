@@ -62,22 +62,22 @@ gcloud run services describe "background-worker" \
   --region="${WC_GCP_REGION}" \
   --format=json > "${EVIDENCE_RUN_DIR}/background-worker.json"
 
-if ! gcloud monitoring uptime-checks describe "${UPTIME_CHECK_NAME}" --project="${WC_GCP_PROJECT_ID}" >/dev/null 2>&1; then
-  gcloud monitoring uptime-checks create "${UPTIME_CHECK_NAME}" \
+if ! gcloud monitoring uptime describe "${UPTIME_CHECK_NAME}" --project="${WC_GCP_PROJECT_ID}" >/dev/null 2>&1; then
+  gcloud monitoring uptime create "${UPTIME_CHECK_NAME}" \
     --project="${WC_GCP_PROJECT_ID}" \
     --resource-type="uptime-url" \
-    --hostname="api.workcaptain.ai" \
+    --resource-labels="host=api.workcaptain.ai,project_id=${WC_GCP_PROJECT_ID}" \
     --path="/health" \
     --port=443 \
-    --use-ssl \
+    --protocol=HTTPS \
     --period=60 \
     --timeout=10 > "${EVIDENCE_RUN_DIR}/uptime_check_create.log" 2>&1
 else
-  gcloud monitoring uptime-checks describe "${UPTIME_CHECK_NAME}" \
+  gcloud monitoring uptime describe "${UPTIME_CHECK_NAME}" \
     --project="${WC_GCP_PROJECT_ID}" > "${EVIDENCE_RUN_DIR}/uptime_check_existing.log" 2>&1
 fi
 
-UPTIME_CHECK_ID="$(gcloud monitoring uptime-checks list --project="${WC_GCP_PROJECT_ID}" --format="value(name)" | grep "${UPTIME_CHECK_NAME}" || true)"
+UPTIME_CHECK_ID="$(gcloud monitoring uptime list-configs --project="${WC_GCP_PROJECT_ID}" --format="value(name)" | grep "${UPTIME_CHECK_NAME}" || true)"
 [[ -n "${UPTIME_CHECK_ID}" ]] || fail "Unable to locate uptime check ID for ${UPTIME_CHECK_NAME}"
 echo "${UPTIME_CHECK_ID}" > "${EVIDENCE_RUN_DIR}/uptime_check_id.txt"
 
