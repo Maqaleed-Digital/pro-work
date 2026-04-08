@@ -10,7 +10,8 @@ const AdminPerms = require("./lib/admin_permissions")
 const Logger            = require("./lib/logging/logger")
 const AuthzAudit        = require("./lib/authz_audit")
 const ApprovalControl   = require("./lib/approval_control")
-const SovereignRegistry = require("./lib/sovereign_registry")
+const SovereignRegistry    = require("./lib/sovereign_registry")
+const TenantJurisdiction   = require("./lib/tenant_jurisdiction")
 const Scheduler      = require("./scheduler")
 const Analytics      = require("./analytics")
 const SchedulerJobs  = require("./wos/scheduler_jobs")
@@ -129,6 +130,55 @@ function requireSovereignControl(res, key, correlationId) {
   if (check.ok) return check
   fail(res, "POLICY_CONTROL_MISSING", `sovereign control not active: ${key} (${check.reason})`, 403)
   return null
+}
+
+// Phase 15: resolve tenant governance context — fail closed if unknown/inactive or cross-tenant mismatch
+function requireTenantGovernance(res, principalTenantId, requestTenantId, correlationId) {
+  // Cross-tenant check first
+  const crossCheck = TenantJurisdiction.validateCrossTenant(principalTenantId, requestTenantId)
+  if (!crossCheck.ok) {
+    Logger.info("tenant.governance.cross_tenant_denied", {
+      principal_tenant: principalTenantId, request_tenant: requestTenantId,
+      reason: crossCheck.reason, correlation_id: correlationId,
+    })
+    fail(res, "TENANT_FORBIDDEN", `cross-tenant privileged action denied: ${crossCheck.reason}`, 403)
+    return null
+  }
+  // Resolve tenant governance
+  const tgCheck = TenantJurisdiction.resolveTenantGovernance(requestTenantId, tenantRegistry)
+  Logger.info("tenant.governance.resolved", {
+    tenant_id: requestTenantId, ok: tgCheck.ok,
+    reason: tgCheck.reason || "active", jurisdiction_code: tgCheck.jurisdiction_code || null,
+    correlation_id: correlationId,
+  })
+  if (!tgCheck.ok) {
+    fail(res, "TENANT_GOVERNANCE_DENIED", `tenant governance check failed: ${tgCheck.reason}`, 403)
+    return null
+  }
+  return tgCheck
+}
+
+// Phase 15: resolve jurisdiction governance context — fail closed if unknown/inactive or incompatible
+function requireJurisdictionGovernance(res, jurisdictionCode, tenantJurisdiction, correlationId) {
+  const jCheck = TenantJurisdiction.resolveJurisdiction(jurisdictionCode)
+  Logger.info("jurisdiction.governance.resolved", {
+    jurisdiction_code: jurisdictionCode, ok: jCheck.ok,
+    reason: jCheck.reason || "active", correlation_id: correlationId,
+  })
+  if (!jCheck.ok) {
+    fail(res, "JURISDICTION_DENIED", `jurisdiction check failed: ${jCheck.reason}`, 403)
+    return null
+  }
+  const compatCheck = TenantJurisdiction.validateJurisdictionCompatibility(jurisdictionCode, tenantJurisdiction)
+  if (!compatCheck.ok) {
+    Logger.info("jurisdiction.governance.incompatible", {
+      jurisdiction_code: jurisdictionCode, tenant_jurisdiction: tenantJurisdiction,
+      reason: compatCheck.reason, correlation_id: correlationId,
+    })
+    fail(res, "JURISDICTION_INCOMPATIBLE", `jurisdiction incompatible: ${compatCheck.reason}`, 403)
+    return null
+  }
+  return jCheck
 }
 
 // Phase 12: authenticate and write audit deny record on auth failure for audited routes
@@ -1128,6 +1178,18 @@ function matchRoute(method, pathname) {
   if (m === "POST" && policyKeyMatch) {
     return { name: `policy.registry.${policyKeyMatch[2]}`, params: { key: decodeURIComponent(policyKeyMatch[1]) } }
   }
+
+  // Phase 15: tenant/jurisdiction governance routes
+  if (m === "GET"  && pathname === "/api/admin/tenant-governance")              return { name: "tenant.governance.list",         params: {} }
+  if (m === "GET"  && pathname === "/api/admin/tenant-governance/export")       return { name: "tenant.governance.export",        params: {} }
+  if (m === "GET"  && pathname === "/api/admin/tenant-governance/jurisdictions") return { name: "tenant.governance.jurisdictions", params: {} }
+  const tgSetJurMatch = pathname.match(/^\/api\/admin\/tenant-governance\/([^/]+)\/set-jurisdiction$/)
+  if (m === "POST" && tgSetJurMatch) {
+    return { name: "tenant.governance.set_jurisdiction", params: { tenantId: tgSetJurMatch[1] } }
+  }
+  // Phase 15: governed proof routes — tenant/jurisdiction-gated privileged operation validators
+  if (m === "POST" && pathname === "/api/ops/governed-override")        return { name: "ops.governed_override",        params: {} }
+  if (m === "POST" && pathname === "/api/ops/governed-force-execute")   return { name: "ops.governed_force_execute",   params: {} }
 
   return null
 }
@@ -2698,6 +2760,153 @@ if (route.name === "admin.scheduler.preview") {
       Logger.info("sovereign.control.enabled", { actor: ap.principal.id, control_key: route.params.key, correlation_id: correlationId })
       return ok(res, result)
     }
+    // Phase 15: tenant/jurisdiction governance admin routes ──────────────────────
+    if (route.name === "tenant.governance.list") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const entries = TenantJurisdiction.getGovernanceState()
+      Logger.info("tenant.governance.listed", { actor: ap.principal.id, tenant_count: entries.length, correlation_id: correlationId })
+      return ok(res, { tenant_governance_version: TenantJurisdiction.TENANT_GOVERNANCE_VERSION, tenant_count: entries.length, tenants: entries })
+    }
+
+    if (route.name === "tenant.governance.export") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const artifact = TenantJurisdiction.exportGovernance()
+      Logger.info("tenant.governance.exported", { actor: ap.principal.id, tenant_count: artifact.tenant_count, jurisdiction_count: artifact.jurisdiction_count, correlation_id: correlationId })
+      return ok(res, artifact)
+    }
+
+    if (route.name === "tenant.governance.jurisdictions") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const jurisdictions = Object.values(TenantJurisdiction.JURISDICTIONS)
+      Logger.info("tenant.governance.jurisdictions.listed", { actor: ap.principal.id, jurisdiction_count: jurisdictions.length, correlation_id: correlationId })
+      return ok(res, { tenant_governance_version: TenantJurisdiction.TENANT_GOVERNANCE_VERSION, jurisdiction_count: jurisdictions.length, jurisdictions })
+    }
+
+    if (route.name === "tenant.governance.set_jurisdiction") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const body = await readJson(req, res).catch(() => null)
+      const jurisdictionCode = body && body.jurisdiction_code ? String(body.jurisdiction_code) : null
+      if (!jurisdictionCode) return fail(res, "VALIDATION_ERROR", "body.jurisdiction_code required", 422)
+      const result = TenantJurisdiction.setTenantJurisdiction(route.params.tenantId, jurisdictionCode, tenantRegistry)
+      if (!result.ok) return fail(res, "JURISDICTION_ERROR", `cannot set jurisdiction: ${result.reason}`, 422)
+      Logger.info("tenant.governance.jurisdiction.set", { actor: ap.principal.id, tenant_id: route.params.tenantId, jurisdiction_code: jurisdictionCode, correlation_id: correlationId })
+      return ok(res, result)
+    }
+
+    // Phase 15: governed proof routes — tenant/jurisdiction-gated privileged validators
+    if (route.name === "ops.governed_override") {
+      // POST /api/ops/governed-override — superadmin; tenant + jurisdiction gated; approval bound
+      const _auditCtx = { correlation_id: correlationId, request_id: requestId, route: route.name, method: req.method, decision_type: AuthzAudit.DECISION_TYPES.OPS_OVERRIDE, perm: AdminPerms.PERMS.OPS_OVERRIDE }
+      const ap = authenticateAndAudit(req, _auditCtx)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE, _auditCtx)) return
+      // Phase 15: tenant governance check
+      const requestTenantId   = req.headers["x-tenant-id"] ? String(req.headers["x-tenant-id"]).trim() : null
+      const jurisdictionCode  = req.headers["x-jurisdiction-code"] ? String(req.headers["x-jurisdiction-code"]).trim() : null
+      if (!requestTenantId) {
+        Logger.info("tenant.governance.missing_tenant", { actor: ap.principal.id, correlation_id: correlationId })
+        return fail(res, "TENANT_REQUIRED", "X-Tenant-Id header required for governed privileged action", 403)
+      }
+      const tgResult = requireTenantGovernance(res, String(ap.principal.tenant_id || "*"), requestTenantId, correlationId)
+      if (!tgResult) return
+      if (!jurisdictionCode) {
+        Logger.info("jurisdiction.governance.missing", { tenant_id: requestTenantId, correlation_id: correlationId })
+        return fail(res, "JURISDICTION_REQUIRED", "X-Jurisdiction-Code header required for governed privileged action", 403)
+      }
+      const jResult = requireJurisdictionGovernance(res, jurisdictionCode, tgResult.jurisdiction_code, correlationId)
+      if (!jResult) return
+      // Phase 14: sovereign registry check
+      const _regOvr = requireSovereignControl(res, SovereignRegistry.CONTROL_KEYS.OPS_OVERRIDE_REQUIRES_APPROVAL, correlationId)
+      if (!_regOvr) return
+      // Phase 13: approval gate
+      const body = await readJson(req, res).catch(() => null)
+      const aprId = body && body.approval_request_id ? String(body.approval_request_id) : null
+      if (!aprId) return fail(res, "APPROVAL_REQUIRED", "approval_request_id required for governed override", 403)
+      const aprCheck = ApprovalControl.validateApproval(aprId, ap.principal.id, ApprovalControl.APPROVAL_ACTIONS.OPS_OVERRIDE)
+      if (!aprCheck.ok) return fail(res, "APPROVAL_INVALID", `approval denied: ${aprCheck.reason}`, 403)
+      ApprovalControl.consumeApproval(aprId, ap.principal.id)
+      Logger.info("governed.override.accepted", {
+        actor: ap.principal.id, role: ap.principal.role,
+        tenant_id: requestTenantId, jurisdiction_code: jurisdictionCode,
+        approval_request_id: aprId, control_key: _regOvr.control_key,
+        control_version: _regOvr.control_version, correlation_id: correlationId,
+      })
+      return ok(res, {
+        phase:               "phase-15",
+        permission:          AdminPerms.PERMS.OPS_OVERRIDE,
+        actor:               { id: ap.principal.id, role: ap.principal.role },
+        action:              "governed_override",
+        result:              "accepted",
+        tenant_id:           requestTenantId,
+        jurisdiction_code:   jurisdictionCode,
+        approval_request_id: aprId,
+        control_key:         _regOvr.control_key,
+        control_version:     _regOvr.control_version,
+        correlation_id:      correlationId,
+        time:                nowIso(),
+      }, 202)
+    }
+
+    if (route.name === "ops.governed_force_execute") {
+      // POST /api/ops/governed-force-execute — ops or superadmin; tenant + jurisdiction gated; approval bound
+      const _auditCtx = { correlation_id: correlationId, request_id: requestId, route: route.name, method: req.method, decision_type: AuthzAudit.DECISION_TYPES.OPS_EXECUTE, perm: AdminPerms.PERMS.OPS_EXECUTE }
+      const ap = authenticateAndAudit(req, _auditCtx)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_EXECUTE, _auditCtx)) return
+      // Phase 15: tenant governance check
+      const requestTenantId  = req.headers["x-tenant-id"] ? String(req.headers["x-tenant-id"]).trim() : null
+      const jurisdictionCode = req.headers["x-jurisdiction-code"] ? String(req.headers["x-jurisdiction-code"]).trim() : null
+      if (!requestTenantId) {
+        Logger.info("tenant.governance.missing_tenant", { actor: ap.principal.id, correlation_id: correlationId })
+        return fail(res, "TENANT_REQUIRED", "X-Tenant-Id header required for governed privileged action", 403)
+      }
+      const tgResult = requireTenantGovernance(res, String(ap.principal.tenant_id || "*"), requestTenantId, correlationId)
+      if (!tgResult) return
+      if (!jurisdictionCode) {
+        Logger.info("jurisdiction.governance.missing", { tenant_id: requestTenantId, correlation_id: correlationId })
+        return fail(res, "JURISDICTION_REQUIRED", "X-Jurisdiction-Code header required for governed privileged action", 403)
+      }
+      const jResult = requireJurisdictionGovernance(res, jurisdictionCode, tgResult.jurisdiction_code, correlationId)
+      if (!jResult) return
+      // Phase 14: sovereign registry check
+      const _regFe = requireSovereignControl(res, SovereignRegistry.CONTROL_KEYS.OPS_FORCE_EXECUTE_REQUIRES_APPROVAL, correlationId)
+      if (!_regFe) return
+      // Phase 13: approval gate
+      const body = await readJson(req, res).catch(() => null)
+      const aprId = body && body.approval_request_id ? String(body.approval_request_id) : null
+      if (!aprId) return fail(res, "APPROVAL_REQUIRED", "approval_request_id required for governed force-execute", 403)
+      const aprCheck = ApprovalControl.validateApproval(aprId, ap.principal.id, ApprovalControl.APPROVAL_ACTIONS.OPS_FORCE_EXECUTE)
+      if (!aprCheck.ok) return fail(res, "APPROVAL_INVALID", `approval denied: ${aprCheck.reason}`, 403)
+      ApprovalControl.consumeApproval(aprId, ap.principal.id)
+      Logger.info("governed.force_execute.accepted", {
+        actor: ap.principal.id, role: ap.principal.role,
+        tenant_id: requestTenantId, jurisdiction_code: jurisdictionCode,
+        approval_request_id: aprId, control_key: _regFe.control_key,
+        control_version: _regFe.control_version, correlation_id: correlationId,
+      })
+      return ok(res, {
+        phase:               "phase-15",
+        permission:          AdminPerms.PERMS.OPS_EXECUTE,
+        actor:               { id: ap.principal.id, role: ap.principal.role },
+        action:              "governed_force_execute",
+        result:              "accepted",
+        tenant_id:           requestTenantId,
+        jurisdiction_code:   jurisdictionCode,
+        approval_request_id: aprId,
+        control_key:         _regFe.control_key,
+        control_version:     _regFe.control_version,
+        correlation_id:      correlationId,
+        time:                nowIso(),
+      }, 202)
+    }
     // ─────────────────────────────────────────────────────────────────────────
 
     return methodNotAllowed(res)
@@ -2711,6 +2920,7 @@ loadAllTenants()
 loadTenantRegistry()
 ApprovalControl.loadState()   // Phase 13: hydrate approval state from JSONL
 SovereignRegistry.loadRegistry()  // Phase 14: load sovereign control registry
+TenantJurisdiction.initTenantGovernance(tenantRegistry)  // Phase 15: initialize tenant/jurisdiction governance
 
 // S34: init scheduler engine — wired to SchedulerJobs.runForTenant
 Scheduler.init({
