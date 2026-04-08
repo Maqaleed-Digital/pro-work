@@ -17,6 +17,8 @@ func main() {
 
 	http.HandleFunc("/health", handleHealth)
 	http.HandleFunc("/ready", handleReady)
+	http.HandleFunc("/admin", handleAdminForbidden)
+	http.HandleFunc("/admin/", handleAdminForbidden)
 	http.HandleFunc("/", handleRoot)
 
 	http.ListenAndServe(":"+port, nil)
@@ -37,6 +39,14 @@ func handleReady(w http.ResponseWriter, r *http.Request) {
 		"status":  "ready",
 		"service": serviceName,
 		"version": serviceVersion,
+	})
+}
+
+func handleAdminForbidden(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusForbidden)
+	json.NewEncoder(w).Encode(map[string]string{
+		"status": "forbidden",
 	})
 }
 
