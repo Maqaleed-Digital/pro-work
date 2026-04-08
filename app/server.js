@@ -17,6 +17,7 @@ const DisclosureLegalHold  = require("./lib/disclosure_legal_hold")
 const ExternalReviewGateway  = require("./lib/external_review_gateway")
 const IncidentRegistry       = require("./lib/incident_registry")
 const ContinuityDR           = require("./lib/continuity_dr")
+const RestorationRegistry    = require("./lib/restoration_registry")
 const Scheduler      = require("./scheduler")
 const Analytics      = require("./analytics")
 const SchedulerJobs  = require("./wos/scheduler_jobs")
@@ -381,6 +382,29 @@ function requireRecoveryStateGovernance(res, declaredState, correlationId) {
     return null
   }
   return sCheck
+}
+
+// Phase 21: require validated/completed restoration for governed restoration exec
+function requireValidatedRestoration(res, restorationId, correlationId) {
+  if (!restorationId) {
+    Logger.info("restoration.governance.missing_id", { correlation_id: correlationId })
+    fail(res, "RESTORATION_CONTEXT_REQUIRED", "X-Restoration-Id header required for governed restoration path", 403)
+    return null
+  }
+  const rResult = RestorationRegistry.resolveRestoration(restorationId)
+  Logger.info("restoration.governance.resolved", {
+    restoration_id: restorationId, ok: rResult.ok,
+    reason: rResult.reason || "found", correlation_id: correlationId,
+  })
+  if (!rResult.ok) {
+    fail(res, "RESTORATION_DENIED", `restoration denied: ${rResult.reason}`, 403)
+    return null
+  }
+  if (!RestorationRegistry.isRestorationValidated(restorationId)) {
+    fail(res, "RESTORATION_NOT_VALIDATED", `restoration is not yet validated (status: ${rResult.restoration.restoration_status})`, 403)
+    return null
+  }
+  return rResult.restoration
 }
 
 // Phase 12: authenticate and write audit deny record on auth failure for audited routes
@@ -1449,6 +1473,17 @@ function matchRoute(method, pathname) {
   if (m === "POST" && pathname === "/api/admin/continuity-governance/recovery-state") return { name: "continuity.set_recovery_state", params: {} }
   // Phase 20: continuity/DR-gated proof route
   if (m === "POST" && pathname === "/api/ops/governed-continuity-exec")  return { name: "ops.governed_continuity_exec", params: {} }
+
+  // Phase 21: restoration governance admin routes
+  if (m === "GET"  && pathname === "/api/admin/restorations/export")                  return { name: "restorations.export",            params: {} }
+  if (m === "POST" && pathname === "/api/admin/restorations")                         return { name: "restorations.initiate",           params: {} }
+  const restIdMatch = pathname.match(/^\/api\/admin\/restorations\/([^/]+)\/(phase|assurance\/start|assurance\/verify|complete)$/)
+  if (m === "POST" && restIdMatch) {
+    const action = restIdMatch[2].replace("/", "_")
+    return { name: `restorations.${action}`, params: { restorationId: restIdMatch[1] } }
+  }
+  // Phase 21: restoration-gated proof route
+  if (m === "POST" && pathname === "/api/ops/governed-restoration-exec") return { name: "ops.governed_restoration_exec", params: {} }
 
   return null
 }
@@ -3683,6 +3718,103 @@ if (route.name === "admin.scheduler.preview") {
         recovery_state:   sResult.recovery_state,
         correlation_id:   correlationId,
         time:             nowIso(),
+      }, 202)
+    }
+    // Phase 21: restoration governance admin routes ────────────────────────────
+    if (route.name === "restorations.export") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const artifact = RestorationRegistry.exportGovernance()
+      Logger.info("restorations.exported", { actor: ap.principal.id, restoration_count: artifact.restoration_count, active_count: artifact.active_restoration_count, correlation_id: correlationId })
+      return ok(res, artifact)
+    }
+
+    if (route.name === "restorations.initiate") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const body = await readJson(req, res).catch(() => null)
+      if (!body) return fail(res, "INVALID_BODY", "JSON body required", 400)
+      const result = RestorationRegistry.initiateRestoration({
+        scope: body.scope, approvedBy: body.approved_by,
+        incidentId: body.incident_id, assuranceChecks: body.assurance_checks,
+      })
+      if (!result.ok) return fail(res, "RESTORATION_ERROR", `cannot initiate restoration: ${result.reason}`, 422)
+      Logger.info("restoration.initiated", { actor: ap.principal.id, restoration_id: result.data.restoration_id, approved_by: result.data.restoration_approved_by, scope: result.data.restoration_scope, correlation_id: correlationId })
+      return ok(res, result.data, 201)
+    }
+
+    if (route.name === "restorations.phase") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const result = RestorationRegistry.applyRestorationPhase(route.params.restorationId)
+      if (!result.ok) return fail(res, "RESTORATION_ERROR", `cannot apply restoration phase: ${result.reason}`, 422)
+      Logger.info("restoration.phase.applied", { actor: ap.principal.id, restoration_id: route.params.restorationId, restoration_phase: result.data.restoration_phase, restoration_status: result.data.restoration_status, correlation_id: correlationId })
+      return ok(res, result.data)
+    }
+
+    if (route.name === "restorations.assurance_start") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const result = RestorationRegistry.startAssurance(route.params.restorationId)
+      if (!result.ok) return fail(res, "RESTORATION_ERROR", `cannot start assurance: ${result.reason}`, 422)
+      Logger.info("restoration.assurance.started", { actor: ap.principal.id, restoration_id: route.params.restorationId, assurance_status: result.data.assurance_status, correlation_id: correlationId })
+      return ok(res, result.data)
+    }
+
+    if (route.name === "restorations.assurance_verify") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const body = await readJson(req, res).catch(() => null)
+      if (!body) return fail(res, "INVALID_BODY", "JSON body required", 400)
+      const passed = body.passed === true
+      const result = RestorationRegistry.verifyAssurance(route.params.restorationId, passed, body.evidence_ref)
+      if (!result.ok) return fail(res, "RESTORATION_ERROR", `cannot verify assurance: ${result.reason}`, 422)
+      Logger.info("restoration.assurance.verified", { actor: ap.principal.id, restoration_id: route.params.restorationId, assurance_passed: result.assurance_passed, assurance_status: result.data.assurance_status, restoration_status: result.data.restoration_status, correlation_id: correlationId })
+      return ok(res, result.data)
+    }
+
+    if (route.name === "restorations.complete") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const result = RestorationRegistry.completeRestoration(route.params.restorationId)
+      if (!result.ok) return fail(res, "RESTORATION_ERROR", `cannot complete restoration: ${result.reason}`, 422)
+      Logger.info("restoration.completed", { actor: ap.principal.id, restoration_id: route.params.restorationId, restoration_status: result.data.restoration_status, correlation_id: correlationId })
+      return ok(res, result.data)
+    }
+
+    // Phase 21: governed restoration exec proof route — requires validated/completed restoration
+    if (route.name === "ops.governed_restoration_exec") {
+      const _auditCtx = { correlation_id: correlationId, request_id: requestId, route: route.name, method: req.method, decision_type: AuthzAudit.DECISION_TYPES.OPS_EXECUTE, perm: AdminPerms.PERMS.OPS_EXECUTE }
+      const ap = authenticateAndAudit(req, _auditCtx)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_EXECUTE, _auditCtx)) return
+      const restorationId = req.headers["x-restoration-id"] ? String(req.headers["x-restoration-id"]).trim() : null
+      const restoration = requireValidatedRestoration(res, restorationId, correlationId)
+      if (!restoration) return
+      Logger.info("governed.restoration_exec.accepted", {
+        actor: ap.principal.id, role: ap.principal.role,
+        restoration_id: restorationId, restoration_status: restoration.restoration_status,
+        restoration_approved_by: restoration.restoration_approved_by,
+        assurance_status: restoration.assurance_status, correlation_id: correlationId,
+      })
+      return ok(res, {
+        phase:                    "phase-21",
+        permission:               AdminPerms.PERMS.OPS_EXECUTE,
+        actor:                    { id: ap.principal.id, role: ap.principal.role },
+        action:                   "governed_restoration_exec",
+        result:                   "accepted",
+        restoration_id:           restorationId,
+        restoration_status:       restoration.restoration_status,
+        restoration_approved_by:  restoration.restoration_approved_by,
+        assurance_status:         restoration.assurance_status,
+        correlation_id:           correlationId,
+        time:                     nowIso(),
       }, 202)
     }
     // ─────────────────────────────────────────────────────────────────────────
