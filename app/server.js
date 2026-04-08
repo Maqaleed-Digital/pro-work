@@ -13,6 +13,7 @@ const ApprovalControl   = require("./lib/approval_control")
 const SovereignRegistry    = require("./lib/sovereign_registry")
 const TenantJurisdiction   = require("./lib/tenant_jurisdiction")
 const EvidenceGovernance   = require("./lib/evidence_governance")
+const DisclosureLegalHold  = require("./lib/disclosure_legal_hold")
 const Scheduler      = require("./scheduler")
 const Analytics      = require("./analytics")
 const SchedulerJobs  = require("./wos/scheduler_jobs")
@@ -217,6 +218,42 @@ function requireRetentionGovernance(res, retentionClass, correlationId) {
     return null
   }
   return rcCheck
+}
+
+// Phase 17: resolve disclosure basis + scope — fail closed if unknown/inactive or out of scope
+function requireDisclosureGovernance(res, basis, scope, correlationId) {
+  const bCheck = DisclosureLegalHold.resolveDisclosureBasis(basis)
+  Logger.info("disclosure.governance.resolved", {
+    disclosure_basis: basis, ok: bCheck.ok,
+    reason: bCheck.reason || "active", correlation_id: correlationId,
+  })
+  if (!bCheck.ok) {
+    fail(res, "DISCLOSURE_DENIED", `disclosure basis check failed: ${bCheck.reason}`, 403)
+    return null
+  }
+  const sCheck = DisclosureLegalHold.validateDisclosureScope(basis, scope)
+  Logger.info("disclosure.scope.resolved", {
+    disclosure_basis: basis, disclosure_scope: scope, ok: sCheck.ok,
+    reason: sCheck.reason || "in_scope", correlation_id: correlationId,
+  })
+  if (!sCheck.ok) {
+    fail(res, "DISCLOSURE_SCOPE_DENIED", `disclosure scope check failed: ${sCheck.reason}`, 403)
+    return null
+  }
+  return { basis: bCheck.entry, scope: sCheck.scope }
+}
+
+// Phase 17: check for active legal hold — block disposal/lifecycle if hold active
+function requireLegalHoldClear(res, tenantId, correlationId) {
+  const active = DisclosureLegalHold.hasActiveLegalHold(tenantId)
+  Logger.info("legal.hold.checked", {
+    tenant_id: tenantId, active_hold: active, correlation_id: correlationId,
+  })
+  if (active) {
+    fail(res, "LEGAL_HOLD_ACTIVE", "active legal hold blocks disposal action", 403)
+    return false
+  }
+  return true
 }
 
 // Phase 12: authenticate and write audit deny record on auth failure for audited routes
@@ -1240,6 +1277,20 @@ function matchRoute(method, pathname) {
   }
   // Phase 16: governed evidence write proof route — residency + retention gated
   if (m === "POST" && pathname === "/api/ops/governed-evidence-write") return { name: "ops.governed_evidence_write", params: {} }
+
+  // Phase 17: disclosure governance admin routes
+  if (m === "GET"  && pathname === "/api/admin/disclosure-governance")              return { name: "disclosure.governance.list",         params: {} }
+  if (m === "GET"  && pathname === "/api/admin/disclosure-governance/export")       return { name: "disclosure.governance.export",        params: {} }
+  if (m === "GET"  && pathname === "/api/admin/disclosure-governance/bases")        return { name: "disclosure.governance.bases",         params: {} }
+  if (m === "GET"  && pathname === "/api/admin/disclosure-governance/legal-holds")  return { name: "disclosure.governance.legal_holds",   params: {} }
+  if (m === "POST" && pathname === "/api/admin/disclosure-governance/legal-hold")   return { name: "disclosure.governance.legal_hold.create", params: {} }
+  const dlhReleaseMatch = pathname.match(/^\/api\/admin\/disclosure-governance\/legal-hold\/([^/]+)\/release$/)
+  if (m === "POST" && dlhReleaseMatch) {
+    return { name: "disclosure.governance.legal_hold.release", params: { holdId: dlhReleaseMatch[1] } }
+  }
+  // Phase 17: governed proof routes — disclosure + legal hold gated
+  if (m === "POST" && pathname === "/api/ops/governed-disclosure") return { name: "ops.governed_disclosure", params: {} }
+  if (m === "POST" && pathname === "/api/ops/governed-disposal")   return { name: "ops.governed_disposal",   params: {} }
 
   return null
 }
@@ -3066,6 +3117,137 @@ if (route.name === "admin.scheduler.preview") {
         retention_days:    rcResult.entry.retention_days,
         correlation_id:    correlationId,
         time:              nowIso(),
+      }, 202)
+    }
+    // Phase 17: disclosure governance admin routes ─────────────────────────────
+    if (route.name === "disclosure.governance.list") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const state = DisclosureLegalHold.getGovernanceState()
+      Logger.info("disclosure.governance.listed", { actor: ap.principal.id, basis_count: state.bases.length, scope_count: state.scopes.length, hold_count: state.legal_holds.length, correlation_id: correlationId })
+      return ok(res, { disclosure_governance_version: DisclosureLegalHold.DISCLOSURE_GOVERNANCE_VERSION, ...state })
+    }
+
+    if (route.name === "disclosure.governance.export") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const artifact = DisclosureLegalHold.exportGovernance()
+      Logger.info("disclosure.governance.exported", { actor: ap.principal.id, basis_count: artifact.disclosure_basis_count, scope_count: artifact.disclosure_scope_count, hold_count: artifact.legal_hold_count, correlation_id: correlationId })
+      return ok(res, artifact)
+    }
+
+    if (route.name === "disclosure.governance.bases") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const bases = Object.values(DisclosureLegalHold.DISCLOSURE_BASES)
+      Logger.info("disclosure.governance.bases.listed", { actor: ap.principal.id, count: bases.length, correlation_id: correlationId })
+      return ok(res, { disclosure_governance_version: DisclosureLegalHold.DISCLOSURE_GOVERNANCE_VERSION, disclosure_basis_count: bases.length, disclosure_bases: bases })
+    }
+
+    if (route.name === "disclosure.governance.legal_holds") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const state = DisclosureLegalHold.getGovernanceState()
+      Logger.info("disclosure.governance.legal_holds.listed", { actor: ap.principal.id, count: state.legal_holds.length, correlation_id: correlationId })
+      return ok(res, { disclosure_governance_version: DisclosureLegalHold.DISCLOSURE_GOVERNANCE_VERSION, legal_hold_count: state.legal_holds.length, legal_holds: state.legal_holds })
+    }
+
+    if (route.name === "disclosure.governance.legal_hold.create") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const body = await readJson(req, res).catch(() => null)
+      if (!body) return fail(res, "INVALID_BODY", "JSON body required", 400)
+      const result = DisclosureLegalHold.createLegalHold({ tenantId: body.tenant_id, scope: body.scope, note: body.note })
+      if (!result.ok) return fail(res, "LEGAL_HOLD_ERROR", `cannot create legal hold: ${result.reason}`, 422)
+      Logger.info("disclosure.governance.legal_hold.created", { actor: ap.principal.id, legal_hold_id: result.data.legal_hold_id, tenant_id: result.data.tenant_id, correlation_id: correlationId })
+      return ok(res, result.data, 201)
+    }
+
+    if (route.name === "disclosure.governance.legal_hold.release") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const result = DisclosureLegalHold.releaseLegalHold(route.params.holdId)
+      if (!result.ok) return fail(res, "LEGAL_HOLD_ERROR", `cannot release legal hold: ${result.reason}`, 422)
+      Logger.info("disclosure.governance.legal_hold.released", { actor: ap.principal.id, legal_hold_id: route.params.holdId, correlation_id: correlationId })
+      return ok(res, result.data)
+    }
+
+    // Phase 17: governed disclosure proof route — disclosure basis + scope gated
+    if (route.name === "ops.governed_disclosure") {
+      const _auditCtx = { correlation_id: correlationId, request_id: requestId, route: route.name, method: req.method, decision_type: AuthzAudit.DECISION_TYPES.OPS_EXECUTE, perm: AdminPerms.PERMS.OPS_EXECUTE }
+      const ap = authenticateAndAudit(req, _auditCtx)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_EXECUTE, _auditCtx)) return
+      const disclosureBasis = req.headers["x-disclosure-basis"] ? String(req.headers["x-disclosure-basis"]).trim() : null
+      const disclosureScope = req.headers["x-disclosure-scope"] ? String(req.headers["x-disclosure-scope"]).trim() : null
+      if (!disclosureBasis) {
+        Logger.info("disclosure.governance.missing_basis", { actor: ap.principal.id, correlation_id: correlationId })
+        return fail(res, "DISCLOSURE_REQUIRED", "X-Disclosure-Basis header required for governed disclosure", 403)
+      }
+      const dResult = requireDisclosureGovernance(res, disclosureBasis, disclosureScope || "", correlationId)
+      if (!dResult) return
+      Logger.info("governed.disclosure.accepted", {
+        actor: ap.principal.id, role: ap.principal.role,
+        disclosure_basis: disclosureBasis, disclosure_scope: disclosureScope,
+        correlation_id: correlationId,
+      })
+      return ok(res, {
+        phase:            "phase-17",
+        permission:       AdminPerms.PERMS.OPS_EXECUTE,
+        actor:            { id: ap.principal.id, role: ap.principal.role },
+        action:           "governed_disclosure",
+        result:           "accepted",
+        disclosure_basis: disclosureBasis,
+        disclosure_scope: disclosureScope,
+        correlation_id:   correlationId,
+        time:             nowIso(),
+      }, 202)
+    }
+
+    // Phase 17: governed disposal proof route — legal hold state gated
+    if (route.name === "ops.governed_disposal") {
+      const _auditCtx = { correlation_id: correlationId, request_id: requestId, route: route.name, method: req.method, decision_type: AuthzAudit.DECISION_TYPES.OPS_EXECUTE, perm: AdminPerms.PERMS.OPS_EXECUTE }
+      const ap = authenticateAndAudit(req, _auditCtx)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_EXECUTE, _auditCtx)) return
+      const requestTenantId  = req.headers["x-tenant-id"] ? String(req.headers["x-tenant-id"]).trim() : null
+      const declaredHoldState = req.headers["x-legal-hold-state"] ? String(req.headers["x-legal-hold-state"]).trim() : null
+      if (!requestTenantId) return fail(res, "TENANT_REQUIRED", "X-Tenant-Id required for governed disposal", 403)
+      if (!declaredHoldState) {
+        Logger.info("legal.hold.state.missing", { actor: ap.principal.id, correlation_id: correlationId })
+        return fail(res, "LEGAL_HOLD_STATE_REQUIRED", "X-Legal-Hold-State header required for governed disposal", 403)
+      }
+      const hsCheck = DisclosureLegalHold.validateLegalHoldState(declaredHoldState)
+      Logger.info("legal.hold.state.validated", {
+        tenant_id: requestTenantId, legal_hold_state: declaredHoldState, ok: hsCheck.ok,
+        reason: hsCheck.reason || "known_state", correlation_id: correlationId,
+      })
+      if (!hsCheck.ok) {
+        return fail(res, "LEGAL_HOLD_STATE_DENIED", `legal hold state check failed: ${hsCheck.reason}`, 403)
+      }
+      const holdClear = requireLegalHoldClear(res, requestTenantId, correlationId)
+      if (!holdClear) return
+      Logger.info("governed.disposal.accepted", {
+        actor: ap.principal.id, role: ap.principal.role,
+        tenant_id: requestTenantId, legal_hold_state: declaredHoldState,
+        correlation_id: correlationId,
+      })
+      return ok(res, {
+        phase:            "phase-17",
+        permission:       AdminPerms.PERMS.OPS_EXECUTE,
+        actor:            { id: ap.principal.id, role: ap.principal.role },
+        action:           "governed_disposal",
+        result:           "accepted",
+        tenant_id:        requestTenantId,
+        legal_hold_state: declaredHoldState,
+        correlation_id:   correlationId,
+        time:             nowIso(),
       }, 202)
     }
     // ─────────────────────────────────────────────────────────────────────────
