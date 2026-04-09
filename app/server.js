@@ -19,6 +19,7 @@ const IncidentRegistry       = require("./lib/incident_registry")
 const ContinuityDR           = require("./lib/continuity_dr")
 const RestorationRegistry    = require("./lib/restoration_registry")
 const ControlAttestation     = require("./lib/control_attestation")
+const GovernanceClosure      = require("./lib/governance_closure")
 const Scheduler      = require("./scheduler")
 const Analytics      = require("./analytics")
 const SchedulerJobs  = require("./wos/scheduler_jobs")
@@ -1494,6 +1495,18 @@ function matchRoute(method, pathname) {
   if (m === "GET"  && pathname === "/api/admin/compliance-report")           return { name: "report.context",   params: {} }
   if (m === "GET"  && pathname === "/api/admin/compliance-report/export")    return { name: "report.export",    params: {} }
   if (m === "POST" && pathname === "/api/admin/compliance-report/generate")  return { name: "report.generate",  params: {} }
+
+  // Phase 23: governance closure admin routes
+  if (m === "GET"  && pathname === "/api/admin/governance-closure")              return { name: "closure.context",      params: {} }
+  if (m === "GET"  && pathname === "/api/admin/governance-closure/export")       return { name: "closure.export",       params: {} }
+  if (m === "POST" && pathname === "/api/admin/governance-closure/record")       return { name: "closure.record",       params: {} }
+  if (m === "GET"  && pathname === "/api/admin/governance-closure/tenant")       return { name: "closure.tenant",       params: {} }
+  if (m === "GET"  && pathname === "/api/admin/governance-closure/jurisdiction") return { name: "closure.jurisdiction", params: {} }
+  // Phase 23: executive assurance pack admin routes
+  if (m === "GET"  && pathname === "/api/admin/executive-assurance-pack")         return { name: "assurance.context", params: {} }
+  if (m === "GET"  && pathname === "/api/admin/executive-assurance-pack/export")  return { name: "assurance.export",  params: {} }
+  if (m === "POST" && pathname === "/api/admin/executive-assurance-pack/record")  return { name: "assurance.record",  params: {} }
+  if (m === "GET"  && pathname === "/api/admin/executive-assurance-pack/summary") return { name: "assurance.summary", params: {} }
 
   return null
 }
@@ -3908,6 +3921,125 @@ if (route.name === "admin.scheduler.preview") {
         correlation_id: correlationId,
       })
       return ok(res, result.data, 201)
+    }
+
+    // Phase 23: governance closure + executive assurance pack admin routes ────
+    if (route.name === "closure.context") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const state = GovernanceClosure.getClosureState()
+      Logger.info("closure.context.loaded", { actor: ap.principal.id, closure_count: state.closure_count, correlation_id: correlationId })
+      return ok(res, state)
+    }
+
+    if (route.name === "closure.export") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const artifact = GovernanceClosure.exportClosures()
+      Logger.info("closure.exported", { actor: ap.principal.id, closure_count: artifact.closure_count, correlation_id: correlationId })
+      return ok(res, artifact)
+    }
+
+    if (route.name === "closure.record") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const body = await readJson(req, res).catch(() => null)
+      if (!body) return fail(res, "INVALID_BODY", "JSON body required", 400)
+      const result = GovernanceClosure.createClosure({
+        scope:                body.scope,
+        tenantId:             body.tenant_id,
+        jurisdictionCode:     body.jurisdiction_code,
+        closureStatus:        body.closure_status,
+        criticalEvidenceRefs: body.critical_evidence_refs,
+        policyVersion:        body.policy_version,
+      })
+      if (!result.ok) return fail(res, "CLOSURE_ERROR", `closure rejected: ${result.reason}`, 422)
+      Logger.info("closure.recorded", {
+        actor: ap.principal.id, closure_id: result.data.closure_id,
+        closure_status: result.data.closure_status, closure_scope: result.data.closure_scope,
+        correlation_id: correlationId,
+      })
+      return ok(res, result.data, 201)
+    }
+
+    if (route.name === "closure.tenant") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const url = new URL(req.url, `http://${req.headers.host || "localhost"}`)
+      const tenantId = url.searchParams.get("tenant_id") || ""
+      const result = GovernanceClosure.getClosuresForTenant(tenantId)
+      if (!result.ok) return fail(res, "CLOSURE_ERROR", `closure tenant query failed: ${result.reason}`, 422)
+      Logger.info("closure.tenant.queried", { actor: ap.principal.id, tenant_id: tenantId, closure_count: result.data.closure_count, correlation_id: correlationId })
+      return ok(res, result.data)
+    }
+
+    if (route.name === "closure.jurisdiction") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const url = new URL(req.url, `http://${req.headers.host || "localhost"}`)
+      const jurisdictionCode = url.searchParams.get("jurisdiction_code") || ""
+      const result = GovernanceClosure.getClosuresForJurisdiction(jurisdictionCode)
+      if (!result.ok) return fail(res, "CLOSURE_ERROR", `closure jurisdiction query failed: ${result.reason}`, 422)
+      Logger.info("closure.jurisdiction.queried", { actor: ap.principal.id, jurisdiction_code: jurisdictionCode, closure_count: result.data.closure_count, correlation_id: correlationId })
+      return ok(res, result.data)
+    }
+
+    if (route.name === "assurance.context") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const state = GovernanceClosure.getAssurancePackState()
+      Logger.info("assurance.context.loaded", { actor: ap.principal.id, assurance_pack_count: state.assurance_pack_count, correlation_id: correlationId })
+      return ok(res, state)
+    }
+
+    if (route.name === "assurance.export") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const artifact = GovernanceClosure.exportAssurancePacks()
+      Logger.info("assurance.exported", { actor: ap.principal.id, assurance_pack_count: artifact.assurance_pack_count, correlation_id: correlationId })
+      return ok(res, artifact)
+    }
+
+    if (route.name === "assurance.record") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const body = await readJson(req, res).catch(() => null)
+      if (!body) return fail(res, "INVALID_BODY", "JSON body required", 400)
+      const result = GovernanceClosure.createAssurancePack({
+        scope:           body.scope,
+        closureId:       body.closure_id,
+        assuranceStatus: body.assurance_status,
+        summaryRef:      body.summary_ref,
+        policyVersion:   body.policy_version,
+      })
+      if (!result.ok) return fail(res, "ASSURANCE_ERROR", `assurance pack rejected: ${result.reason}`, 422)
+      Logger.info("assurance.recorded", {
+        actor: ap.principal.id, assurance_pack_id: result.data.assurance_pack_id,
+        assurance_status: result.data.assurance_status, closure_id: result.data.closure_id,
+        correlation_id: correlationId,
+      })
+      return ok(res, result.data, 201)
+    }
+
+    if (route.name === "assurance.summary") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      if (!requireAdminPerm(res, ap.principal, AdminPerms.PERMS.OPS_OVERRIDE)) return
+      const summary = GovernanceClosure.generateAssuranceSummary()
+      Logger.info("assurance.summary.generated", {
+        actor: ap.principal.id, overall_assurance_status: summary.overall_assurance_status,
+        assurance_pack_count: summary.assurance_pack_count, closure_count: summary.closure_count,
+        correlation_id: correlationId,
+      })
+      return ok(res, summary)
     }
 
     // ─────────────────────────────────────────────────────────────────────────
