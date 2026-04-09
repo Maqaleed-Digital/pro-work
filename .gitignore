@@ -26,3 +26,9 @@ app/server.js.bak.*
 app/data/tenants.json
 app/data/scheduler.json
 app/data/analytics_snapshots.json
+
+# Runtime-generated append-only audit log (not committed)
+app/data/authz_audit.jsonl
+
+# Docker local environment overrides (not committed)
+infrastructure/docker/.env
