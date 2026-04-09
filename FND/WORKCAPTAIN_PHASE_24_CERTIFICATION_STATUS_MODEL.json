@@ -1,0 +1,10 @@
+{
+  "version": "1.0",
+  "allowed_statuses": [
+    "pending",
+    "certified",
+    "blocked"
+  ],
+  "rule": "fail_closed",
+  "description": "Phase 24 certification status model for WorkCaptain / ProWork final production governance seal."
+}
