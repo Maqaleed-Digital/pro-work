@@ -1,0 +1,9 @@
+{
+  "version": "1.0",
+  "roles": ["requester", "board_operator", "system_viewer"],
+  "permissions": {
+    "createEvidencePack": ["board_operator"]
+  },
+  "initialTrustState": "TRUST_CAPTURED",
+  "initialExportState": "PACK_VISIBLE"
+}

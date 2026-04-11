@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Phase 50 — Trust Closure & Evidence Pack Finalization</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>Phase 50 — Trust Closure & Evidence Pack Finalization</h1>
+    <p class="subtitle">Governed execution evidence pack creation and trust state management</p>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>Actor Context</h2>
+      <div class="field-row">
+        <label>Actor ID</label>
+        <input id="actorId" type="text" value="user_operator_1" />
+      </div>
+      <div class="field-row">
+        <label>Actor Role</label>
+        <select id="actorRole">
+          <option value="board_operator">board_operator</option>
+          <option value="requester">requester</option>
+          <option value="system_viewer">system_viewer</option>
+        </select>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Create Evidence Pack</h2>
+      <div class="field-row">
+        <label>Delivery Artifact ID</label>
+        <input id="deliveryArtifactId" type="text" placeholder="da_..." />
+      </div>
+      <div class="field-row">
+        <label>Title</label>
+        <input id="packTitle" type="text" placeholder="Evidence pack title" />
+      </div>
+      <div class="field-row">
+        <label>Summary</label>
+        <input id="packSummary" type="text" placeholder="Brief summary" />
+      </div>
+      <div class="field-row">
+        <label>Pack Type</label>
+        <select id="packType">
+          <option value="DELIVERY_EVIDENCE">DELIVERY_EVIDENCE</option>
+          <option value="AUDIT_TRAIL">AUDIT_TRAIL</option>
+          <option value="COMPLIANCE_PACK">COMPLIANCE_PACK</option>
+        </select>
+      </div>
+      <button id="btnCreatePack">Create Evidence Pack</button>
+      <pre id="packResult" class="result"></pre>
+    </section>
+
+    <section class="panel">
+      <h2>Evidence Packs</h2>
+      <button id="btnGetPacks">Refresh Evidence Packs</button>
+      <pre id="packsResult" class="result"></pre>
+    </section>
+
+    <section class="panel">
+      <h2>Delivery Artifacts</h2>
+      <button id="btnGetArtifacts">Refresh Delivery Artifacts</button>
+      <pre id="artifactsResult" class="result"></pre>
+    </section>
+
+    <section class="panel">
+      <h2>Runtime State</h2>
+      <button id="btnGetState">Refresh State</button>
+      <pre id="stateResult" class="result"></pre>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
