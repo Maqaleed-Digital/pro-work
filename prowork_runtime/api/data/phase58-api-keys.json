@@ -1,0 +1,10 @@
+[
+  {
+    "tenantId": "tenant_demo_001",
+    "apiKey": "demo-key-001"
+  },
+  {
+    "tenantId": "tenant_demo_002",
+    "apiKey": "demo-key-002"
+  }
+]
