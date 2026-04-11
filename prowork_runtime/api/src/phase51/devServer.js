@@ -1,8 +1,11 @@
 const http = require("http");
+const fs = require("fs");
+const path = require("path");
 const handlers = require("./governedHandlers");
 const { readState } = require("./governedStore");
 
 const PORT = 43151;
+const DEMO_DIR = path.resolve(__dirname, "../../../web/phase51_demo");
 
 function parseBody(req) {
   return new Promise((resolve, reject) => {
@@ -45,6 +48,26 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (method === "GET" && url === "/api/command-center/state") { send(res, handlers.getCommandCenterState()); return; }
+
+    // Browser demo routes
+    if (method === "GET" && (url === "/phase51-demo" || url === "/phase51-demo/")) {
+      const html = fs.readFileSync(path.join(DEMO_DIR, "index.html"), "utf8");
+      res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+      res.end(html);
+      return;
+    }
+    if (method === "GET" && url === "/phase51-demo/app.js") {
+      const js = fs.readFileSync(path.join(DEMO_DIR, "app.js"), "utf8");
+      res.writeHead(200, { "content-type": "application/javascript; charset=utf-8" });
+      res.end(js);
+      return;
+    }
+    if (method === "GET" && url === "/phase51-demo/styles.css") {
+      const css = fs.readFileSync(path.join(DEMO_DIR, "styles.css"), "utf8");
+      res.writeHead(200, { "content-type": "text/css; charset=utf-8" });
+      res.end(css);
+      return;
+    }
     if (method === "GET" && url === "/api/opportunities") { send(res, handlers.getOpportunities()); return; }
     if (method === "GET" && url === "/api/events") { send(res, handlers.getEvents()); return; }
     if (method === "GET" && url === "/api/execution/queue") { send(res, handlers.getExecutionQueue()); return; }

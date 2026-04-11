@@ -1,81 +1,46 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Phase 51 — Audit Export & Governed Closure Certification</title>
-  <link rel="stylesheet" href="styles.css" />
-</head>
-<body>
-  <header>
-    <h1>Phase 51 — Audit Export & Governed Closure Certification</h1>
-    <p class="subtitle">Governed closure certification creation and audit export activation</p>
-  </header>
-  <main>
-    <section class="panel">
-      <h2>Actor Context</h2>
-      <div class="field-row">
-        <label>Actor ID</label>
-        <input id="actorId" type="text" value="user_operator_1" />
-      </div>
-      <div class="field-row">
-        <label>Actor Role</label>
-        <select id="actorRole">
-          <option value="board_operator">board_operator</option>
-          <option value="requester">requester</option>
-          <option value="system_viewer">system_viewer</option>
-        </select>
-      </div>
-    </section>
+  <head>
+    <meta charset="utf-8" />
+    <title>WorkCaptain Phase 51 Demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="/phase51-demo/styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero">
+        <h1>WorkCaptain / ProWork — Phase 51</h1>
+        <p>Audit Export + Governed Closure Certification Activation</p>
+      </section>
 
-    <section class="panel">
-      <h2>Create Certification</h2>
-      <div class="field-row">
-        <label>Evidence Pack ID</label>
-        <input id="evidencePackId" type="text" placeholder="evidencepack_..." />
-      </div>
-      <div class="field-row">
-        <label>Title</label>
-        <input id="certTitle" type="text" placeholder="Certification title" />
-      </div>
-      <div class="field-row">
-        <label>Summary</label>
-        <input id="certSummary" type="text" placeholder="Brief summary" />
-      </div>
-      <div class="field-row">
-        <label>Certification Type</label>
-        <select id="certType">
-          <option value="CLOSURE_CERTIFICATION">CLOSURE_CERTIFICATION</option>
-          <option value="AUDIT_CERTIFICATION">AUDIT_CERTIFICATION</option>
-          <option value="COMPLIANCE_CERTIFICATION">COMPLIANCE_CERTIFICATION</option>
-        </select>
-      </div>
-      <button id="btnCreateCert">Create Certification</button>
-      <pre id="certResult" class="result"></pre>
-    </section>
+      <section class="card">
+        <h2>Create Closure Certification</h2>
+        <form id="cert-form">
+          <label>Evidence Pack ID <input id="epId" placeholder="evidencepack_..." /></label>
+          <label>Title <input name="title" value="Closure certification record" /></label>
+          <label>Summary <textarea name="summary">Capture the first governed closure certification from an evidence pack.</textarea></label>
+          <label>Certification Type <input name="certificationType" value="BOARD_ASSURANCE" /></label>
+          <label>Actor ID <input id="actorId" value="board_ops_001" /></label>
+          <label>Actor Role
+            <select id="actorRole">
+              <option value="board_operator">board_operator</option>
+              <option value="requester">requester</option>
+            </select>
+          </label>
+          <button type="submit">Create certification</button>
+        </form>
+        <pre id="cert-result">Waiting...</pre>
+      </section>
 
-    <section class="panel">
-      <h2>Audit Export</h2>
-      <div class="field-row">
-        <label>Certification ID</label>
-        <input id="certIdExport" type="text" placeholder="certification_..." />
-      </div>
-      <button id="btnAuditExport">Fetch Audit Export</button>
-      <pre id="auditResult" class="result"></pre>
-    </section>
-
-    <section class="panel">
-      <h2>Certifications</h2>
-      <button id="btnGetCerts">Refresh Certifications</button>
-      <pre id="certsResult" class="result"></pre>
-    </section>
-
-    <section class="panel">
-      <h2>Runtime State</h2>
-      <button id="btnGetState">Refresh State</button>
-      <pre id="stateResult" class="result"></pre>
-    </section>
-  </main>
-  <script src="app.js"></script>
-</body>
+      <section class="card">
+        <h2>Live Runtime State</h2>
+        <button id="refresh">Refresh live state</button>
+        <pre id="command-state">Loading...</pre>
+        <pre id="certification-detail">Loading...</pre>
+        <pre id="audit-export">Loading...</pre>
+        <pre id="events-list">Loading...</pre>
+      </section>
+    </main>
+    <script src="/phase51-demo/app.js"></script>
+  </body>
 </html>

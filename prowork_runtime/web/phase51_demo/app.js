@@ -1,4 +1,6 @@
-const API = "http://localhost:43151";
+const API = "";
+
+let currentCertificationId = "";
 
 function headers() {
   return {
@@ -8,42 +10,48 @@ function headers() {
   };
 }
 
-async function api(method, path, body) {
-  const opts = { method, headers: headers() };
-  if (body) opts.body = JSON.stringify(body);
-  const res = await fetch(API + path, opts);
-  const data = await res.json();
-  return { status: res.status, data };
+async function requestJson(url, options = {}) {
+  const response = await fetch(url, options);
+  const data = await response.json();
+  return { ok: response.ok, status: response.status, data };
 }
 
-function show(id, result) {
-  document.getElementById(id).textContent = JSON.stringify(result, null, 2);
+async function refreshState() {
+  const command = await requestJson(`${API}/api/command-center/state`);
+  const events = await requestJson(`${API}/api/events`);
+  let cert = { data: "No certification yet" };
+  let audit = { data: "No audit export yet" };
+
+  if (currentCertificationId) {
+    cert = await requestJson(`${API}/api/certifications/${currentCertificationId}`);
+    audit = await requestJson(`${API}/api/certifications/${currentCertificationId}/audit-export`);
+  }
+
+  document.getElementById("command-state").textContent = JSON.stringify(command.data, null, 2);
+  document.getElementById("certification-detail").textContent = JSON.stringify(cert.data, null, 2);
+  document.getElementById("audit-export").textContent = JSON.stringify(audit.data, null, 2);
+  document.getElementById("events-list").textContent = JSON.stringify(events.data, null, 2);
 }
 
-document.getElementById("btnCreateCert").addEventListener("click", async () => {
-  const epId = document.getElementById("evidencePackId").value.trim();
-  if (!epId) { show("certResult", { error: "Evidence Pack ID required" }); return; }
-  const r = await api("POST", `/api/evidence-packs/${epId}/certifications`, {
-    title: document.getElementById("certTitle").value.trim(),
-    summary: document.getElementById("certSummary").value.trim(),
-    certificationType: document.getElementById("certType").value
+document.getElementById("cert-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const epId = document.getElementById("epId").value.trim();
+  if (!epId) { document.getElementById("cert-result").textContent = "Evidence Pack ID required"; return; }
+  const r = await requestJson(`${API}/api/evidence-packs/${epId}/certifications`, {
+    method: "POST",
+    headers: headers(),
+    body: JSON.stringify({
+      title: e.target.title.value.trim(),
+      summary: e.target.summary.value.trim(),
+      certificationType: e.target.certificationType.value.trim()
+    })
   });
-  show("certResult", r);
+  document.getElementById("cert-result").textContent = JSON.stringify(r.data, null, 2);
+  if (r.ok && r.data.data && r.data.data.item) {
+    currentCertificationId = r.data.data.item.certificationId;
+    refreshState();
+  }
 });
 
-document.getElementById("btnAuditExport").addEventListener("click", async () => {
-  const certId = document.getElementById("certIdExport").value.trim();
-  if (!certId) { show("auditResult", { error: "Certification ID required" }); return; }
-  const r = await api("GET", `/api/certifications/${certId}/audit-export`);
-  show("auditResult", r);
-});
-
-document.getElementById("btnGetCerts").addEventListener("click", async () => {
-  const r = await api("GET", "/api/certifications");
-  show("certsResult", r);
-});
-
-document.getElementById("btnGetState").addEventListener("click", async () => {
-  const r = await api("GET", "/api/state");
-  show("stateResult", r);
-});
+document.getElementById("refresh").addEventListener("click", refreshState);
+refreshState();
