@@ -1,0 +1,9 @@
+{
+  "version": "1.0",
+  "roles": ["requester", "board_operator", "system_viewer"],
+  "permissions": {
+    "createCertification": ["board_operator"]
+  },
+  "initialCertificationState": "CERTIFIED",
+  "initialAuditExportState": "EXPORT_READY"
+}

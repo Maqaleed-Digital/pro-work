@@ -1,0 +1,33 @@
+{
+  "version": "1.0",
+  "required": [
+    "certificationId",
+    "evidencePackId",
+    "deliveryArtifactId",
+    "workItemId",
+    "opportunityId",
+    "title",
+    "summary",
+    "certificationType",
+    "certificationState",
+    "auditExportState",
+    "actorId",
+    "actorRole",
+    "createdAt"
+  ],
+  "properties": {
+    "certificationId": { "type": "string" },
+    "evidencePackId": { "type": "string" },
+    "deliveryArtifactId": { "type": "string" },
+    "workItemId": { "type": "string" },
+    "opportunityId": { "type": "string" },
+    "title": { "type": "string" },
+    "summary": { "type": "string" },
+    "certificationType": { "type": "string" },
+    "certificationState": { "type": "string" },
+    "auditExportState": { "type": "string" },
+    "actorId": { "type": "string" },
+    "actorRole": { "type": "string" },
+    "createdAt": { "type": "string" }
+  }
+}
