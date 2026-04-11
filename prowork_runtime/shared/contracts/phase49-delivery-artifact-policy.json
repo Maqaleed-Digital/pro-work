@@ -1,0 +1,10 @@
+{
+  "version": "1.0",
+  "roles": ["requester", "board_operator", "system_viewer"],
+  "permissions": {
+    "createDeliveryArtifact": ["board_operator"]
+  },
+  "workItemPrerequisiteStatus": "COMPLETED",
+  "initialEvidenceState": "EVIDENCE_CAPTURED",
+  "initialReviewState": "DELIVERY_VISIBLE"
+}
