@@ -1,0 +1,10 @@
+{
+  "version": "1.0",
+  "shape": {
+    "ok": "boolean",
+    "code": "string",
+    "data": "object|null",
+    "errors": "array",
+    "meta": "object"
+  }
+}

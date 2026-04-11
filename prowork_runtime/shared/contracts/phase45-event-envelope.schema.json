@@ -1,0 +1,30 @@
+{
+  "version": "1.0",
+  "required": [
+    "eventId",
+    "eventType",
+    "eventVersion",
+    "occurredAt",
+    "aggregateType",
+    "aggregateId",
+    "actor",
+    "payload"
+  ],
+  "properties": {
+    "eventId": { "type": "string" },
+    "eventType": { "type": "string" },
+    "eventVersion": { "type": "string" },
+    "occurredAt": { "type": "string" },
+    "aggregateType": { "type": "string" },
+    "aggregateId": { "type": "string" },
+    "actor": {
+      "type": "object",
+      "required": ["actorId", "actorRole"],
+      "properties": {
+        "actorId": { "type": "string" },
+        "actorRole": { "type": "string" }
+      }
+    },
+    "payload": { "type": "object" }
+  }
+}

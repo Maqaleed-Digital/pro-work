@@ -1,0 +1,11 @@
+{
+  "version": "1.0",
+  "roles": ["requester", "board_operator", "system_viewer"],
+  "permissions": {
+    "advanceOpportunityStage": ["board_operator"]
+  },
+  "allowedTransitions": {
+    "COMMAND_VISIBLE": ["BOARD_REVIEW"],
+    "BOARD_REVIEW": ["APPROVED"]
+  }
+}

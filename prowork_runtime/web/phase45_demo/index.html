@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>WorkCaptain Phase 45 Demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="/phase45-demo/styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero">
+        <h1>WorkCaptain / ProWork — Phase 45</h1>
+        <p>Multi-Flow Governed State Expansion</p>
+      </section>
+
+      <section class="card">
+        <h2>Flow A — Create Intake</h2>
+        <form id="intake-form">
+          <label>Tenant ID <input name="tenantId" value="tenant_demo_001" required /></label>
+          <label>Requester ID <input name="requesterId" value="req_demo_001" required /></label>
+          <label>Title <input name="title" value="Institutional board package" required /></label>
+          <label>Summary <textarea name="summary" required>Advance the first opportunity into board review through a governed runtime flow.</textarea></label>
+          <button type="submit">Create governed intake</button>
+        </form>
+        <pre id="intake-result">Waiting for intake...</pre>
+      </section>
+
+      <section class="card">
+        <h2>Flow B — Advance Opportunity Stage</h2>
+        <form id="advance-form">
+          <label>Opportunity ID <input name="opportunityId" placeholder="Auto-fill after intake" required /></label>
+          <label>Target Stage <input name="toStage" value="BOARD_REVIEW" required /></label>
+          <label>Actor ID <input name="actorId" value="board_ops_001" required /></label>
+          <label>Actor Role <input name="actorRole" value="board_operator" required /></label>
+          <button type="submit">Advance stage</button>
+        </form>
+        <pre id="advance-result">Waiting for stage advance...</pre>
+      </section>
+
+      <section class="card">
+        <h2>Command Center State</h2>
+        <button id="refresh-state">Refresh live state</button>
+        <pre id="command-state">Loading...</pre>
+      </section>
+
+      <section class="card">
+        <h2>Board Queue</h2>
+        <pre id="board-queue">Loading...</pre>
+      </section>
+
+      <section class="card">
+        <h2>Events</h2>
+        <pre id="events-list">Loading...</pre>
+      </section>
+    </main>
+    <script src="/phase45-demo/app.js"></script>
+  </body>
+</html>
