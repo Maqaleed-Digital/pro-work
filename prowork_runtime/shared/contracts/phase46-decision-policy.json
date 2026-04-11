@@ -1,0 +1,10 @@
+{
+  "version": "1.0",
+  "roles": ["requester", "board_operator", "system_viewer"],
+  "permissions": {
+    "approveOpportunity": ["board_operator"],
+    "rejectOpportunity": ["board_operator"]
+  },
+  "decisionPrerequisiteStage": "BOARD_REVIEW",
+  "finalStages": ["APPROVED", "REJECTED"]
+}

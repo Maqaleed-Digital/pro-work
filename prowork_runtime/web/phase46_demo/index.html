@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>WorkCaptain Phase 46 Demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="/phase46-demo/styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero">
+        <h1>WorkCaptain / ProWork — Phase 46</h1>
+        <p>Governed Decisioning + Approval Chain Activation</p>
+      </section>
+
+      <section class="card">
+        <h2>Flow A — Create Intake</h2>
+        <form id="intake-form">
+          <label>Tenant ID <input name="tenantId" value="tenant_demo_001" required /></label>
+          <label>Requester ID <input name="requesterId" value="req_demo_001" required /></label>
+          <label>Title <input name="title" value="Board approval package" required /></label>
+          <label>Summary <textarea name="summary" required>Drive the first governed opportunity into formal board approval with audit evidence.</textarea></label>
+          <button type="submit">Create governed intake</button>
+        </form>
+        <pre id="intake-result">Waiting for intake...</pre>
+      </section>
+
+      <section class="card">
+        <h2>Flow B — Advance to Board Review</h2>
+        <form id="advance-form">
+          <label>Opportunity ID <input name="opportunityId" placeholder="Auto-fill after intake" required /></label>
+          <label>Target Stage <input name="toStage" value="BOARD_REVIEW" required /></label>
+          <label>Actor ID <input name="actorId" value="board_ops_001" required /></label>
+          <label>Actor Role <input name="actorRole" value="board_operator" required /></label>
+          <button type="submit">Advance stage</button>
+        </form>
+        <pre id="advance-result">Waiting for stage advance...</pre>
+      </section>
+
+      <section class="card">
+        <h2>Flow C — Final Approval</h2>
+        <form id="approve-form">
+          <label>Opportunity ID <input name="opportunityId" placeholder="Auto-fill after intake" required /></label>
+          <label>Reason <textarea name="reason" required>Board confirms strategic fit and execution readiness.</textarea></label>
+          <label>Actor ID <input name="actorId" value="board_ops_001" required /></label>
+          <label>Actor Role <input name="actorRole" value="board_operator" required /></label>
+          <button type="submit">Approve opportunity</button>
+        </form>
+        <pre id="approve-result">Waiting for final decision...</pre>
+      </section>
+
+      <section class="card">
+        <h2>Command Center State</h2>
+        <button id="refresh-state">Refresh live state</button>
+        <pre id="command-state">Loading...</pre>
+      </section>
+
+      <section class="card">
+        <h2>Decision Audit</h2>
+        <pre id="decision-audit">Loading...</pre>
+      </section>
+
+      <section class="card">
+        <h2>Board Queue</h2>
+        <pre id="board-queue">Loading...</pre>
+      </section>
+
+      <section class="card">
+        <h2>Events</h2>
+        <pre id="events-list">Loading...</pre>
+      </section>
+    </main>
+    <script src="/phase46-demo/app.js"></script>
+  </body>
+</html>

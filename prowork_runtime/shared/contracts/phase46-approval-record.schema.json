@@ -1,0 +1,21 @@
+{
+  "version": "1.0",
+  "required": [
+    "approvalId",
+    "opportunityId",
+    "decisionType",
+    "actorId",
+    "actorRole",
+    "reason",
+    "createdAt"
+  ],
+  "properties": {
+    "approvalId": { "type": "string" },
+    "opportunityId": { "type": "string" },
+    "decisionType": { "type": "string" },
+    "actorId": { "type": "string" },
+    "actorRole": { "type": "string" },
+    "reason": { "type": "string" },
+    "createdAt": { "type": "string" }
+  }
+}
