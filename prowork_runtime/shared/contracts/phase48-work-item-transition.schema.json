@@ -1,0 +1,24 @@
+{
+  "version": "1.0",
+  "required": [
+    "transitionId",
+    "workItemId",
+    "action",
+    "fromStatus",
+    "toStatus",
+    "actorId",
+    "actorRole",
+    "occurredAt"
+  ],
+  "properties": {
+    "transitionId": { "type": "string" },
+    "workItemId": { "type": "string" },
+    "action": { "type": "string" },
+    "fromStatus": { "type": "string" },
+    "toStatus": { "type": "string" },
+    "actorId": { "type": "string" },
+    "actorRole": { "type": "string" },
+    "reason": { "type": "string" },
+    "occurredAt": { "type": "string" }
+  }
+}

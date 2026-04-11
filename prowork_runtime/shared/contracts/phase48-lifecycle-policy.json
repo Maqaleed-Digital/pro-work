@@ -1,0 +1,16 @@
+{
+  "version": "1.0",
+  "roles": ["requester", "board_operator", "system_viewer"],
+  "permissions": {
+    "startWorkItem": ["board_operator"],
+    "blockWorkItem": ["board_operator"],
+    "completeWorkItem": ["board_operator"]
+  },
+  "allowedTransitions": {
+    "READY": ["IN_PROGRESS", "BLOCKED"],
+    "IN_PROGRESS": ["BLOCKED", "COMPLETED"],
+    "BLOCKED": [],
+    "COMPLETED": []
+  },
+  "executionVisibleStatuses": ["READY", "IN_PROGRESS"]
+}

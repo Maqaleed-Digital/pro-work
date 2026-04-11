@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Phase 48 — Execution Lifecycle</title>
+  <link rel="stylesheet" href="/phase48-demo/styles.css" />
+</head>
+<body>
+  <header>
+    <h1>Phase 48 — Execution Lifecycle</h1>
+    <p class="subtitle">Work Item State Transition Activation</p>
+  </header>
+  <main>
+    <section class="card">
+      <h2>Setup: Intake → Advance → Approve</h2>
+      <button id="btn-setup">Run Governed Setup</button>
+      <pre id="out-setup"></pre>
+    </section>
+
+    <section class="card">
+      <h2>Create Work Items</h2>
+      <button id="btn-create-a">Create Work Item A (→ Complete path)</button>
+      <button id="btn-create-b">Create Work Item B (→ Block path)</button>
+      <pre id="out-create"></pre>
+    </section>
+
+    <section class="card">
+      <h2>Lifecycle Transitions</h2>
+      <button id="btn-start-a">Start Work Item A</button>
+      <button id="btn-start-b">Start Work Item B</button>
+      <button id="btn-complete-a">Complete Work Item A</button>
+      <button id="btn-block-b">Block Work Item B</button>
+      <pre id="out-lifecycle"></pre>
+    </section>
+
+    <section class="card">
+      <h2>Live State</h2>
+      <button id="btn-refresh">Refresh State</button>
+      <pre id="out-queue"></pre>
+      <pre id="out-state"></pre>
+    </section>
+
+    <section class="card">
+      <h2>Events</h2>
+      <button id="btn-events">Fetch Events</button>
+      <pre id="out-events"></pre>
+    </section>
+  </main>
+  <script src="/phase48-demo/app.js"></script>
+</body>
+</html>

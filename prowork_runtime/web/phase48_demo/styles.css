@@ -1,0 +1,11 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, sans-serif; background: #0f1117; color: #e2e8f0; padding: 2rem; }
+header { margin-bottom: 2rem; }
+header h1 { font-size: 1.75rem; font-weight: 700; color: #0ea5e9; }
+header .subtitle { color: #94a3b8; font-size: 0.9rem; margin-top: 0.25rem; }
+main { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 1.25rem; }
+.card { background: #1e2130; border: 1px solid #2d3148; border-radius: 8px; padding: 1.25rem; display: flex; flex-direction: column; gap: 0.75rem; }
+.card h2 { font-size: 1rem; font-weight: 600; color: #38bdf8; }
+button { background: #0ea5e9; border: none; border-radius: 4px; color: #fff; cursor: pointer; font-size: 0.875rem; font-weight: 600; padding: 0.5rem 1rem; transition: background 0.15s; }
+button:hover { background: #0284c7; }
+pre { background: #0a0c12; border: 1px solid #1e2130; border-radius: 4px; color: #a3e635; font-size: 0.75rem; max-height: 200px; overflow: auto; padding: 0.75rem; white-space: pre-wrap; word-break: break-all; }
