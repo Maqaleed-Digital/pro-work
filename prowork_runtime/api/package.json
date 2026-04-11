@@ -1,0 +1,9 @@
+{
+  "name": "prowork-runtime-api",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "build": "echo 'api build scaffold established'",
+    "test": "echo 'api tests pending governed implementation'"
+  }
+}
