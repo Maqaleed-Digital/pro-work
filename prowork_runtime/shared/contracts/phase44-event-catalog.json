@@ -1,0 +1,20 @@
+{
+  "version": "1.0",
+  "events": [
+    {
+      "eventType": "INTAKE_CREATED",
+      "aggregateType": "INTAKE",
+      "trustSensitive": false
+    },
+    {
+      "eventType": "OPPORTUNITY_REGISTERED",
+      "aggregateType": "OPPORTUNITY",
+      "trustSensitive": false
+    },
+    {
+      "eventType": "COMMAND_CENTER_STATE_UPDATED",
+      "aggregateType": "COMMAND_STATE",
+      "trustSensitive": false
+    }
+  ]
+}

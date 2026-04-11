@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>WorkCaptain Phase 44 Demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="/phase44-demo/styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero">
+        <h1>WorkCaptain / ProWork — Phase 44</h1>
+        <p>Core Implementation Wave 1 + Governed Route Activation</p>
+      </section>
+
+      <section class="card">
+        <h2>Create Intake</h2>
+        <form id="intake-form">
+          <label>Tenant ID <input name="tenantId" value="tenant_demo_001" required /></label>
+          <label>Requester ID <input name="requesterId" value="req_demo_001" required /></label>
+          <label>Title <input name="title" value="Board operating model setup" required /></label>
+          <label>Summary <textarea name="summary" required>Establish first governed opportunity from a live intake flow.</textarea></label>
+          <button type="submit">Submit governed intake</button>
+        </form>
+        <pre id="intake-result">Waiting for action...</pre>
+      </section>
+
+      <section class="card">
+        <h2>Command Center State</h2>
+        <button id="refresh-state">Refresh live state</button>
+        <pre id="command-state">Loading...</pre>
+      </section>
+
+      <section class="card">
+        <h2>Opportunities</h2>
+        <pre id="opportunity-list">Loading...</pre>
+      </section>
+    </main>
+    <script src="/phase44-demo/app.js"></script>
+  </body>
+</html>

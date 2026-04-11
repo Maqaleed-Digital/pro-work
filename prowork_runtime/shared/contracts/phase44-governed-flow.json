@@ -1,0 +1,22 @@
+{
+  "phase": "PHASE_44",
+  "name": "CORE_IMPLEMENTATION_WAVE_1_AND_GOVERNED_ROUTE_ACTIVATION",
+  "runtimeMode": "OPTION_C_HYBRID",
+  "flow": [
+    "INTAKE_CREATED",
+    "OPPORTUNITY_REGISTERED",
+    "COMMAND_CENTER_STATE_UPDATED"
+  ],
+  "routes": [
+    "GET /health",
+    "GET /api/command-center/state",
+    "GET /api/opportunities",
+    "POST /api/intake",
+    "GET /phase44-demo"
+  ],
+  "invalidityRules": {
+    "requiredFields": ["tenantId", "requesterId", "title", "summary"],
+    "titleMinLength": 3,
+    "summaryMinLength": 10
+  }
+}
