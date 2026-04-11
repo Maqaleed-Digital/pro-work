@@ -1,0 +1,9 @@
+{
+  "version": "1.0",
+  "roles": ["requester", "board_operator", "system_viewer"],
+  "permissions": {
+    "createWorkItem": ["board_operator"]
+  },
+  "opportunityPrerequisiteStage": "APPROVED",
+  "executionVisibleStatuses": ["READY", "IN_PROGRESS"]
+}

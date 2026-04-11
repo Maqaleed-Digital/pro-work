@@ -1,0 +1,25 @@
+{
+  "version": "1.0",
+  "required": [
+    "workItemId",
+    "opportunityId",
+    "title",
+    "summary",
+    "status",
+    "queueState",
+    "actorId",
+    "actorRole",
+    "createdAt"
+  ],
+  "properties": {
+    "workItemId": { "type": "string" },
+    "opportunityId": { "type": "string" },
+    "title": { "type": "string" },
+    "summary": { "type": "string" },
+    "status": { "type": "string" },
+    "queueState": { "type": "string" },
+    "actorId": { "type": "string" },
+    "actorRole": { "type": "string" },
+    "createdAt": { "type": "string" }
+  }
+}

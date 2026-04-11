@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Phase 47 — Execution Casework</title>
+  <link rel="stylesheet" href="/phase47-demo/styles.css" />
+</head>
+<body>
+  <header>
+    <h1>Phase 47 — Execution Casework</h1>
+    <p class="subtitle">Governed Work Item Activation</p>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Command Center State</h2>
+      <button id="btn-state">Fetch State</button>
+      <pre id="out-state"></pre>
+    </section>
+
+    <section class="card">
+      <h2>Submit Intake</h2>
+      <input id="in-tenant" placeholder="tenantId" value="tenant-alpha" />
+      <input id="in-requester" placeholder="requesterId" value="user-001" />
+      <input id="in-title" placeholder="title" value="Execution Ready Initiative" />
+      <input id="in-summary" placeholder="summary" value="A governed initiative ready for execution casework" />
+      <button id="btn-intake">Submit Intake</button>
+      <pre id="out-intake"></pre>
+    </section>
+
+    <section class="card">
+      <h2>Advance to BOARD_REVIEW</h2>
+      <input id="in-advance-opp" placeholder="opportunityId" />
+      <button id="btn-advance">Advance Stage</button>
+      <pre id="out-advance"></pre>
+    </section>
+
+    <section class="card">
+      <h2>Approve Opportunity</h2>
+      <input id="in-approve-opp" placeholder="opportunityId" />
+      <input id="in-approve-reason" placeholder="reason" value="Meets all criteria" />
+      <button id="btn-approve">Approve</button>
+      <pre id="out-approve"></pre>
+    </section>
+
+    <section class="card">
+      <h2>Create Work Item</h2>
+      <input id="in-wi-opp" placeholder="opportunityId" />
+      <input id="in-wi-title" placeholder="title" value="Execution Task Alpha" />
+      <input id="in-wi-summary" placeholder="summary" value="First governed work item for execution" />
+      <button id="btn-wi">Create Work Item</button>
+      <pre id="out-wi"></pre>
+    </section>
+
+    <section class="card">
+      <h2>Execution Queue</h2>
+      <button id="btn-queue">Fetch Queue</button>
+      <pre id="out-queue"></pre>
+    </section>
+
+    <section class="card">
+      <h2>All Work Items</h2>
+      <button id="btn-work-items">Fetch Work Items</button>
+      <pre id="out-work-items"></pre>
+    </section>
+
+    <section class="card">
+      <h2>Events</h2>
+      <button id="btn-events">Fetch Events</button>
+      <pre id="out-events"></pre>
+    </section>
+  </main>
+
+  <script src="/phase47-demo/app.js"></script>
+</body>
+</html>
