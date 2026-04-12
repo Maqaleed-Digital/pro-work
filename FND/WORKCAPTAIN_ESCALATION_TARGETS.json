@@ -1,0 +1,35 @@
+{
+  "version": "1.0",
+  "critical_routes": [
+    "/api/production/status",
+    "/api/production/go-live-certification",
+    "/api/operations/hypercare/status",
+    "/api/operations/hypercare/rollback-readiness"
+  ],
+  "warning_thresholds": {
+    "availability_percent_min_warning": 99.95,
+    "avg_latency_ms_max_warning": 850.0,
+    "max_latency_ms_max_warning": 2000.0,
+    "error_rate_percent_max_warning": 0.1
+  },
+  "breach_thresholds": {
+    "availability_percent_min": 99.9,
+    "avg_latency_ms_max": 1000.0,
+    "max_latency_ms_max": 2500.0,
+    "error_rate_percent_max": 0.5
+  },
+  "expected_runtime_state": {
+    "deploymentStatus": "LIVE_VERIFIED",
+    "goLiveCertification": "ISSUED",
+    "hypercareState": "ACTIVE_HYPERCARE",
+    "rollbackReady": true
+  },
+  "required_phase62_files": [
+    "PACK_SUMMARY.md",
+    "SLA_BASELINE.json",
+    "SLA_METRICS.json",
+    "STEADY_STATE_STATUS.json",
+    "BREACH_LOG.json",
+    "GATE_RESULT.md"
+  ]
+}
