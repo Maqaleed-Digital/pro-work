@@ -1,0 +1,18 @@
+{
+  "default_status": "OPEN",
+  "required_evidence_fields": [
+    "evidence_id",
+    "evidence_type",
+    "evidence_path",
+    "submitted_by",
+    "submitted_at_utc",
+    "validation_note"
+  ],
+  "allowed_status_transitions": {
+    "OPEN": ["IN_PROGRESS", "EVIDENCE_SUBMITTED"],
+    "IN_PROGRESS": ["EVIDENCE_SUBMITTED", "OPEN"],
+    "EVIDENCE_SUBMITTED": ["RESOLVED", "REJECTED", "IN_PROGRESS"],
+    "REJECTED": ["IN_PROGRESS", "EVIDENCE_SUBMITTED"],
+    "RESOLVED": []
+  }
+}
