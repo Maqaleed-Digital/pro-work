@@ -1,0 +1,38 @@
+{
+  "required_gap_rows": [
+    {
+      "gap_id": "confidence_below_full_certification",
+      "target_operator": ">=",
+      "target_value": 0.75,
+      "required_approval_file": "ops/approvals/phase85/confidence_approval.json"
+    },
+    {
+      "gap_id": "coverage_ratio_below_full_certification",
+      "target_operator": ">=",
+      "target_value": 0.80,
+      "required_approval_file": "ops/approvals/phase85/coverage_approval.json"
+    },
+    {
+      "gap_id": "p0_count_above_zero",
+      "target_operator": "<=",
+      "target_value": 0,
+      "required_approval_file": "ops/approvals/phase85/p0_approval.json"
+    }
+  ],
+  "required_submission_fields": [
+    "gap_id",
+    "current_value",
+    "target_value",
+    "uplift_value",
+    "evidence_path",
+    "evidence_type",
+    "submission_note",
+    "approval_path"
+  ],
+  "required_approval_fields": [
+    "approved",
+    "approved_by",
+    "approved_at_utc",
+    "approval_comment"
+  ]
+}
