@@ -1,0 +1,18 @@
+{
+  "submission_file": "ops/phase84_blocker_submissions.json",
+  "required_submission_fields": [
+    "gap_id",
+    "evidence_path",
+    "evidence_type",
+    "submission_note",
+    "approval_path"
+  ],
+  "required_approval_fields": [
+    "approved",
+    "approved_by",
+    "approved_at_utc",
+    "approval_comment"
+  ],
+  "approved_must_equal": true,
+  "missing_or_blank_values_fail_validation": true
+}
