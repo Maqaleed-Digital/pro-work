@@ -1,0 +1,27 @@
+{
+  "version": "1.0",
+  "authority": "Phase 73",
+  "projects": [
+    {
+      "id": "prowork",
+      "name": "ProWork",
+      "required": true,
+      "evidence_root": "/Users/waheebmahmoud/dev/pro-work/evidence",
+      "description": "Core WorkCaptain ProWork governance execution — primary evidence source"
+    },
+    {
+      "id": "certus",
+      "name": "Certus",
+      "required": false,
+      "evidence_root": "/Users/waheebmahmoud/dev/certus/evidence",
+      "description": "Certus project governance evidence — optional portfolio member"
+    },
+    {
+      "id": "petcare",
+      "name": "PetCare",
+      "required": false,
+      "evidence_root": "/Users/waheebmahmoud/dev/petcare/evidence",
+      "description": "PetCare project governance evidence — optional portfolio member"
+    }
+  ]
+}

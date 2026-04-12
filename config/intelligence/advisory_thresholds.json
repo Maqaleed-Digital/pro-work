@@ -1,0 +1,53 @@
+{
+  "version": "1.0",
+  "authority": "Phase 72",
+  "thresholds": {
+    "governance_health_ratio": {
+      "info_min": 0.95,
+      "watch_min": 0.85,
+      "action_min": 0.70,
+      "critical_below": 0.70
+    },
+    "evidence_density": {
+      "info_min": 8,
+      "watch_min": 4,
+      "action_min": 2,
+      "critical_below": 2
+    },
+    "negative_signal_count": {
+      "info_max": 2,
+      "watch_max": 5,
+      "action_max": 10,
+      "critical_above": 10
+    },
+    "closure_signal_count": {
+      "info_min": 5,
+      "watch_min": 2,
+      "action_min": 1,
+      "critical_below": 1
+    },
+    "phases_with_evidence": {
+      "info_min": 8,
+      "watch_min": 5,
+      "action_min": 3,
+      "critical_below": 3
+    }
+  },
+  "recommendations": {
+    "governance_health_ratio_watch": "Monitor governance posture — health ratio is approaching the action threshold. Review negative signal sources.",
+    "governance_health_ratio_action": "Governance health ratio has crossed the action threshold. Investigate and remediate negative signals.",
+    "governance_health_ratio_critical": "Governance health ratio is critically low. Escalate to executive review immediately.",
+    "evidence_density_watch": "Evidence density is below the expected level. Verify phase execution scripts are producing full artifact sets.",
+    "evidence_density_action": "Evidence density is significantly low. Phase execution may be incomplete. Rerun affected phases.",
+    "evidence_density_critical": "Evidence density is critically low. Evidence integrity is at risk.",
+    "negative_signal_watch": "Negative governance signals are approaching the action threshold. Review flagged evidence files.",
+    "negative_signal_action": "Negative governance signals have crossed the action threshold. Corrective action required.",
+    "negative_signal_critical": "Negative governance signals are critically elevated. Immediate escalation required.",
+    "closure_signal_watch": "Closure signals are below the expected level. Verify end-to-end notification closure governance.",
+    "closure_signal_action": "Closure signals are significantly low. End-to-end notification closure may be incomplete.",
+    "closure_signal_critical": "Closure signals are critically low. Notification closure governance failure.",
+    "phases_with_evidence_watch": "Fewer phases than expected have evidence directories. Verify phase execution coverage.",
+    "phases_with_evidence_action": "Phase evidence coverage is below the action threshold. Multiple phases may be missing evidence.",
+    "phases_with_evidence_critical": "Phase evidence coverage is critically low. Evidence chain integrity is at risk."
+  }
+}
