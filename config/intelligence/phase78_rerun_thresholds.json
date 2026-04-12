@@ -1,0 +1,23 @@
+{
+  "rerun_requirements": {
+    "total_blockers_must_equal": 5,
+    "resolved_blockers_must_equal": 5,
+    "open_blockers_must_equal": 0,
+    "phase78_rerun_ready_must_equal": true
+  },
+  "decision_defaults": {
+    "confidence": 0.5834,
+    "confidence_band": "MEDIUM",
+    "coverage_ratio": 0.6667
+  },
+  "full_certification": {
+    "min_confidence": 0.75,
+    "min_coverage_ratio": 0.80,
+    "max_p0_blockers": 0
+  },
+  "conditional_certification": {
+    "min_confidence": 0.50,
+    "min_coverage_ratio": 0.40,
+    "max_p0_blockers": 2
+  }
+}
