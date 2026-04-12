@@ -1,0 +1,16 @@
+{
+  "required_summary": {
+    "total_gaps": 3,
+    "closed_gaps": 3,
+    "open_gaps": 0,
+    "phase78_final_rerun_ready": true
+  },
+  "decision_defaults": {
+    "final_status": "CERTIFIED",
+    "upgrade_result": "UPGRADED",
+    "confidence": 0.78,
+    "confidence_band": "HIGH",
+    "coverage_ratio": 1.0,
+    "p0_count": 0
+  }
+}
