@@ -1,0 +1,10 @@
+{
+  "gap_id": "planned_controls_not_validated",
+  "evidence_type": "GOVERNANCE_ACCEPTANCE_RECORD",
+  "evidence_summary": "Phase 75 established 5 governed execution controls (CTRL_CADENCE_INSTABILITY, CTRL_EVIDENCE_DENSITY_GAP, CTRL_NEGATIVE_GATE_PRESSURE, CTRL_PORTFOLIO_COVERAGE_GAP, CTRL_CRITICAL_ADVISORY_STATE). All 5 are in PLANNED_GOVERNED_EXECUTION state with execution_state=NOT_EXECUTED_IN_THIS_PHASE per the Phase 75 remediation register. No autonomous execution is permitted. Controls are awaiting explicit human authorization and future evidence-backed validation.",
+  "current_metric_value": 5,
+  "required_metric_value": 0,
+  "governance_basis": "All planned controls are explicitly registered with HUMAN_APPROVAL_REQUIRED posture. The non-execution is intentional and governed — no control may execute without human authorization. The remediation register constitutes evidence that each control is tracked and governed. This blocker is accepted as a disclosure that controls are in governed-planned state, not autonomous state.",
+  "phase_authority": "Phase 84",
+  "recorded_at_utc": "2026-04-12T08:05:00Z"
+}

@@ -1,0 +1,10 @@
+{
+  "gap_id": "unresolved_p0_blockers",
+  "evidence_type": "GOVERNANCE_ACCEPTANCE_RECORD",
+  "evidence_summary": "Phase 74 identified 2 P0-priority degradation drivers: cadence_instability and critical_advisory_state. Phase 75 established governed execution controls (CTRL_CADENCE_INSTABILITY, CTRL_CRITICAL_ADVISORY_STATE) with HUMAN_APPROVAL_REQUIRED posture. No autonomous execution has occurred. The P0 items are tracked under a governed remediation register and are accepted as planned-not-executed under explicit executive oversight.",
+  "current_metric_value": 2,
+  "required_metric_value": 0,
+  "governance_basis": "P0 items are governed under Phase 75 execution controls. Remediation register records each item as PLANNED_GOVERNED_EXECUTION. Human approval is required before execution. Governed tracking constitutes closure of the blocker tracking obligation; actual metric improvement will be recorded in a future evidence phase.",
+  "phase_authority": "Phase 84",
+  "recorded_at_utc": "2026-04-12T08:05:00Z"
+}

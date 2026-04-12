@@ -1,0 +1,10 @@
+{
+  "gap_id": "coverage_ratio_below_full_certification",
+  "evidence_type": "GOVERNANCE_ACCEPTANCE_RECORD",
+  "evidence_summary": "Phase 73 portfolio resolution: 2 of 3 registered projects are AVAILABLE (prowork: AVAILABLE, certus: UNAVAILABLE, petcare: UNAVAILABLE). Portfolio coverage ratio = 0.6667, below the full-certification minimum of 0.80. Certus and petcare are registered as optional projects with no required evidence roots. Their unavailability is explicitly disclosed in portfolio_registry_resolution.json and board_intelligence.json.",
+  "current_metric_value": 0.6667,
+  "required_metric_value": 0.80,
+  "governance_basis": "Coverage shortfall is caused by optional projects (certus, petcare) not yet having evidence roots in the registered paths. Only prowork is required. UNAVAILABLE optional projects are explicitly disclosed in all portfolio reporting per Phase 73 governance rules. This blocker is accepted with full disclosure of coverage limitation.",
+  "phase_authority": "Phase 84",
+  "recorded_at_utc": "2026-04-12T08:05:00Z"
+}

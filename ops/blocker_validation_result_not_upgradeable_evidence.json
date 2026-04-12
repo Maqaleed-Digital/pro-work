@@ -1,0 +1,10 @@
+{
+  "gap_id": "validation_result_not_upgradeable",
+  "evidence_type": "GOVERNANCE_ACCEPTANCE_RECORD",
+  "evidence_summary": "Phase 76 measured_validation produced validation_result=PARTIAL_STABILIZATION because p0_count=2 (cadence_instability and critical_advisory_state drivers remain at P0). The full-certification upgrade rules require validation_result in [STABILIZATION_PROGRESSING, STABILIZATION_CONFIRMED]. PARTIAL_STABILIZATION accurately reflects the governed state: stabilization is underway but not yet confirmed.",
+  "current_metric_value": "PARTIAL_STABILIZATION",
+  "required_metric_value": ["STABILIZATION_PROGRESSING", "STABILIZATION_CONFIRMED"],
+  "governance_basis": "PARTIAL_STABILIZATION is an accurate and non-inferred result of the evidence-derived validation. The platform is not yet at STABILIZATION_PROGRESSING because P0 items remain in governed-not-executed state. This blocker is accepted as a disclosure of current stabilization posture under the CONDITIONALLY_CERTIFIED tier.",
+  "phase_authority": "Phase 84",
+  "recorded_at_utc": "2026-04-12T08:05:00Z"
+}

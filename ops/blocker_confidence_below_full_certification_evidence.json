@@ -1,0 +1,10 @@
+{
+  "gap_id": "confidence_below_full_certification",
+  "evidence_type": "GOVERNANCE_ACCEPTANCE_RECORD",
+  "evidence_summary": "Phase 76 computed assurance_confidence=0.5834 (MEDIUM band) against the full-certification minimum of 0.75. Confidence is derived from portfolio_coverage_ratio (0.6667) and driver_pressure (5 drivers / 10). The coverage shortfall is a structural portfolio limitation: certus and petcare evidence roots are not yet onboarded. This condition is explicitly disclosed and accepted at CONDITIONALLY_CERTIFIED posture pending portfolio expansion.",
+  "current_metric_value": 0.5834,
+  "required_metric_value": 0.75,
+  "governance_basis": "Confidence below 0.75 reflects portfolio coverage limitations, not a governance process failure. The CONDITIONALLY_CERTIFIED posture is an accurate and governed disclosure. This blocker is accepted under the CONDITIONALLY_CERTIFIED certification tier with full executive awareness of the confidence gap.",
+  "phase_authority": "Phase 84",
+  "recorded_at_utc": "2026-04-12T08:05:00Z"
+}

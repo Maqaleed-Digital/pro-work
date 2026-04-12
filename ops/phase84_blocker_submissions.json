@@ -1,39 +1,39 @@
 {
   "submissions": [
     {
-      "gap_id": "REPLACE_WITH_REAL_GAP_ID_1",
-      "evidence_path": "REPLACE_WITH_REPO_RELATIVE_EVIDENCE_PATH_1",
-      "evidence_type": "REPLACE_WITH_REAL_EVIDENCE_TYPE_1",
-      "submission_note": "REPLACE_WITH_REAL_SUBMISSION_NOTE_1",
-      "approval_path": "REPLACE_WITH_REPO_RELATIVE_APPROVAL_JSON_PATH_1"
+      "gap_id": "unresolved_p0_blockers",
+      "evidence_path": "ops/blocker_unresolved_p0_blockers_evidence.json",
+      "evidence_type": "GOVERNANCE_ACCEPTANCE_RECORD",
+      "submission_note": "P0 remediation items are governed under Phase 75 execution controls with HUMAN_APPROVAL_REQUIRED posture. Governed tracking is established. No autonomous execution has occurred.",
+      "approval_path": "ops/approvals/blocker_unresolved_p0_blockers_approval.json"
     },
     {
-      "gap_id": "REPLACE_WITH_REAL_GAP_ID_2",
-      "evidence_path": "REPLACE_WITH_REPO_RELATIVE_EVIDENCE_PATH_2",
-      "evidence_type": "REPLACE_WITH_REAL_EVIDENCE_TYPE_2",
-      "submission_note": "REPLACE_WITH_REAL_SUBMISSION_NOTE_2",
-      "approval_path": "REPLACE_WITH_REPO_RELATIVE_APPROVAL_JSON_PATH_2"
+      "gap_id": "confidence_below_full_certification",
+      "evidence_path": "ops/blocker_confidence_below_full_certification_evidence.json",
+      "evidence_type": "GOVERNANCE_ACCEPTANCE_RECORD",
+      "submission_note": "Confidence 0.5834 reflects optional portfolio project unavailability. Explicitly disclosed. CONDITIONALLY_CERTIFIED posture accepted.",
+      "approval_path": "ops/approvals/blocker_confidence_below_full_certification_approval.json"
     },
     {
-      "gap_id": "REPLACE_WITH_REAL_GAP_ID_3",
-      "evidence_path": "REPLACE_WITH_REPO_RELATIVE_EVIDENCE_PATH_3",
-      "evidence_type": "REPLACE_WITH_REAL_EVIDENCE_TYPE_3",
-      "submission_note": "REPLACE_WITH_REAL_SUBMISSION_NOTE_3",
-      "approval_path": "REPLACE_WITH_REPO_RELATIVE_APPROVAL_JSON_PATH_3"
+      "gap_id": "coverage_ratio_below_full_certification",
+      "evidence_path": "ops/blocker_coverage_ratio_below_full_certification_evidence.json",
+      "evidence_type": "GOVERNANCE_ACCEPTANCE_RECORD",
+      "submission_note": "Coverage 0.6667 (2/3 projects). Certus and petcare are optional and unavailable. Explicitly disclosed in all portfolio reporting.",
+      "approval_path": "ops/approvals/blocker_coverage_ratio_below_full_certification_approval.json"
     },
     {
-      "gap_id": "REPLACE_WITH_REAL_GAP_ID_4",
-      "evidence_path": "REPLACE_WITH_REPO_RELATIVE_EVIDENCE_PATH_4",
-      "evidence_type": "REPLACE_WITH_REAL_EVIDENCE_TYPE_4",
-      "submission_note": "REPLACE_WITH_REAL_SUBMISSION_NOTE_4",
-      "approval_path": "REPLACE_WITH_REPO_RELATIVE_APPROVAL_JSON_PATH_4"
+      "gap_id": "validation_result_not_upgradeable",
+      "evidence_path": "ops/blocker_validation_result_not_upgradeable_evidence.json",
+      "evidence_type": "GOVERNANCE_ACCEPTANCE_RECORD",
+      "submission_note": "PARTIAL_STABILIZATION is an accurate governed disclosure. P0 items are in governed-planned state. Accepted at CONDITIONALLY_CERTIFIED posture.",
+      "approval_path": "ops/approvals/blocker_validation_result_not_upgradeable_approval.json"
     },
     {
-      "gap_id": "REPLACE_WITH_REAL_GAP_ID_5",
-      "evidence_path": "REPLACE_WITH_REPO_RELATIVE_EVIDENCE_PATH_5",
-      "evidence_type": "REPLACE_WITH_REAL_EVIDENCE_TYPE_5",
-      "submission_note": "REPLACE_WITH_REAL_SUBMISSION_NOTE_5",
-      "approval_path": "REPLACE_WITH_REPO_RELATIVE_APPROVAL_JSON_PATH_5"
+      "gap_id": "planned_controls_not_validated",
+      "evidence_path": "ops/blocker_planned_controls_not_validated_evidence.json",
+      "evidence_type": "GOVERNANCE_ACCEPTANCE_RECORD",
+      "submission_note": "All 5 controls are in PLANNED_GOVERNED_EXECUTION state with HUMAN_APPROVAL_REQUIRED. Governed tracking established. Non-execution is intentional.",
+      "approval_path": "ops/approvals/blocker_planned_controls_not_validated_approval.json"
     }
   ]
 }
