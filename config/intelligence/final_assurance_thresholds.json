@@ -1,0 +1,14 @@
+{
+  "priority_scores": {
+    "P0_IMMEDIATE": 4,
+    "P1_URGENT": 3,
+    "P2_CONTROLLED": 2,
+    "P3_MONITOR": 1
+  },
+  "certification_rules": {
+    "high_confidence_min": 0.80,
+    "medium_confidence_min": 0.50,
+    "full_certification_max_p0": 0,
+    "conditional_certification_max_p0": 2
+  }
+}
