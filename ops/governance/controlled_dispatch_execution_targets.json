@@ -1,0 +1,84 @@
+{
+  "version": "1.0",
+  "critical_routes": [
+    "/api/production/status",
+    "/api/production/go-live-certification",
+    "/api/operations/hypercare/status",
+    "/api/operations/hypercare/rollback-readiness"
+  ],
+  "warning_thresholds": {
+    "availability_percent_min_warning": 99.95,
+    "avg_latency_ms_max_warning": 850.0,
+    "max_latency_ms_max_warning": 2000.0,
+    "error_rate_percent_max_warning": 0.1
+  },
+  "breach_thresholds": {
+    "availability_percent_min": 99.9,
+    "avg_latency_ms_max": 1000.0,
+    "max_latency_ms_max": 2500.0,
+    "error_rate_percent_max": 0.5
+  },
+  "expected_runtime_state": {
+    "deploymentStatus": "LIVE_VERIFIED",
+    "goLiveCertification": "ISSUED",
+    "hypercareState": "ACTIVE_HYPERCARE",
+    "rollbackReady": true
+  },
+  "required_phase62_files": [
+    "PACK_SUMMARY.md",
+    "SLA_BASELINE.json",
+    "SLA_METRICS.json",
+    "STEADY_STATE_STATUS.json",
+    "BREACH_LOG.json",
+    "GATE_RESULT.md"
+  ],
+  "required_phase63_files": [
+    "PACK_SUMMARY.md",
+    "CADENCE_BASELINE.json",
+    "BREACH_CLASSIFICATION.json",
+    "ESCALATION_ACTIONS.json",
+    "OPERATIONAL_GOVERNANCE_STATUS.json",
+    "GATE_RESULT.md"
+  ],
+  "required_phase64_files": [
+    "PACK_SUMMARY.md",
+    "GOVERNANCE_LOOP_BASELINE.json",
+    "CONTINUOUS_COMPLIANCE_STATUS.json",
+    "GOVERNANCE_LOOP_OUTPUT.json",
+    "LOOP_ACTIONS.json",
+    "AUTOMATION_READINESS.json",
+    "GATE_RESULT.md"
+  ],
+  "required_phase65_files": [
+    "PACK_SUMMARY.md",
+    "MIRROR_SYNC_BASELINE.json",
+    "EXECUTIVE_DASHBOARD_STATUS.json",
+    "GOVERNANCE_MIRROR_PAYLOAD.json",
+    "EXECUTIVE_LIVE_DASHBOARD_PAYLOAD.json",
+    "SYNC_ACTIONS.json",
+    "ACTIVATION_READINESS.json",
+    "GATE_RESULT.md"
+  ],
+  "required_phase66_files": [
+    "PACK_SUMMARY.md",
+    "ALERTING_BASELINE.json",
+    "REAL_TIME_ALERT_STATUS.json",
+    "ALERT_PAYLOADS.json",
+    "EXTERNAL_INTEGRATION_PAYLOAD.json",
+    "EXECUTIVE_ACTION_CHANNELS.json",
+    "OUTBOUND_ACTIONS.json",
+    "ACTIVATION_READINESS.json",
+    "GATE_RESULT.md"
+  ],
+  "required_phase67_files": [
+    "PACK_SUMMARY.md",
+    "DISPATCH_BASELINE.json",
+    "LIVE_DISPATCH_STATUS.json",
+    "SLACK_DELIVERY_PAYLOAD.json",
+    "EMAIL_DELIVERY_PAYLOAD.json",
+    "WEBHOOK_DELIVERY_PAYLOAD.json",
+    "DISPATCH_ACTIONS.json",
+    "CHANNEL_READINESS.json",
+    "GATE_RESULT.md"
+  ]
+}
