@@ -1,0 +1,31 @@
+{
+  "version": "1.0",
+  "critical_routes": [
+    "/api/production/status",
+    "/api/production/go-live-certification",
+    "/api/operations/hypercare/status",
+    "/api/operations/hypercare/rollback-readiness"
+  ],
+  "capture_only_routes": [
+    "/api/production/config-check",
+    "/api/production/deployment-summary",
+    "/api/production/live-verification",
+    "/api/operations/hypercare/summary"
+  ],
+  "thresholds": {
+    "availability_percent_min": 99.9,
+    "avg_latency_ms_max": 1000.0,
+    "max_latency_ms_max": 2500.0,
+    "error_rate_percent_max": 0.5
+  },
+  "sampling": {
+    "sample_count": 5,
+    "interval_seconds": 0
+  },
+  "expected_runtime_state": {
+    "deploymentStatus": "LIVE_VERIFIED",
+    "goLiveCertification": "ISSUED",
+    "hypercareState": "ACTIVE_HYPERCARE",
+    "rollbackReady": true
+  }
+}
