@@ -1,0 +1,17 @@
+{
+  "full_certification": {
+    "min_confidence": 0.75,
+    "min_coverage_ratio": 0.80,
+    "max_p0_blockers": 0,
+    "max_blocking_gap_count": 0,
+    "allowed_validation_results": [
+      "STABILIZATION_PROGRESSING",
+      "STABILIZATION_CONFIRMED"
+    ]
+  },
+  "conditional_certification": {
+    "min_confidence": 0.50,
+    "min_coverage_ratio": 0.40,
+    "max_p0_blockers": 2
+  }
+}
