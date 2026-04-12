@@ -1,0 +1,28 @@
+{
+  "advisory_overall_severity": {
+    "CRITICAL": "P0_IMMEDIATE",
+    "ACTION": "P1_URGENT",
+    "WATCH": "P2_CONTROLLED",
+    "INFO": "P3_MONITOR"
+  },
+  "phase_velocity_days_latest": {
+    "p0_gt": 10.0,
+    "p1_gt": 5.0,
+    "p2_gt": 2.5
+  },
+  "evidence_density": {
+    "p0_lt": 1.0,
+    "p1_lt": 2.0,
+    "p2_lt": 3.0
+  },
+  "gate_negative_rate": {
+    "p0_gt": 0.20,
+    "p1_gt": 0.10,
+    "p2_gt": 0.05
+  },
+  "portfolio_coverage_ratio": {
+    "p0_lt": 0.40,
+    "p1_lt": 0.60,
+    "p2_lt": 0.80
+  }
+}
