@@ -1,0 +1,4 @@
+/Users/waheebmahmoud/dev/pro-work/config/analytics/bigquery_tables.json
+/Users/waheebmahmoud/dev/pro-work/config/analytics/ga4.events.json
+/Users/waheebmahmoud/dev/pro-work/config/analytics/kpi_registry.json
+/Users/waheebmahmoud/dev/pro-work/config/analytics/platform.events.json

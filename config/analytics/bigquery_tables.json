@@ -1,0 +1,177 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-04-13",
+  "project_id": "prj-maq-workcaptain-nonprod",
+  "location": "me-central2",
+  "datasets": [
+    {
+      "dataset_id": "workcaptain_raw",
+      "description": "Raw ingest from all analytics sources",
+      "default_table_expiration_days": 90,
+      "tables": [
+        {
+          "table_id": "raw_frontend_events",
+          "description": "GA4 BigQuery export — frontend behavioral events",
+          "source": "GA4 BigQuery export (events_* daily shards)",
+          "partition_field": "event_date",
+          "partition_type": "DATE",
+          "cluster_fields": ["event_name"],
+          "key_columns": [
+            "event_date",
+            "event_timestamp",
+            "event_name",
+            "user_pseudo_id",
+            "session_id",
+            "geo.country",
+            "device.category",
+            "traffic_source.source",
+            "traffic_source.medium"
+          ]
+        },
+        {
+          "table_id": "raw_api_events",
+          "description": "Cloud Run structured logs — API request/response events",
+          "source": "Cloud Logging BigQuery sink (api-service + web-service)",
+          "partition_field": "log_date",
+          "partition_type": "DATE",
+          "cluster_fields": ["labels.service_name", "http_request.status"],
+          "key_columns": [
+            "log_date",
+            "timestamp",
+            "http_request.request_method",
+            "http_request.request_url",
+            "http_request.status",
+            "http_request.latency",
+            "labels.service_name",
+            "labels.revision_name",
+            "correlation_id",
+            "severity"
+          ]
+        },
+        {
+          "table_id": "raw_platform_events",
+          "description": "Platform event stream — execution, AI, and trust events",
+          "source": "Pub/Sub BigQuery subscription",
+          "partition_field": "event_date",
+          "partition_type": "DATE",
+          "cluster_fields": ["event_name", "tenant_id"],
+          "key_columns": [
+            "event_date",
+            "occurred_at",
+            "event_name",
+            "event_family",
+            "event_version",
+            "source_layer",
+            "tenant_id",
+            "actor_type",
+            "actor_id",
+            "entity_type",
+            "entity_id",
+            "status",
+            "correlation_id",
+            "causation_id",
+            "metrics_json",
+            "dimensions_json"
+          ]
+        }
+      ]
+    },
+    {
+      "dataset_id": "workcaptain_mart",
+      "description": "Aggregated KPI mart tables for reporting and dashboards",
+      "default_table_expiration_days": 365,
+      "tables": [
+        {
+          "table_id": "mart_daily_product_kpis",
+          "description": "Daily product + API KPIs aggregated from raw_frontend_events and raw_api_events",
+          "source_tables": ["workcaptain_raw.raw_frontend_events", "workcaptain_raw.raw_api_events"],
+          "partition_field": "kpi_date",
+          "partition_type": "DATE",
+          "cluster_fields": [],
+          "scheduled_query_time": "02:00 UTC",
+          "key_columns": [
+            "kpi_date",
+            "daily_active_users",
+            "session_count",
+            "avg_session_duration_seconds",
+            "bounce_rate",
+            "page_views",
+            "signups_started",
+            "signups_completed",
+            "logins_succeeded",
+            "dashboard_views",
+            "primary_actions_completed",
+            "api_request_volume",
+            "api_error_count",
+            "api_error_rate",
+            "api_p95_latency_ms"
+          ]
+        },
+        {
+          "table_id": "mart_daily_execution_kpis",
+          "description": "Daily platform execution KPIs per tenant",
+          "source_tables": ["workcaptain_raw.raw_platform_events"],
+          "partition_field": "kpi_date",
+          "partition_type": "DATE",
+          "cluster_fields": ["tenant_id"],
+          "scheduled_query_time": "02:15 UTC",
+          "key_columns": [
+            "kpi_date",
+            "tenant_id",
+            "projects_created",
+            "workstreams_created",
+            "milestones_created",
+            "milestones_completed",
+            "execution_jobs_created",
+            "execution_jobs_completed",
+            "deliverables_submitted",
+            "deliverables_approved",
+            "avg_job_duration_ms"
+          ]
+        },
+        {
+          "table_id": "mart_daily_trust_kpis",
+          "description": "Daily AI and trust KPIs per tenant",
+          "source_tables": ["workcaptain_raw.raw_platform_events"],
+          "partition_field": "kpi_date",
+          "partition_type": "DATE",
+          "cluster_fields": ["tenant_id"],
+          "scheduled_query_time": "02:30 UTC",
+          "key_columns": [
+            "kpi_date",
+            "tenant_id",
+            "agent_jobs_completed",
+            "phr_reviews_approved",
+            "evidence_packs_generated",
+            "trust_ledger_appends",
+            "tokens_issued",
+            "avg_agent_duration_ms"
+          ]
+        },
+        {
+          "table_id": "mart_funnel_steps",
+          "description": "Daily funnel conversion rates across all defined steps",
+          "source_tables": ["workcaptain_raw.raw_frontend_events"],
+          "partition_field": "funnel_date",
+          "partition_type": "DATE",
+          "cluster_fields": [],
+          "scheduled_query_time": "03:00 UTC",
+          "key_columns": [
+            "funnel_date",
+            "funnel_step",
+            "step_order",
+            "sessions_entered",
+            "conversion_rate",
+            "drop_off_rate"
+          ]
+        }
+      ]
+    }
+  ],
+  "funnel_steps": [
+    {"step": "landing_to_signup", "order": 1, "from_event": "landing_view", "to_event": "signup_started"},
+    {"step": "signup_to_login", "order": 2, "from_event": "signup_completed", "to_event": "login_success"},
+    {"step": "login_to_dashboard", "order": 3, "from_event": "login_success", "to_event": "dashboard_view"},
+    {"step": "dashboard_to_first_action", "order": 4, "from_event": "dashboard_view", "to_event": "primary_action_completed"}
+  ]
+}

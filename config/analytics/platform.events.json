@@ -1,0 +1,118 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-04-13",
+  "families": [
+    {
+      "family": "platform_execution",
+      "source_layer": "platform",
+      "naming_convention": "UPPER_SNAKE_CASE",
+      "events": [
+        {
+          "event_name": "PROJECT_CREATED",
+          "entity_type": "project",
+          "required_dimensions": ["tenant_id", "actor_id", "entity_id"],
+          "optional_dimensions": [],
+          "required_metrics": []
+        },
+        {
+          "event_name": "WORKSTREAM_CREATED",
+          "entity_type": "workstream",
+          "required_dimensions": ["tenant_id", "actor_id", "entity_id", "project_id"],
+          "optional_dimensions": [],
+          "required_metrics": []
+        },
+        {
+          "event_name": "MILESTONE_CREATED",
+          "entity_type": "milestone",
+          "required_dimensions": ["tenant_id", "actor_id", "entity_id", "project_id"],
+          "optional_dimensions": [],
+          "required_metrics": []
+        },
+        {
+          "event_name": "EXECUTION_JOB_CREATED",
+          "entity_type": "execution_job",
+          "required_dimensions": ["tenant_id", "actor_id", "entity_id", "workstream_id"],
+          "optional_dimensions": [],
+          "required_metrics": []
+        },
+        {
+          "event_name": "EXECUTION_JOB_COMPLETED",
+          "entity_type": "execution_job",
+          "required_dimensions": ["tenant_id", "actor_id", "entity_id"],
+          "optional_dimensions": ["status"],
+          "required_metrics": ["duration_ms"]
+        },
+        {
+          "event_name": "DELIVERABLE_SUBMITTED",
+          "entity_type": "deliverable",
+          "required_dimensions": ["tenant_id", "actor_id", "entity_id", "milestone_id"],
+          "optional_dimensions": [],
+          "required_metrics": []
+        },
+        {
+          "event_name": "DELIVERABLE_APPROVED",
+          "entity_type": "deliverable",
+          "required_dimensions": ["tenant_id", "actor_id", "entity_id"],
+          "optional_dimensions": ["reviewer_id"],
+          "required_metrics": []
+        },
+        {
+          "event_name": "MILESTONE_COMPLETED",
+          "entity_type": "milestone",
+          "required_dimensions": ["tenant_id", "actor_id", "entity_id", "project_id"],
+          "optional_dimensions": ["status"],
+          "required_metrics": []
+        }
+      ]
+    },
+    {
+      "family": "ai_execution",
+      "source_layer": "ai",
+      "naming_convention": "UPPER_SNAKE_CASE",
+      "events": [
+        {
+          "event_name": "AGENT_JOB_COMPLETED",
+          "entity_type": "agent_job",
+          "required_dimensions": ["tenant_id", "actor_id", "entity_id", "status"],
+          "optional_dimensions": [],
+          "required_metrics": ["duration_ms"]
+        }
+      ]
+    },
+    {
+      "family": "trust",
+      "source_layer": "trust",
+      "naming_convention": "UPPER_SNAKE_CASE",
+      "events": [
+        {
+          "event_name": "PHR_REVIEW_APPROVED",
+          "entity_type": "phr",
+          "required_dimensions": ["tenant_id", "actor_id", "entity_id", "reviewer_id"],
+          "optional_dimensions": [],
+          "required_metrics": []
+        },
+        {
+          "event_name": "EVIDENCE_PACK_GENERATED",
+          "entity_type": "evidence_pack",
+          "required_dimensions": ["tenant_id", "actor_id", "entity_id", "pack_type"],
+          "optional_dimensions": [],
+          "required_metrics": []
+        },
+        {
+          "event_name": "TRUST_LEDGER_APPENDED",
+          "entity_type": "trust_ledger",
+          "required_dimensions": ["tenant_id", "actor_id", "entity_id", "ledger_action"],
+          "optional_dimensions": [],
+          "required_metrics": []
+        },
+        {
+          "event_name": "TOKEN_ISSUED",
+          "entity_type": "token",
+          "required_dimensions": ["tenant_id", "actor_id", "entity_id", "token_type"],
+          "optional_dimensions": [],
+          "required_metrics": []
+        }
+      ]
+    }
+  ]
+}

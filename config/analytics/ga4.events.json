@@ -1,0 +1,90 @@
+{
+  "schema_version": "1.0",
+  "source_layer": "frontend",
+  "tracking_platform": "GA4",
+  "generated_at": "2026-04-13",
+  "events": [
+    {
+      "event_name": "page_view",
+      "event_family": "user_behavior",
+      "collection_method": "enhanced_measurement",
+      "trigger": "Any SPA route change",
+      "required_params": ["page_location", "page_title"],
+      "custom_params": ["session_id", "route"]
+    },
+    {
+      "event_name": "landing_view",
+      "event_family": "user_behavior",
+      "collection_method": "custom",
+      "trigger": "Landing page / rendered",
+      "required_params": ["session_id"],
+      "custom_params": ["utm_source", "utm_medium", "utm_campaign", "referrer"]
+    },
+    {
+      "event_name": "login_view",
+      "event_family": "user_behavior",
+      "collection_method": "custom",
+      "trigger": "Login page /login rendered",
+      "required_params": ["session_id"],
+      "custom_params": ["route"]
+    },
+    {
+      "event_name": "signup_started",
+      "event_family": "user_behavior",
+      "collection_method": "custom",
+      "trigger": "First interaction with signup form",
+      "required_params": ["session_id"],
+      "custom_params": ["route", "engagement_time_msec"]
+    },
+    {
+      "event_name": "signup_completed",
+      "event_family": "user_behavior",
+      "collection_method": "custom",
+      "trigger": "Signup API returns 200/201",
+      "required_params": ["session_id"],
+      "custom_params": ["route"],
+      "is_conversion": true
+    },
+    {
+      "event_name": "login_success",
+      "event_family": "user_behavior",
+      "collection_method": "custom",
+      "trigger": "Auth token received from login API",
+      "required_params": ["session_id"],
+      "custom_params": ["route", "auth_method"],
+      "is_conversion": true
+    },
+    {
+      "event_name": "dashboard_view",
+      "event_family": "user_behavior",
+      "collection_method": "custom",
+      "trigger": "Dashboard route rendered post-auth",
+      "required_params": ["session_id"],
+      "custom_params": ["route", "first_visit"]
+    },
+    {
+      "event_name": "primary_action_initiated",
+      "event_family": "user_behavior",
+      "collection_method": "custom",
+      "trigger": "User triggers first core product action",
+      "required_params": ["session_id"],
+      "custom_params": ["route", "action_type"]
+    },
+    {
+      "event_name": "primary_action_completed",
+      "event_family": "user_behavior",
+      "collection_method": "custom",
+      "trigger": "Core product action API returns success",
+      "required_params": ["session_id"],
+      "custom_params": ["action_type", "entity_type", "duration_ms"],
+      "is_conversion": true
+    }
+  ],
+  "forbidden": [
+    "Transmitting email address",
+    "Transmitting phone number",
+    "Transmitting national ID",
+    "Transmitting password or token",
+    "Adding events outside this registry"
+  ]
+}

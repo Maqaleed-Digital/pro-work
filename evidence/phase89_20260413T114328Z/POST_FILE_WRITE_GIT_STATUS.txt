@@ -1,0 +1,17 @@
+?? FND/WORKCAPTAIN_ANALYTICS_EVENT_SCHEMA.md
+?? FND/WORKCAPTAIN_BIGQUERY_ANALYTICS_MODEL.md
+?? FND/WORKCAPTAIN_EXECUTIVE_KPI_BASELINE.md
+?? FND/WORKCAPTAIN_GA4_TRACKING_PLAN.md
+?? FND/WORKCAPTAIN_PHASE_89_PRODUCT_ANALYTICS_AND_KPI_BASELINE.md
+?? config/analytics/
+?? prowork_runtime/api/data/phase44-runtime.json
+?? prowork_runtime/api/data/phase45-runtime.json
+?? prowork_runtime/api/data/phase46-runtime.json
+?? prowork_runtime/api/data/phase47-runtime.json
+?? prowork_runtime/api/data/phase48-runtime.json
+?? prowork_runtime/api/data/phase49-runtime.json
+?? prowork_runtime/api/data/phase50-runtime.json
+?? prowork_runtime/api/data/phase57-usage.json
+?? prowork_runtime/api/data/phase59-production-state.json
+?? prowork_runtime/api/data/phase61-hypercare-state.json
+?? scripts/workcaptain_phase89_product_analytics_kpi_baseline.sh
