@@ -1,0 +1,2 @@
+$ gcloud config get-value project
+prj-maq-workcaptain-nonprod

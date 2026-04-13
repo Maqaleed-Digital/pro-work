@@ -1,0 +1,2 @@
+UPTIME_WEB_ID=projects/prj-maq-workcaptain-nonprod/uptimeCheckConfigs/wc88-web-health-20260413t141418-Oll911NCUNE
+UPTIME_API_ID=projects/prj-maq-workcaptain-nonprod/uptimeCheckConfigs/wc88-api-health-20260413t141418-veU95GzcZH4

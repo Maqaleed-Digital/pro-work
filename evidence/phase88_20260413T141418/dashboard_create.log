@@ -1,0 +1,2 @@
+$ gcloud monitoring dashboards create --project=prj-maq-workcaptain-nonprod --config-from-file=/Users/waheebmahmoud/dev/pro-work/evidence/phase88_20260413T141418/dashboard.json
+Created [515638e7-418b-4853-87d0-99dc64327ad2].

@@ -1,0 +1,2 @@
+$ gcloud alpha monitoring policies create --project=prj-maq-workcaptain-nonprod --policy-from-file=/Users/waheebmahmoud/dev/pro-work/evidence/phase88_20260413T141418/alert_api_uptime.json
+Created alert policy [projects/prj-maq-workcaptain-nonprod/alertPolicies/6495731773073710725].

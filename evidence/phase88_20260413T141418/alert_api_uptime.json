@@ -1,0 +1,32 @@
+{
+  "displayName": "WC88 API Uptime Failure 20260413T141418",
+  "documentation": {
+    "content": "WorkCaptain API health endpoint is failing.",
+    "mimeType": "text/markdown"
+  },
+  "conditions": [
+    {
+      "displayName": "API uptime unhealthy",
+      "conditionThreshold": {
+        "filter": "metric.type=\"monitoring.googleapis.com/uptime_check/check_passed\" AND resource.type=\"uptime_url\" AND metric.label.check_id=\"wc88-api-health-20260413t141418-veU95GzcZH4\"",
+        "comparison": "COMPARISON_LT",
+        "thresholdValue": 1,
+        "duration": "60s",
+        "trigger": {
+          "count": 1
+        },
+        "aggregations": [
+          {
+            "alignmentPeriod": "120s",
+            "perSeriesAligner": "ALIGN_NEXT_OLDER"
+          }
+        ]
+      }
+    }
+  ],
+  "combiner": "OR",
+  "enabled": true,
+  "notificationChannels": [
+    "projects/prj-maq-workcaptain-nonprod/notificationChannels/16347532052098767894"
+  ]
+}

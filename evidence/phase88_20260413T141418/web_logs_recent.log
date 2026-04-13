@@ -1,0 +1,546 @@
+$ gcloud logging read resource.type="cloud_run_revision" AND resource.labels.service_name="web-service" --project=prj-maq-workcaptain-nonprod --limit=20 --freshness=1h --format=json
+[
+  {
+    "insertId": "69dcd04c0007e59b5383565c",
+    "labels": {
+      "instanceId": "008c15ff08237ce8c0efe18694c1f1dd788d90225f04d874b463c364bfb98b7001d8479f2a5fc6e0dd1eda9a528c1a6db87e2c270ca1a424c4b4d66ecaaa06779a0dd949abd3b0e158dd90afb516a3ac6cafc7aa151c"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-13T11:15:24.836451466Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "169.254.169.126 - - [13/Apr/2026:11:15:24 +0000] \"GET /health HTTP/1.1\" 200 54 \"-\" \"GoogleStackdriverMonitoring-UptimeChecks(https://cloud.google.com/monitoring)\" \"35.198.39.162, 34.144.236.130\"",
+    "timestamp": "2026-04-13T11:15:24.517531Z"
+  },
+  {
+    "httpRequest": {
+      "latency": "0.001199170s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "35.198.39.162",
+      "requestMethod": "GET",
+      "requestSize": "415",
+      "requestUrl": "https://workcaptain.ai/health",
+      "responseSize": "179",
+      "serverIp": "34.144.236.130",
+      "status": 200,
+      "userAgent": "GoogleStackdriverMonitoring-UptimeChecks(https://cloud.google.com/monitoring)"
+    },
+    "insertId": "69dcd04c0007e71a0a49b5df",
+    "labels": {
+      "instanceId": "008c15ff08237ce8c0efe18694c1f1dd788d90225f04d874b463c364bfb98b7001d8479f2a5fc6e0dd1eda9a528c1a6db87e2c270ca1a424c4b4d66ecaaa06779a0dd949abd3b0e158dd90afb516a3ac6cafc7aa151c"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-04-13T11:15:24.838257489Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "INFO",
+    "spanId": "c25bb461a7ce21c7",
+    "timestamp": "2026-04-13T11:15:24.515352Z",
+    "trace": "projects/prj-maq-workcaptain-nonprod/traces/073f6fa6bbdc835387841125a2bfc913",
+    "traceSampled": true
+  },
+  {
+    "insertId": "69dcd045000867551fcc5b32",
+    "labels": {
+      "instanceId": "008c15ff08237ce8c0efe18694c1f1dd788d90225f04d874b463c364bfb98b7001d8479f2a5fc6e0dd1eda9a528c1a6db87e2c270ca1a424c4b4d66ecaaa06779a0dd949abd3b0e158dd90afb516a3ac6cafc7aa151c"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-13T11:15:17.844173908Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "169.254.169.126 - - [13/Apr/2026:11:15:17 +0000] \"GET /health HTTP/1.1\" 200 54 \"-\" \"GoogleStackdriverMonitoring-UptimeChecks(https://cloud.google.com/monitoring)\" \"35.236.221.2, 34.144.236.130\"",
+    "timestamp": "2026-04-13T11:15:17.550741Z"
+  },
+  {
+    "httpRequest": {
+      "latency": "0.000977840s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "35.236.221.2",
+      "requestMethod": "GET",
+      "requestSize": "413",
+      "requestUrl": "https://workcaptain.ai/health",
+      "responseSize": "179",
+      "serverIp": "34.144.236.130",
+      "status": 200,
+      "userAgent": "GoogleStackdriverMonitoring-UptimeChecks(https://cloud.google.com/monitoring)"
+    },
+    "insertId": "69dcd0450008685f65c9268c",
+    "labels": {
+      "instanceId": "008c15ff08237ce8c0efe18694c1f1dd788d90225f04d874b463c364bfb98b7001d8479f2a5fc6e0dd1eda9a528c1a6db87e2c270ca1a424c4b4d66ecaaa06779a0dd949abd3b0e158dd90afb516a3ac6cafc7aa151c"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-04-13T11:15:17.844080334Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "INFO",
+    "spanId": "d2344e94fdd7902c",
+    "timestamp": "2026-04-13T11:15:17.548468Z",
+    "trace": "projects/prj-maq-workcaptain-nonprod/traces/30f331cc9ea141335f77004c0b436513"
+  },
+  {
+    "insertId": "69dcd03b000d5a645e891be9",
+    "labels": {
+      "instanceId": "008c15ff08237ce8c0efe18694c1f1dd788d90225f04d874b463c364bfb98b7001d8479f2a5fc6e0dd1eda9a528c1a6db87e2c270ca1a424c4b4d66ecaaa06779a0dd949abd3b0e158dd90afb516a3ac6cafc7aa151c"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-13T11:15:08.186749962Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "169.254.169.126 - - [13/Apr/2026:11:15:07 +0000] \"GET /health HTTP/1.1\" 200 54 \"-\" \"GoogleStackdriverMonitoring-UptimeChecks(https://cloud.google.com/monitoring)\" \"35.203.129.73, 34.144.236.130\"",
+    "timestamp": "2026-04-13T11:15:07.875108Z"
+  },
+  {
+    "httpRequest": {
+      "latency": "0.000907450s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "35.203.129.73",
+      "requestMethod": "GET",
+      "requestSize": "414",
+      "requestUrl": "https://workcaptain.ai/health",
+      "responseSize": "179",
+      "serverIp": "34.144.236.130",
+      "status": 200,
+      "userAgent": "GoogleStackdriverMonitoring-UptimeChecks(https://cloud.google.com/monitoring)"
+    },
+    "insertId": "69dcd03b000d5b6985d4cdee",
+    "labels": {
+      "instanceId": "008c15ff08237ce8c0efe18694c1f1dd788d90225f04d874b463c364bfb98b7001d8479f2a5fc6e0dd1eda9a528c1a6db87e2c270ca1a424c4b4d66ecaaa06779a0dd949abd3b0e158dd90afb516a3ac6cafc7aa151c"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-04-13T11:15:08.185333563Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "INFO",
+    "spanId": "c1144117180721d3",
+    "timestamp": "2026-04-13T11:15:07.873131Z",
+    "trace": "projects/prj-maq-workcaptain-nonprod/traces/d475961cfc2dc23412582abb3e03a4bc",
+    "traceSampled": true
+  },
+  {
+    "insertId": "69dcd038000ec68eb6f7057a",
+    "labels": {
+      "instanceId": "008c15ff08237ce8c0efe18694c1f1dd788d90225f04d874b463c364bfb98b7001d8479f2a5fc6e0dd1eda9a528c1a6db87e2c270ca1a424c4b4d66ecaaa06779a0dd949abd3b0e158dd90afb516a3ac6cafc7aa151c"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-13T11:15:05.188649176Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "169.254.169.126 - - [13/Apr/2026:11:15:04 +0000] \"GET /health HTTP/1.1\" 200 54 \"-\" \"GoogleStackdriverMonitoring-UptimeChecks(https://cloud.google.com/monitoring)\" \"35.192.92.84, 34.144.236.130\"",
+    "timestamp": "2026-04-13T11:15:04.968334Z"
+  },
+  {
+    "httpRequest": {
+      "latency": "0.000885930s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "35.192.92.84",
+      "requestMethod": "GET",
+      "requestSize": "414",
+      "requestUrl": "https://workcaptain.ai/health",
+      "responseSize": "179",
+      "serverIp": "34.144.236.130",
+      "status": 200,
+      "userAgent": "GoogleStackdriverMonitoring-UptimeChecks(https://cloud.google.com/monitoring)"
+    },
+    "insertId": "69dcd038000ec7db09269e4c",
+    "labels": {
+      "instanceId": "008c15ff08237ce8c0efe18694c1f1dd788d90225f04d874b463c364bfb98b7001d8479f2a5fc6e0dd1eda9a528c1a6db87e2c270ca1a424c4b4d66ecaaa06779a0dd949abd3b0e158dd90afb516a3ac6cafc7aa151c"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-04-13T11:15:05.187700521Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "INFO",
+    "spanId": "7a39425cc0876df0",
+    "timestamp": "2026-04-13T11:15:04.966715Z",
+    "trace": "projects/prj-maq-workcaptain-nonprod/traces/de775acaa9dd6cdc6c008300d81b49f6"
+  },
+  {
+    "insertId": "69dcd0310002bc3680c19847",
+    "labels": {
+      "instanceId": "008c15ff08237ce8c0efe18694c1f1dd788d90225f04d874b463c364bfb98b7001d8479f2a5fc6e0dd1eda9a528c1a6db87e2c270ca1a424c4b4d66ecaaa06779a0dd949abd3b0e158dd90afb516a3ac6cafc7aa151c"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-13T11:14:57.195810Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "169.254.169.126 - - [13/Apr/2026:11:14:57 +0000] \"GET /health HTTP/1.1\" 200 54 \"-\" \"GoogleStackdriverMonitoring-UptimeChecks(https://cloud.google.com/monitoring)\" \"35.233.165.146, 34.144.236.130\"",
+    "timestamp": "2026-04-13T11:14:57.179254Z"
+  },
+  {
+    "httpRequest": {
+      "latency": "0.001009670s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "35.233.165.146",
+      "requestMethod": "GET",
+      "requestSize": "415",
+      "requestUrl": "https://workcaptain.ai/health",
+      "responseSize": "179",
+      "serverIp": "34.144.236.130",
+      "status": 200,
+      "userAgent": "GoogleStackdriverMonitoring-UptimeChecks(https://cloud.google.com/monitoring)"
+    },
+    "insertId": "69dcd0310002bd550f088aee",
+    "labels": {
+      "instanceId": "008c15ff08237ce8c0efe18694c1f1dd788d90225f04d874b463c364bfb98b7001d8479f2a5fc6e0dd1eda9a528c1a6db87e2c270ca1a424c4b4d66ecaaa06779a0dd949abd3b0e158dd90afb516a3ac6cafc7aa151c"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-04-13T11:14:57.196402108Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "INFO",
+    "spanId": "bef27215ed4d3bb3",
+    "timestamp": "2026-04-13T11:14:57.177303Z",
+    "trace": "projects/prj-maq-workcaptain-nonprod/traces/1d3808c2d18c90fa52947e2179e4de59"
+  },
+  {
+    "insertId": "69dcd030000e8d051ba44421",
+    "labels": {
+      "instanceId": "008c15ff08237ce8c0efe18694c1f1dd788d90225f04d874b463c364bfb98b7001d8479f2a5fc6e0dd1eda9a528c1a6db87e2c270ca1a424c4b4d66ecaaa06779a0dd949abd3b0e158dd90afb516a3ac6cafc7aa151c"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-13T11:14:57.195810Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "169.254.169.126 - - [13/Apr/2026:11:14:56 +0000] \"GET /health HTTP/1.1\" 200 54 \"-\" \"GoogleStackdriverMonitoring-UptimeChecks(https://cloud.google.com/monitoring)\" \"35.198.224.104, 34.144.236.130\"",
+    "timestamp": "2026-04-13T11:14:56.953605Z"
+  },
+  {
+    "httpRequest": {
+      "latency": "0.001089150s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "35.198.224.104",
+      "requestMethod": "GET",
+      "requestSize": "416",
+      "requestUrl": "https://workcaptain.ai/health",
+      "responseSize": "179",
+      "serverIp": "34.144.236.130",
+      "status": 200,
+      "userAgent": "GoogleStackdriverMonitoring-UptimeChecks(https://cloud.google.com/monitoring)"
+    },
+    "insertId": "69dcd030000e8e34b64e2087",
+    "labels": {
+      "instanceId": "008c15ff08237ce8c0efe18694c1f1dd788d90225f04d874b463c364bfb98b7001d8479f2a5fc6e0dd1eda9a528c1a6db87e2c270ca1a424c4b4d66ecaaa06779a0dd949abd3b0e158dd90afb516a3ac6cafc7aa151c"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-04-13T11:14:57.196402108Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "INFO",
+    "spanId": "c1a7be2d6d87d2f9",
+    "timestamp": "2026-04-13T11:14:56.951431Z",
+    "trace": "projects/prj-maq-workcaptain-nonprod/traces/79512e5ad21971caec7feb52071567c1"
+  },
+  {
+    "insertId": "69dcd02f000726af3791a9cf",
+    "labels": {
+      "instanceId": "008c15ff08237ce8c0efe18694c1f1dd788d90225f04d874b463c364bfb98b7001d8479f2a5fc6e0dd1eda9a528c1a6db87e2c270ca1a424c4b4d66ecaaa06779a0dd949abd3b0e158dd90afb516a3ac6cafc7aa151c"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-13T11:14:55.529331552Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "169.254.169.126 - - [13/Apr/2026:11:14:55 +0000] \"GET /health HTTP/1.1\" 200 54 \"-\" \"GoogleStackdriverMonitoring-UptimeChecks(https://cloud.google.com/monitoring)\" \"35.205.234.10, 34.144.236.130\"",
+    "timestamp": "2026-04-13T11:14:55.468655Z"
+  },
+  {
+    "httpRequest": {
+      "latency": "0.000807340s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "35.205.234.10",
+      "requestMethod": "GET",
+      "requestSize": "414",
+      "requestUrl": "https://workcaptain.ai/health",
+      "responseSize": "179",
+      "serverIp": "34.144.236.130",
+      "status": 200,
+      "userAgent": "GoogleStackdriverMonitoring-UptimeChecks(https://cloud.google.com/monitoring)"
+    },
+    "insertId": "69dcd02f0007278442ff8dd9",
+    "labels": {
+      "instanceId": "008c15ff08237ce8c0efe18694c1f1dd788d90225f04d874b463c364bfb98b7001d8479f2a5fc6e0dd1eda9a528c1a6db87e2c270ca1a424c4b4d66ecaaa06779a0dd949abd3b0e158dd90afb516a3ac6cafc7aa151c"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-04-13T11:14:55.529656397Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "INFO",
+    "spanId": "63a245222b7ec3e2",
+    "timestamp": "2026-04-13T11:14:55.466494Z",
+    "trace": "projects/prj-maq-workcaptain-nonprod/traces/f0b1ce1c1a2f487067fb1d5a4d701087",
+    "traceSampled": true
+  },
+  {
+    "insertId": "69dcd023000e7fc6b6572428",
+    "labels": {
+      "instanceId": "008c15ff08237ce8c0efe18694c1f1dd788d90225f04d874b463c364bfb98b7001d8479f2a5fc6e0dd1eda9a528c1a6db87e2c270ca1a424c4b4d66ecaaa06779a0dd949abd3b0e158dd90afb516a3ac6cafc7aa151c"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-13T11:14:44.206110674Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "169.254.169.126 - - [13/Apr/2026:11:14:43 +0000] \"GET /health HTTP/1.1\" 200 54 \"-\" \"GoogleStackdriverMonitoring-UptimeChecks(https://cloud.google.com/monitoring)\" \"35.186.167.85, 34.144.236.130\"",
+    "timestamp": "2026-04-13T11:14:43.950214Z"
+  },
+  {
+    "httpRequest": {
+      "latency": "0.001128879s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "35.186.167.85",
+      "requestMethod": "GET",
+      "requestSize": "413",
+      "requestUrl": "https://workcaptain.ai/health",
+      "responseSize": "179",
+      "serverIp": "34.144.236.130",
+      "status": 200,
+      "userAgent": "GoogleStackdriverMonitoring-UptimeChecks(https://cloud.google.com/monitoring)"
+    },
+    "insertId": "69dcd023000e817f64a1ce82",
+    "labels": {
+      "instanceId": "008c15ff08237ce8c0efe18694c1f1dd788d90225f04d874b463c364bfb98b7001d8479f2a5fc6e0dd1eda9a528c1a6db87e2c270ca1a424c4b4d66ecaaa06779a0dd949abd3b0e158dd90afb516a3ac6cafc7aa151c"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-04-13T11:14:44.206274947Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "INFO",
+    "spanId": "d108c4a7398bc1fb",
+    "timestamp": "2026-04-13T11:14:43.948065Z",
+    "trace": "projects/prj-maq-workcaptain-nonprod/traces/f16f4aae953414d0a75dc26dc7959711"
+  },
+  {
+    "insertId": "69dcd02300071ed8e4d69e5c",
+    "labels": {
+      "instanceId": "008c15ff08237ce8c0efe18694c1f1dd788d90225f04d874b463c364bfb98b7001d8479f2a5fc6e0dd1eda9a528c1a6db87e2c270ca1a424c4b4d66ecaaa06779a0dd949abd3b0e158dd90afb516a3ac6cafc7aa151c"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-13T11:14:43.540293230Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "169.254.169.126 - - [13/Apr/2026:11:14:43 +0000] \"GET /health HTTP/1.1\" 200 54 \"-\" \"GoogleStackdriverMonitoring-UptimeChecks(https://cloud.google.com/monitoring)\" \"35.199.126.168, 34.144.236.130\"",
+    "timestamp": "2026-04-13T11:14:43.466648Z"
+  },
+  {
+    "httpRequest": {
+      "latency": "0.001031710s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "35.199.126.168",
+      "requestMethod": "GET",
+      "requestSize": "416",
+      "requestUrl": "https://workcaptain.ai/health",
+      "responseSize": "179",
+      "serverIp": "34.144.236.130",
+      "status": 200,
+      "userAgent": "GoogleStackdriverMonitoring-UptimeChecks(https://cloud.google.com/monitoring)"
+    },
+    "insertId": "69dcd02300071fe6f9b2f318",
+    "labels": {
+      "instanceId": "008c15ff08237ce8c0efe18694c1f1dd788d90225f04d874b463c364bfb98b7001d8479f2a5fc6e0dd1eda9a528c1a6db87e2c270ca1a424c4b4d66ecaaa06779a0dd949abd3b0e158dd90afb516a3ac6cafc7aa151c"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-04-13T11:14:43.541492290Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "INFO",
+    "spanId": "482808a26ef6f0fe",
+    "timestamp": "2026-04-13T11:14:43.464700Z",
+    "trace": "projects/prj-maq-workcaptain-nonprod/traces/4e4bb892bf9d3faddabc93b5d0fd1697"
+  },
+  {
+    "insertId": "69dcd02000081f9b7ca002d8",
+    "labels": {
+      "instanceId": "008c15ff08237ce8c0efe18694c1f1dd788d90225f04d874b463c364bfb98b7001d8479f2a5fc6e0dd1eda9a528c1a6db87e2c270ca1a424c4b4d66ecaaa06779a0dd949abd3b0e158dd90afb516a3ac6cafc7aa151c"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-04-13T11:14:40.543841144Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "textPayload": "169.254.169.126 - - [13/Apr/2026:11:14:40 +0000] \"GET /health HTTP/1.1\" 200 54 \"-\" \"GoogleStackdriverMonitoring-UptimeChecks(https://cloud.google.com/monitoring)\" \"35.198.248.66, 34.144.236.130\"",
+    "timestamp": "2026-04-13T11:14:40.532379Z"
+  },
+  {
+    "httpRequest": {
+      "latency": "0.000857770s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "35.198.248.66",
+      "requestMethod": "GET",
+      "requestSize": "414",
+      "requestUrl": "https://workcaptain.ai/health",
+      "responseSize": "179",
+      "serverIp": "34.144.236.130",
+      "status": 200,
+      "userAgent": "GoogleStackdriverMonitoring-UptimeChecks(https://cloud.google.com/monitoring)"
+    },
+    "insertId": "69dcd020000820ae1f88ded6",
+    "labels": {
+      "instanceId": "008c15ff08237ce8c0efe18694c1f1dd788d90225f04d874b463c364bfb98b7001d8479f2a5fc6e0dd1eda9a528c1a6db87e2c270ca1a424c4b4d66ecaaa06779a0dd949abd3b0e158dd90afb516a3ac6cafc7aa151c"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-04-13T11:14:40.545452558Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "INFO",
+    "spanId": "0dceb59f89b4ecf6",
+    "timestamp": "2026-04-13T11:14:40.530459Z",
+    "trace": "projects/prj-maq-workcaptain-nonprod/traces/6cbc920a6ac4f54c837fa4606ef6b612"
+  }
+]

@@ -1,0 +1,143 @@
+$ gcloud monitoring dashboards list --project=prj-maq-workcaptain-nonprod
+---
+displayName: WorkCaptain Phase 88 Operations 20260413T141418
+etag: 26cc3d4dad528adbfc5b25e1e18d0cbe
+mosaicLayout:
+  columns: 12
+  tiles:
+  - height: 4
+    widget:
+      title: API Request Count
+      xyChart:
+        dataSets:
+        - plotType: LINE
+          targetAxis: Y1
+          timeSeriesQuery:
+            timeSeriesFilter:
+              aggregation:
+                alignmentPeriod: 60s
+                perSeriesAligner: ALIGN_RATE
+              filter: metric.type="run.googleapis.com/request_count" resource.type="cloud_run_revision"
+                resource.label.service_name="api-service"
+    width: 6
+  - height: 4
+    widget:
+      title: Web Request Count
+      xyChart:
+        dataSets:
+        - plotType: LINE
+          targetAxis: Y1
+          timeSeriesQuery:
+            timeSeriesFilter:
+              aggregation:
+                alignmentPeriod: 60s
+                perSeriesAligner: ALIGN_RATE
+              filter: metric.type="run.googleapis.com/request_count" resource.type="cloud_run_revision"
+                resource.label.service_name="web-service"
+    width: 6
+    xPos: 6
+  - height: 4
+    widget:
+      title: API Latency p95
+      xyChart:
+        dataSets:
+        - plotType: LINE
+          targetAxis: Y1
+          timeSeriesQuery:
+            timeSeriesFilter:
+              aggregation:
+                alignmentPeriod: 60s
+                perSeriesAligner: ALIGN_DELTA
+              filter: metric.type="run.googleapis.com/request_latencies" resource.type="cloud_run_revision"
+                resource.label.service_name="api-service"
+    width: 6
+    yPos: 4
+  - height: 4
+    widget:
+      title: Web Latency p95
+      xyChart:
+        dataSets:
+        - plotType: LINE
+          targetAxis: Y1
+          timeSeriesQuery:
+            timeSeriesFilter:
+              aggregation:
+                alignmentPeriod: 60s
+                perSeriesAligner: ALIGN_DELTA
+              filter: metric.type="run.googleapis.com/request_latencies" resource.type="cloud_run_revision"
+                resource.label.service_name="web-service"
+    width: 6
+    xPos: 6
+    yPos: 4
+name: projects/46511793055/dashboards/515638e7-418b-4853-87d0-99dc64327ad2
+---
+displayName: WorkCaptain Phase 88 Operations 20260413T141115
+etag: 24a1730dcbfabfddf8bb2bfb389e95df
+mosaicLayout:
+  columns: 12
+  tiles:
+  - height: 4
+    widget:
+      title: API Request Count
+      xyChart:
+        dataSets:
+        - plotType: LINE
+          targetAxis: Y1
+          timeSeriesQuery:
+            timeSeriesFilter:
+              aggregation:
+                alignmentPeriod: 60s
+                perSeriesAligner: ALIGN_RATE
+              filter: metric.type="run.googleapis.com/request_count" resource.type="cloud_run_revision"
+                resource.label.service_name="api-service"
+    width: 6
+  - height: 4
+    widget:
+      title: Web Request Count
+      xyChart:
+        dataSets:
+        - plotType: LINE
+          targetAxis: Y1
+          timeSeriesQuery:
+            timeSeriesFilter:
+              aggregation:
+                alignmentPeriod: 60s
+                perSeriesAligner: ALIGN_RATE
+              filter: metric.type="run.googleapis.com/request_count" resource.type="cloud_run_revision"
+                resource.label.service_name="web-service"
+    width: 6
+    xPos: 6
+  - height: 4
+    widget:
+      title: API Latency p95
+      xyChart:
+        dataSets:
+        - plotType: LINE
+          targetAxis: Y1
+          timeSeriesQuery:
+            timeSeriesFilter:
+              aggregation:
+                alignmentPeriod: 60s
+                perSeriesAligner: ALIGN_DELTA
+              filter: metric.type="run.googleapis.com/request_latencies" resource.type="cloud_run_revision"
+                resource.label.service_name="api-service"
+    width: 6
+    yPos: 4
+  - height: 4
+    widget:
+      title: Web Latency p95
+      xyChart:
+        dataSets:
+        - plotType: LINE
+          targetAxis: Y1
+          timeSeriesQuery:
+            timeSeriesFilter:
+              aggregation:
+                alignmentPeriod: 60s
+                perSeriesAligner: ALIGN_DELTA
+              filter: metric.type="run.googleapis.com/request_latencies" resource.type="cloud_run_revision"
+                resource.label.service_name="web-service"
+    width: 6
+    xPos: 6
+    yPos: 4
+name: projects/46511793055/dashboards/66f7e45c-1b35-4a92-8898-bd25ee0a22c7

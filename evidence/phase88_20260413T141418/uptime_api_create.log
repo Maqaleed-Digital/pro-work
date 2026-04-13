@@ -1,0 +1,2 @@
+$ gcloud monitoring uptime create wc88-api-health-20260413T141418 --resource-type=uptime-url --resource-labels=host=api.workcaptain.ai,project_id=prj-maq-workcaptain-nonprod --path=/health --port=443 --protocol=https --validate-ssl=true --period=1 --timeout=10 --project=prj-maq-workcaptain-nonprod
+Created uptime [projects/prj-maq-workcaptain-nonprod/uptimeCheckConfigs/wc88-api-health-20260413t141418-veU95GzcZH4].

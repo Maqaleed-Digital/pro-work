@@ -1,0 +1,135 @@
+$ gcloud monitoring uptime list-configs --project=prj-maq-workcaptain-nonprod
+---
+checkerType: STATIC_IP_CHECKERS
+displayName: wc88-api-health-20260413T140525
+httpCheck:
+  path: /health
+  port: 443
+  requestMethod: GET
+  useSsl: true
+  validateSsl: true
+monitoredResource:
+  labels:
+    host: api.workcaptain.ai
+    project_id: prj-maq-workcaptain-nonprod
+  type: uptime_url
+name: projects/prj-maq-workcaptain-nonprod/uptimeCheckConfigs/wc88-api-health-20260413t140525-RmIvlOvKu_I
+period: 60s
+timeout: 10s
+---
+checkerType: STATIC_IP_CHECKERS
+displayName: wc88-api-health-20260413T141115
+httpCheck:
+  path: /health
+  port: 443
+  requestMethod: GET
+  useSsl: true
+  validateSsl: true
+monitoredResource:
+  labels:
+    host: api.workcaptain.ai
+    project_id: prj-maq-workcaptain-nonprod
+  type: uptime_url
+name: projects/prj-maq-workcaptain-nonprod/uptimeCheckConfigs/wc88-api-health-20260413t141115-zvDeQawIBDc
+period: 60s
+timeout: 10s
+---
+checkerType: STATIC_IP_CHECKERS
+displayName: wc88-api-health-20260413T141418
+httpCheck:
+  path: /health
+  port: 443
+  requestMethod: GET
+  useSsl: true
+  validateSsl: true
+monitoredResource:
+  labels:
+    host: api.workcaptain.ai
+    project_id: prj-maq-workcaptain-nonprod
+  type: uptime_url
+name: projects/prj-maq-workcaptain-nonprod/uptimeCheckConfigs/wc88-api-health-20260413t141418-veU95GzcZH4
+period: 60s
+timeout: 10s
+---
+checkerType: STATIC_IP_CHECKERS
+displayName: wc88-web-health-20260413T140525
+httpCheck:
+  path: /health
+  port: 443
+  requestMethod: GET
+  useSsl: true
+  validateSsl: true
+monitoredResource:
+  labels:
+    host: workcaptain.ai
+    project_id: prj-maq-workcaptain-nonprod
+  type: uptime_url
+name: projects/prj-maq-workcaptain-nonprod/uptimeCheckConfigs/wc88-web-health-20260413t140525-Oll911NCWH4
+period: 60s
+timeout: 10s
+---
+checkerType: STATIC_IP_CHECKERS
+displayName: wc88-web-health-20260413T141115
+httpCheck:
+  path: /health
+  port: 443
+  requestMethod: GET
+  useSsl: true
+  validateSsl: true
+monitoredResource:
+  labels:
+    host: workcaptain.ai
+    project_id: prj-maq-workcaptain-nonprod
+  type: uptime_url
+name: projects/prj-maq-workcaptain-nonprod/uptimeCheckConfigs/wc88-web-health-20260413t141115-4kuK-tTtHy8
+period: 60s
+timeout: 10s
+---
+checkerType: STATIC_IP_CHECKERS
+displayName: wc88-web-health-20260413T141418
+httpCheck:
+  path: /health
+  port: 443
+  requestMethod: GET
+  useSsl: true
+  validateSsl: true
+monitoredResource:
+  labels:
+    host: workcaptain.ai
+    project_id: prj-maq-workcaptain-nonprod
+  type: uptime_url
+name: projects/prj-maq-workcaptain-nonprod/uptimeCheckConfigs/wc88-web-health-20260413t141418-Oll911NCUNE
+period: 60s
+timeout: 10s
+---
+checkerType: STATIC_IP_CHECKERS
+displayName: workcaptain-api-health-uptime
+httpCheck:
+  path: /health
+  port: 443
+  requestMethod: GET
+  useSsl: true
+monitoredResource:
+  labels:
+    host: api.workcaptain.ai
+    project_id: prj-maq-workcaptain-nonprod
+  type: uptime_url
+name: projects/prj-maq-workcaptain-nonprod/uptimeCheckConfigs/workcaptain-api-health-uptime-Kr5lAjalwmY
+period: 60s
+timeout: 10s
+---
+checkerType: STATIC_IP_CHECKERS
+displayName: workcaptain-api-health-uptime
+httpCheck:
+  path: /health
+  port: 443
+  requestMethod: GET
+  useSsl: true
+monitoredResource:
+  labels:
+    host: api.workcaptain.ai
+    project_id: prj-maq-workcaptain-nonprod
+  type: uptime_url
+name: projects/prj-maq-workcaptain-nonprod/uptimeCheckConfigs/workcaptain-api-health-uptime-aZ95iMDPxjs
+period: 60s
+timeout: 10s

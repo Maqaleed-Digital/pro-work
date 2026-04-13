@@ -1,0 +1,16 @@
+$ gcloud run services describe web-service --region me-central2 --project prj-maq-workcaptain-nonprod --format=yaml(metadata.name,status.url,status.conditions,status.latestReadyRevisionName)
+metadata:
+  name: web-service
+status:
+  conditions:
+  - lastTransitionTime: '2026-04-13T05:02:41.303831Z'
+    status: 'True'
+    type: Ready
+  - lastTransitionTime: '2026-04-13T05:02:37.542079Z'
+    status: 'True'
+    type: ConfigurationsReady
+  - lastTransitionTime: '2026-04-13T05:02:41.262211Z'
+    status: 'True'
+    type: RoutesReady
+  latestReadyRevisionName: web-service-00004-5ph
+  url: https://web-service-nwa6jq77aq-wx.a.run.app

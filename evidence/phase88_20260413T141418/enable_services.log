@@ -1,0 +1,2 @@
+$ gcloud services enable monitoring.googleapis.com logging.googleapis.com cloudresourcemanager.googleapis.com run.googleapis.com
+Operation "operations/acat.p2-46511793055-2f18cb00-2a73-4feb-9ae1-987331539319" finished successfully.

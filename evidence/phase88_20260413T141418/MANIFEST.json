@@ -1,0 +1,15 @@
+{
+  "phase": "PHASE_88",
+  "status": "PASS",
+  "timestamp": "20260413T141418",
+  "project_id": "prj-maq-workcaptain-nonprod",
+  "region": "me-central2",
+  "web_service": "web-service",
+  "api_service": "api-service",
+  "public_web": "https://workcaptain.ai",
+  "public_www": "https://www.workcaptain.ai",
+  "public_api": "https://api.workcaptain.ai",
+  "notification_channel": "projects/prj-maq-workcaptain-nonprod/notificationChannels/16347532052098767894",
+  "uptime_web_id": "projects/prj-maq-workcaptain-nonprod/uptimeCheckConfigs/wc88-web-health-20260413t141418-Oll911NCUNE",
+  "uptime_api_id": "projects/prj-maq-workcaptain-nonprod/uptimeCheckConfigs/wc88-api-health-20260413t141418-veU95GzcZH4"
+}

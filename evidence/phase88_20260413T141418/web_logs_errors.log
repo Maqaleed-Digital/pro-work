@@ -1,0 +1,683 @@
+$ gcloud logging read resource.type="cloud_run_revision" AND resource.labels.service_name="web-service" AND severity>=ERROR --project=prj-maq-workcaptain-nonprod --limit=20 --freshness=24h --format=json
+[
+  {
+    "httpRequest": {
+      "latency": "2.372449013s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "34.34.255.144",
+      "requestMethod": "GET",
+      "requestSize": "10295",
+      "requestUrl": "https://workcaptain.ai/api/v2/.env",
+      "responseSize": "678",
+      "serverIp": "34.144.236.130",
+      "status": 502,
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+    },
+    "insertId": "69dcc842000cee4f03ec0367",
+    "labels": {
+      "instanceId": "008c15ff088c24755d533c056c7a98a56f20e4f7abaa357513ea006a99636b311367f474d598b03273fd4714e4994bc699deed5315bc59e92ae4ea65ef8230739d9c904f8ab0d812db4f475476f4ad1001ca0ab2105d"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-04-13T10:41:06.907757381Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "ERROR",
+    "spanId": "67ccdd8dee55169a",
+    "timestamp": "2026-04-13T10:41:04.473614Z",
+    "trace": "projects/prj-maq-workcaptain-nonprod/traces/674e738865a7b157d1cbc5100975881e"
+  },
+  {
+    "httpRequest": {
+      "latency": "2.399058748s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "34.34.255.144",
+      "requestMethod": "GET",
+      "requestSize": "10203",
+      "requestUrl": "https://workcaptain.ai/api/v2/.env",
+      "responseSize": "797",
+      "serverIp": "34.144.236.130",
+      "status": 502,
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+    },
+    "insertId": "69dcc842000cf8e7d133f72e",
+    "labels": {
+      "instanceId": "008c15ff088c24755d533c056c7a98a56f20e4f7abaa357513ea006a99636b311367f474d598b03273fd4714e4994bc699deed5315bc59e92ae4ea65ef8230739d9c904f8ab0d812db4f475476f4ad1001ca0ab2105d"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-04-13T10:41:06.907757381Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "ERROR",
+    "spanId": "24b28b917aef42ad",
+    "timestamp": "2026-04-13T10:41:04.449659Z",
+    "trace": "projects/prj-maq-workcaptain-nonprod/traces/674e738865a7b157d1cbc5100975881e"
+  },
+  {
+    "httpRequest": {
+      "latency": "2.438204374s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "34.34.255.144",
+      "requestMethod": "GET",
+      "requestSize": "10111",
+      "requestUrl": "https://workcaptain.ai/api/v2/.env",
+      "responseSize": "862",
+      "serverIp": "34.144.236.130",
+      "status": 502,
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+    },
+    "insertId": "69dcc842000d0a2230a80dea",
+    "labels": {
+      "instanceId": "008c15ff088c24755d533c056c7a98a56f20e4f7abaa357513ea006a99636b311367f474d598b03273fd4714e4994bc699deed5315bc59e92ae4ea65ef8230739d9c904f8ab0d812db4f475476f4ad1001ca0ab2105d"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-04-13T10:41:06.907757381Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "ERROR",
+    "spanId": "85ab66075bce827e",
+    "timestamp": "2026-04-13T10:41:04.414876Z",
+    "trace": "projects/prj-maq-workcaptain-nonprod/traces/674e738865a7b157d1cbc5100975881e"
+  },
+  {
+    "httpRequest": {
+      "latency": "2.477006232s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "34.34.255.144",
+      "requestMethod": "GET",
+      "requestSize": "10020",
+      "requestUrl": "https://workcaptain.ai/api/v2/.env",
+      "responseSize": "927",
+      "serverIp": "34.144.236.130",
+      "status": 502,
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+    },
+    "insertId": "69dcc842000d1a369a6cecc7",
+    "labels": {
+      "instanceId": "008c15ff088c24755d533c056c7a98a56f20e4f7abaa357513ea006a99636b311367f474d598b03273fd4714e4994bc699deed5315bc59e92ae4ea65ef8230739d9c904f8ab0d812db4f475476f4ad1001ca0ab2105d"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-04-13T10:41:06.907757381Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "ERROR",
+    "spanId": "10e1addaabaf82aa",
+    "timestamp": "2026-04-13T10:41:04.380193Z",
+    "trace": "projects/prj-maq-workcaptain-nonprod/traces/674e738865a7b157d1cbc5100975881e"
+  },
+  {
+    "httpRequest": {
+      "latency": "2.506960347s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "34.34.255.144",
+      "requestMethod": "GET",
+      "requestSize": "9928",
+      "requestUrl": "https://workcaptain.ai/api/v2/.env",
+      "responseSize": "992",
+      "serverIp": "34.144.236.130",
+      "status": 502,
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+    },
+    "insertId": "69dcc842000d24aaa81f4439",
+    "labels": {
+      "instanceId": "008c15ff088c24755d533c056c7a98a56f20e4f7abaa357513ea006a99636b311367f474d598b03273fd4714e4994bc699deed5315bc59e92ae4ea65ef8230739d9c904f8ab0d812db4f475476f4ad1001ca0ab2105d"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-04-13T10:41:06.907757381Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "ERROR",
+    "spanId": "a3262dc2a46371c0",
+    "timestamp": "2026-04-13T10:41:04.352756Z",
+    "trace": "projects/prj-maq-workcaptain-nonprod/traces/674e738865a7b157d1cbc5100975881e"
+  },
+  {
+    "httpRequest": {
+      "latency": "2.543332543s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "34.34.255.144",
+      "requestMethod": "GET",
+      "requestSize": "9836",
+      "requestUrl": "https://workcaptain.ai/api/v2/.env",
+      "responseSize": "1057",
+      "serverIp": "34.144.236.130",
+      "status": 502,
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+    },
+    "insertId": "69dcc842000d32ab77470174",
+    "labels": {
+      "instanceId": "008c15ff088c24755d533c056c7a98a56f20e4f7abaa357513ea006a99636b311367f474d598b03273fd4714e4994bc699deed5315bc59e92ae4ea65ef8230739d9c904f8ab0d812db4f475476f4ad1001ca0ab2105d"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-04-13T10:41:06.907757381Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "ERROR",
+    "spanId": "ba4eff9b4a1d43cb",
+    "timestamp": "2026-04-13T10:41:04.319659Z",
+    "trace": "projects/prj-maq-workcaptain-nonprod/traces/674e738865a7b157d1cbc5100975881e"
+  },
+  {
+    "httpRequest": {
+      "latency": "2.572590489s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "34.34.255.144",
+      "requestMethod": "GET",
+      "requestSize": "9743",
+      "requestUrl": "https://workcaptain.ai/api/v2/.env",
+      "responseSize": "1122",
+      "serverIp": "34.144.236.130",
+      "status": 502,
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+    },
+    "insertId": "69dcc842000d40f729773632",
+    "labels": {
+      "instanceId": "008c15ff088c24755d533c056c7a98a56f20e4f7abaa357513ea006a99636b311367f474d598b03273fd4714e4994bc699deed5315bc59e92ae4ea65ef8230739d9c904f8ab0d812db4f475476f4ad1001ca0ab2105d"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-04-13T10:41:06.907757381Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "ERROR",
+    "spanId": "d4b08133a191e0cc",
+    "timestamp": "2026-04-13T10:41:04.294580Z",
+    "trace": "projects/prj-maq-workcaptain-nonprod/traces/674e738865a7b157d1cbc5100975881e"
+  },
+  {
+    "httpRequest": {
+      "latency": "2.601685475s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "34.34.255.144",
+      "requestMethod": "GET",
+      "requestSize": "9652",
+      "requestUrl": "https://workcaptain.ai/api/v2/.env",
+      "responseSize": "1187",
+      "serverIp": "34.144.236.130",
+      "status": 502,
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+    },
+    "insertId": "69dcc842000d4a6550739c43",
+    "labels": {
+      "instanceId": "008c15ff088c24755d533c056c7a98a56f20e4f7abaa357513ea006a99636b311367f474d598b03273fd4714e4994bc699deed5315bc59e92ae4ea65ef8230739d9c904f8ab0d812db4f475476f4ad1001ca0ab2105d"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-04-13T10:41:06.907757381Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "ERROR",
+    "spanId": "56468123e4e8592c",
+    "timestamp": "2026-04-13T10:41:04.267311Z",
+    "trace": "projects/prj-maq-workcaptain-nonprod/traces/674e738865a7b157d1cbc5100975881e"
+  },
+  {
+    "httpRequest": {
+      "latency": "2.639086471s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "34.34.255.144",
+      "requestMethod": "GET",
+      "requestSize": "9560",
+      "requestUrl": "https://workcaptain.ai/api/v2/.env",
+      "responseSize": "1227",
+      "serverIp": "34.144.236.130",
+      "status": 502,
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+    },
+    "insertId": "69dcc842000d59f81312f68d",
+    "labels": {
+      "instanceId": "008c15ff088c24755d533c056c7a98a56f20e4f7abaa357513ea006a99636b311367f474d598b03273fd4714e4994bc699deed5315bc59e92ae4ea65ef8230739d9c904f8ab0d812db4f475476f4ad1001ca0ab2105d"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-04-13T10:41:06.907757381Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "ERROR",
+    "spanId": "df60046822bde8e0",
+    "timestamp": "2026-04-13T10:41:04.234559Z",
+    "trace": "projects/prj-maq-workcaptain-nonprod/traces/674e738865a7b157d1cbc5100975881e"
+  },
+  {
+    "httpRequest": {
+      "latency": "2.674076317s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "34.34.255.144",
+      "requestMethod": "GET",
+      "requestSize": "9467",
+      "requestUrl": "https://workcaptain.ai/api/v2/.env",
+      "responseSize": "1292",
+      "serverIp": "34.144.236.130",
+      "status": 502,
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+    },
+    "insertId": "69dcc842000d67d1ee1657f4",
+    "labels": {
+      "instanceId": "008c15ff088c24755d533c056c7a98a56f20e4f7abaa357513ea006a99636b311367f474d598b03273fd4714e4994bc699deed5315bc59e92ae4ea65ef8230739d9c904f8ab0d812db4f475476f4ad1001ca0ab2105d"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-04-13T10:41:06.907757381Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "ERROR",
+    "spanId": "a91fbbcd185a2573",
+    "timestamp": "2026-04-13T10:41:04.203067Z",
+    "trace": "projects/prj-maq-workcaptain-nonprod/traces/674e738865a7b157d1cbc5100975881e"
+  },
+  {
+    "httpRequest": {
+      "latency": "2.710493904s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "34.34.255.144",
+      "requestMethod": "GET",
+      "requestSize": "9376",
+      "requestUrl": "https://workcaptain.ai/api/v2/.env",
+      "responseSize": "1357",
+      "serverIp": "34.144.236.130",
+      "status": 502,
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+    },
+    "insertId": "69dcc842000d765464b77d4d",
+    "labels": {
+      "instanceId": "008c15ff088c24755d533c056c7a98a56f20e4f7abaa357513ea006a99636b311367f474d598b03273fd4714e4994bc699deed5315bc59e92ae4ea65ef8230739d9c904f8ab0d812db4f475476f4ad1001ca0ab2105d"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-04-13T10:41:06.907757381Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "ERROR",
+    "spanId": "5eea39747c79d6e0",
+    "timestamp": "2026-04-13T10:41:04.170315Z",
+    "trace": "projects/prj-maq-workcaptain-nonprod/traces/674e738865a7b157d1cbc5100975881e"
+  },
+  {
+    "httpRequest": {
+      "latency": "2.741488370s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "34.34.255.144",
+      "requestMethod": "GET",
+      "requestSize": "9283",
+      "requestUrl": "https://workcaptain.ai/api/v2/.env",
+      "responseSize": "1422",
+      "serverIp": "34.144.236.130",
+      "status": 502,
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+    },
+    "insertId": "69dcc842000d7f484de6f108",
+    "labels": {
+      "instanceId": "008c15ff088c24755d533c056c7a98a56f20e4f7abaa357513ea006a99636b311367f474d598b03273fd4714e4994bc699deed5315bc59e92ae4ea65ef8230739d9c904f8ab0d812db4f475476f4ad1001ca0ab2105d"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-04-13T10:41:06.907757381Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "ERROR",
+    "spanId": "de7d307349fafdb9",
+    "timestamp": "2026-04-13T10:41:04.141738Z",
+    "trace": "projects/prj-maq-workcaptain-nonprod/traces/674e738865a7b157d1cbc5100975881e"
+  },
+  {
+    "httpRequest": {
+      "latency": "2.774742096s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "34.34.255.144",
+      "requestMethod": "GET",
+      "requestSize": "9192",
+      "requestUrl": "https://workcaptain.ai/api/v2/.env",
+      "responseSize": "1487",
+      "serverIp": "34.144.236.130",
+      "status": 502,
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+    },
+    "insertId": "69dcc842000d883a56966787",
+    "labels": {
+      "instanceId": "008c15ff088c24755d533c056c7a98a56f20e4f7abaa357513ea006a99636b311367f474d598b03273fd4714e4994bc699deed5315bc59e92ae4ea65ef8230739d9c904f8ab0d812db4f475476f4ad1001ca0ab2105d"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-04-13T10:41:06.907757381Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "ERROR",
+    "spanId": "6a9ba4735e62f430",
+    "timestamp": "2026-04-13T10:41:04.110637Z",
+    "trace": "projects/prj-maq-workcaptain-nonprod/traces/674e738865a7b157d1cbc5100975881e"
+  },
+  {
+    "httpRequest": {
+      "latency": "2.814063904s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "34.34.255.144",
+      "requestMethod": "GET",
+      "requestSize": "9100",
+      "requestUrl": "https://workcaptain.ai/api/v2/.env",
+      "responseSize": "1552",
+      "serverIp": "34.144.236.130",
+      "status": 502,
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+    },
+    "insertId": "69dcc842000d99153ec4ae1f",
+    "labels": {
+      "instanceId": "008c15ff088c24755d533c056c7a98a56f20e4f7abaa357513ea006a99636b311367f474d598b03273fd4714e4994bc699deed5315bc59e92ae4ea65ef8230739d9c904f8ab0d812db4f475476f4ad1001ca0ab2105d"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-04-13T10:41:06.907757381Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "ERROR",
+    "spanId": "a21f92a926aaf975",
+    "timestamp": "2026-04-13T10:41:04.075595Z",
+    "trace": "projects/prj-maq-workcaptain-nonprod/traces/674e738865a7b157d1cbc5100975881e"
+  },
+  {
+    "httpRequest": {
+      "latency": "2.850553991s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "34.34.255.144",
+      "requestMethod": "GET",
+      "requestSize": "9008",
+      "requestUrl": "https://workcaptain.ai/api/v2/.env",
+      "responseSize": "1617",
+      "serverIp": "34.144.236.130",
+      "status": 502,
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+    },
+    "insertId": "69dcc842000da7327158403a",
+    "labels": {
+      "instanceId": "008c15ff088c24755d533c056c7a98a56f20e4f7abaa357513ea006a99636b311367f474d598b03273fd4714e4994bc699deed5315bc59e92ae4ea65ef8230739d9c904f8ab0d812db4f475476f4ad1001ca0ab2105d"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-04-13T10:41:06.907757381Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "ERROR",
+    "spanId": "b43bfdbb610089a6",
+    "timestamp": "2026-04-13T10:41:04.042684Z",
+    "trace": "projects/prj-maq-workcaptain-nonprod/traces/674e738865a7b157d1cbc5100975881e"
+  },
+  {
+    "httpRequest": {
+      "latency": "2.880524066s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "34.34.255.144",
+      "requestMethod": "GET",
+      "requestSize": "8915",
+      "requestUrl": "https://workcaptain.ai/api/v2/.env",
+      "responseSize": "1682",
+      "serverIp": "34.144.236.130",
+      "status": 502,
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+    },
+    "insertId": "69dcc842000db06a63e601fb",
+    "labels": {
+      "instanceId": "008c15ff088c24755d533c056c7a98a56f20e4f7abaa357513ea006a99636b311367f474d598b03273fd4714e4994bc699deed5315bc59e92ae4ea65ef8230739d9c904f8ab0d812db4f475476f4ad1001ca0ab2105d"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-04-13T10:41:06.907757381Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "ERROR",
+    "spanId": "a69862f9bda1f9f3",
+    "timestamp": "2026-04-13T10:41:04.014953Z",
+    "trace": "projects/prj-maq-workcaptain-nonprod/traces/674e738865a7b157d1cbc5100975881e"
+  },
+  {
+    "httpRequest": {
+      "latency": "2.912742272s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "34.34.255.144",
+      "requestMethod": "GET",
+      "requestSize": "8823",
+      "requestUrl": "https://workcaptain.ai/api/v2/.env",
+      "responseSize": "1747",
+      "serverIp": "34.144.236.130",
+      "status": 502,
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+    },
+    "insertId": "69dcc842000dbb3f80c492c6",
+    "labels": {
+      "instanceId": "008c15ff088c24755d533c056c7a98a56f20e4f7abaa357513ea006a99636b311367f474d598b03273fd4714e4994bc699deed5315bc59e92ae4ea65ef8230739d9c904f8ab0d812db4f475476f4ad1001ca0ab2105d"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-04-13T10:41:06.907757381Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "ERROR",
+    "spanId": "81b8dbe34e2f4ebe",
+    "timestamp": "2026-04-13T10:41:03.985783Z",
+    "trace": "projects/prj-maq-workcaptain-nonprod/traces/674e738865a7b157d1cbc5100975881e"
+  },
+  {
+    "httpRequest": {
+      "latency": "2.940325227s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "34.34.255.144",
+      "requestMethod": "GET",
+      "requestSize": "8731",
+      "requestUrl": "https://workcaptain.ai/api/v2/.env",
+      "responseSize": "1787",
+      "serverIp": "34.144.236.130",
+      "status": 502,
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+    },
+    "insertId": "69dcc842000dc3b2db34d826",
+    "labels": {
+      "instanceId": "008c15ff088c24755d533c056c7a98a56f20e4f7abaa357513ea006a99636b311367f474d598b03273fd4714e4994bc699deed5315bc59e92ae4ea65ef8230739d9c904f8ab0d812db4f475476f4ad1001ca0ab2105d"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-04-13T10:41:06.907757381Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "ERROR",
+    "spanId": "1fd8043faaacbafb",
+    "timestamp": "2026-04-13T10:41:03.960195Z",
+    "trace": "projects/prj-maq-workcaptain-nonprod/traces/674e738865a7b157d1cbc5100975881e"
+  },
+  {
+    "httpRequest": {
+      "latency": "2.968812293s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "34.34.255.144",
+      "requestMethod": "GET",
+      "requestSize": "8640",
+      "requestUrl": "https://workcaptain.ai/api/v2/.env",
+      "responseSize": "1852",
+      "serverIp": "34.144.236.130",
+      "status": 502,
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+    },
+    "insertId": "69dcc842000dcf323398ad27",
+    "labels": {
+      "instanceId": "008c15ff088c24755d533c056c7a98a56f20e4f7abaa357513ea006a99636b311367f474d598b03273fd4714e4994bc699deed5315bc59e92ae4ea65ef8230739d9c904f8ab0d812db4f475476f4ad1001ca0ab2105d"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-04-13T10:41:07.242076876Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "ERROR",
+    "spanId": "6d32878fbe800f1a",
+    "timestamp": "2026-04-13T10:41:03.934720Z",
+    "trace": "projects/prj-maq-workcaptain-nonprod/traces/674e738865a7b157d1cbc5100975881e"
+  },
+  {
+    "httpRequest": {
+      "latency": "2.996799417s",
+      "protocol": "HTTP/1.1",
+      "remoteIp": "34.34.255.144",
+      "requestMethod": "GET",
+      "requestSize": "8547",
+      "requestUrl": "https://workcaptain.ai/api/v2/.env",
+      "responseSize": "1917",
+      "serverIp": "34.144.236.130",
+      "status": 502,
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+    },
+    "insertId": "69dcc842000dd792ca6abcbf",
+    "labels": {
+      "instanceId": "008c15ff088c24755d533c056c7a98a56f20e4f7abaa357513ea006a99636b311367f474d598b03273fd4714e4994bc699deed5315bc59e92ae4ea65ef8230739d9c904f8ab0d812db4f475476f4ad1001ca0ab2105d"
+    },
+    "logName": "projects/prj-maq-workcaptain-nonprod/logs/run.googleapis.com%2Frequests",
+    "receiveTimestamp": "2026-04-13T10:41:07.242076876Z",
+    "resource": {
+      "labels": {
+        "configuration_name": "web-service",
+        "location": "me-central2",
+        "project_id": "prj-maq-workcaptain-nonprod",
+        "revision_name": "web-service-00004-5ph",
+        "service_name": "web-service"
+      },
+      "type": "cloud_run_revision"
+    },
+    "severity": "ERROR",
+    "spanId": "bf46fc500cbd1953",
+    "timestamp": "2026-04-13T10:41:03.908998Z",
+    "trace": "projects/prj-maq-workcaptain-nonprod/traces/674e738865a7b157d1cbc5100975881e"
+  }
+]

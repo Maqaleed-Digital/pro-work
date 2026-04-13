@@ -1,0 +1,170 @@
+$ gcloud alpha monitoring policies list --project=prj-maq-workcaptain-nonprod
+---
+combiner: OR
+conditions:
+- conditionThreshold:
+    aggregations:
+    - alignmentPeriod: 60s
+      perSeriesAligner: ALIGN_NEXT_OLDER
+    comparison: COMPARISON_LT
+    duration: 60s
+    filter: metric.type="monitoring.googleapis.com/uptime_check/check_passed" AND
+      resource.type="uptime_url" AND metric.label."check_id"="workcaptain-api-health-uptime-aZ95iMDPxjs"
+    thresholdValue: 1.0
+    trigger:
+      count: 1
+  displayName: Uptime check failure for api.workcaptain.ai/health
+  name: projects/prj-maq-workcaptain-nonprod/alertPolicies/17769639856468243718/conditions/17769639856468244047
+creationRecord:
+  mutateTime: '2026-04-08T05:53:29.909455270Z'
+  mutatedBy: admin@maqaleed.tech
+displayName: workcaptain-api-health-uptime-alert
+enabled: true
+mutationRecord:
+  mutateTime: '2026-04-08T05:53:29.909455270Z'
+  mutatedBy: admin@maqaleed.tech
+name: projects/prj-maq-workcaptain-nonprod/alertPolicies/17769639856468243718
+---
+combiner: OR
+conditions:
+- conditionThreshold:
+    aggregations:
+    - alignmentPeriod: 120s
+      perSeriesAligner: ALIGN_NEXT_OLDER
+    comparison: COMPARISON_LT
+    duration: 60s
+    filter: metric.type="monitoring.googleapis.com/uptime_check/check_passed" AND
+      resource.type="uptime_url" AND metric.label.check_id="wc88-api-health-20260413t141418-veU95GzcZH4"
+    thresholdValue: 1.0
+    trigger:
+      count: 1
+  displayName: API uptime unhealthy
+  name: projects/prj-maq-workcaptain-nonprod/alertPolicies/6495731773073710725/conditions/6495731773073710508
+creationRecord:
+  mutateTime: '2026-04-13T11:15:14.348809078Z'
+  mutatedBy: admin@maqaleed.tech
+displayName: WC88 API Uptime Failure 20260413T141418
+documentation:
+  content: WorkCaptain API health endpoint is failing.
+  mimeType: text/markdown
+enabled: true
+mutationRecord:
+  mutateTime: '2026-04-13T11:15:14.348809078Z'
+  mutatedBy: admin@maqaleed.tech
+name: projects/prj-maq-workcaptain-nonprod/alertPolicies/6495731773073710725
+notificationChannels:
+- projects/prj-maq-workcaptain-nonprod/notificationChannels/16347532052098767894
+---
+combiner: OR
+conditions:
+- conditionThreshold:
+    aggregations:
+    - alignmentPeriod: 120s
+      perSeriesAligner: ALIGN_NEXT_OLDER
+    comparison: COMPARISON_LT
+    duration: 60s
+    filter: metric.type="monitoring.googleapis.com/uptime_check/check_passed" AND
+      resource.type="uptime_url" AND metric.label.check_id="wc88-api-health-20260413t141115-zvDeQawIBDc"
+    thresholdValue: 1.0
+    trigger:
+      count: 1
+  displayName: API uptime unhealthy
+  name: projects/prj-maq-workcaptain-nonprod/alertPolicies/7335810920125576385/conditions/7335810920125578646
+creationRecord:
+  mutateTime: '2026-04-13T11:12:14.678047767Z'
+  mutatedBy: admin@maqaleed.tech
+displayName: WC88 API Uptime Failure 20260413T141115
+documentation:
+  content: WorkCaptain API health endpoint is failing.
+  mimeType: text/markdown
+enabled: true
+mutationRecord:
+  mutateTime: '2026-04-13T11:12:14.678047767Z'
+  mutatedBy: admin@maqaleed.tech
+name: projects/prj-maq-workcaptain-nonprod/alertPolicies/7335810920125576385
+notificationChannels:
+- projects/prj-maq-workcaptain-nonprod/notificationChannels/16347532052098764883
+---
+combiner: OR
+conditions:
+- conditionThreshold:
+    aggregations:
+    - alignmentPeriod: 120s
+      perSeriesAligner: ALIGN_NEXT_OLDER
+    comparison: COMPARISON_LT
+    duration: 60s
+    filter: metric.type="monitoring.googleapis.com/uptime_check/check_passed" AND
+      resource.type="uptime_url" AND metric.label.check_id="wc88-web-health-20260413t141418-Oll911NCUNE"
+    thresholdValue: 1.0
+    trigger:
+      count: 1
+  displayName: Web uptime unhealthy
+  name: projects/prj-maq-workcaptain-nonprod/alertPolicies/7837485094424089258/conditions/7837485094424091583
+creationRecord:
+  mutateTime: '2026-04-13T11:15:10.609021385Z'
+  mutatedBy: admin@maqaleed.tech
+displayName: WC88 Web Uptime Failure 20260413T141418
+documentation:
+  content: WorkCaptain web health endpoint is failing.
+  mimeType: text/markdown
+enabled: true
+mutationRecord:
+  mutateTime: '2026-04-13T11:15:10.609021385Z'
+  mutatedBy: admin@maqaleed.tech
+name: projects/prj-maq-workcaptain-nonprod/alertPolicies/7837485094424089258
+notificationChannels:
+- projects/prj-maq-workcaptain-nonprod/notificationChannels/16347532052098767894
+---
+combiner: OR
+conditions:
+- conditionThreshold:
+    aggregations:
+    - alignmentPeriod: 120s
+      perSeriesAligner: ALIGN_NEXT_OLDER
+    comparison: COMPARISON_LT
+    duration: 60s
+    filter: metric.type="monitoring.googleapis.com/uptime_check/check_passed" AND
+      resource.type="uptime_url" AND metric.label.check_id="wc88-web-health-20260413t141115-4kuK-tTtHy8"
+    thresholdValue: 1.0
+    trigger:
+      count: 1
+  displayName: Web uptime unhealthy
+  name: projects/prj-maq-workcaptain-nonprod/alertPolicies/9346564505828260356/conditions/9346564505828261781
+creationRecord:
+  mutateTime: '2026-04-13T11:12:10.437455469Z'
+  mutatedBy: admin@maqaleed.tech
+displayName: WC88 Web Uptime Failure 20260413T141115
+documentation:
+  content: WorkCaptain web health endpoint is failing.
+  mimeType: text/markdown
+enabled: true
+mutationRecord:
+  mutateTime: '2026-04-13T11:12:10.437455469Z'
+  mutatedBy: admin@maqaleed.tech
+name: projects/prj-maq-workcaptain-nonprod/alertPolicies/9346564505828260356
+notificationChannels:
+- projects/prj-maq-workcaptain-nonprod/notificationChannels/16347532052098764883
+---
+combiner: OR
+conditions:
+- conditionThreshold:
+    aggregations:
+    - alignmentPeriod: 300s
+      perSeriesAligner: ALIGN_RATE
+    comparison: COMPARISON_GT
+    duration: 300s
+    filter: resource.type="cloud_run_revision" AND metric.type="run.googleapis.com/request_count"
+      AND metric.label."response_code_class"="5xx"
+    trigger:
+      count: 1
+  displayName: Cloud Run request error count baseline
+  name: projects/prj-maq-workcaptain-nonprod/alertPolicies/9734814262400215874/conditions/9734814262400215141
+creationRecord:
+  mutateTime: '2026-04-08T05:53:35.744970208Z'
+  mutatedBy: admin@maqaleed.tech
+displayName: workcaptain-cloudrun-backend-alert
+enabled: true
+mutationRecord:
+  mutateTime: '2026-04-08T05:53:35.744970208Z'
+  mutatedBy: admin@maqaleed.tech
+name: projects/prj-maq-workcaptain-nonprod/alertPolicies/9734814262400215874

@@ -1,0 +1,18 @@
+{
+  "displayName": "wc88-api-health-20260413T141418",
+  "httpCheck": {
+    "path": "/health",
+    "port": 443,
+    "useSsl": true,
+    "validateSsl": true
+  },
+  "monitoredResource": {
+    "type": "uptime_url",
+    "labels": {
+      "host": "api.workcaptain.ai",
+      "project_id": "prj-maq-workcaptain-nonprod"
+    }
+  },
+  "period": "60s",
+  "timeout": "10s"
+}

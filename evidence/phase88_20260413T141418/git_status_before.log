@@ -1,0 +1,13 @@
+$ git -C /Users/waheebmahmoud/dev/pro-work status --short
+?? operations/
+?? prowork_runtime/api/data/phase44-runtime.json
+?? prowork_runtime/api/data/phase45-runtime.json
+?? prowork_runtime/api/data/phase46-runtime.json
+?? prowork_runtime/api/data/phase47-runtime.json
+?? prowork_runtime/api/data/phase48-runtime.json
+?? prowork_runtime/api/data/phase49-runtime.json
+?? prowork_runtime/api/data/phase50-runtime.json
+?? prowork_runtime/api/data/phase57-usage.json
+?? prowork_runtime/api/data/phase59-production-state.json
+?? prowork_runtime/api/data/phase61-hypercare-state.json
+?? scripts/workcaptain_phase88_post_launch_ops.sh
