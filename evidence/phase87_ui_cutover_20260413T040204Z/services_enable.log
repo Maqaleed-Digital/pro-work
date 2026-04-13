@@ -1,0 +1,2 @@
+$ gcloud services enable run.googleapis.com dns.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com compute.googleapis.com
+Operation "operations/acat.p2-46511793055-36c05eda-a07e-43e4-9f35-600ce28b8ece" finished successfully.

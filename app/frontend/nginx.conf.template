@@ -1,0 +1,59 @@
+server {
+  listen 8080;
+  server_name _;
+
+  root /usr/share/nginx/html;
+  index index.html;
+
+  gzip on;
+  gzip_types text/plain text/css application/json application/javascript application/xml+rss application/xml image/svg+xml;
+
+  location = /health {
+    default_type application/json;
+    return 200 '{"ok":true,"service":"web-service","status":"healthy"}';
+  }
+
+  location = /ready {
+    default_type application/json;
+    return 200 '{"ok":true,"service":"web-service","status":"ready"}';
+  }
+
+  location = /version {
+    default_type application/json;
+    return 200 '{"service":"web-service","version":"phase87"}';
+  }
+
+  location /api/ {
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_pass ${API_ORIGIN};
+  }
+
+  location = /docs {
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_pass ${API_ORIGIN}/docs;
+  }
+
+  location = /openapi.json {
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_pass ${API_ORIGIN}/openapi.json;
+  }
+
+  location /assets/ {
+    try_files $uri =404;
+    access_log off;
+    expires 1y;
+    add_header Cache-Control "public, immutable";
+  }
+
+  location / {
+    try_files $uri $uri/ /index.html;
+  }
+}

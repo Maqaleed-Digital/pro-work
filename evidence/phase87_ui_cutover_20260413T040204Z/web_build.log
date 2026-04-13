@@ -1,0 +1,184 @@
+$ gcloud builds submit /Users/waheebmahmoud/dev/pro-work/app/frontend --project=prj-maq-workcaptain-nonprod --region=me-central2 --config /Users/waheebmahmoud/dev/pro-work/app/frontend/cloudbuild.yaml --substitutions _IMAGE_URI=me-central2-docker.pkg.dev/prj-maq-workcaptain-nonprod/workcaptain-images/web-service:20260413T040204Z --gcs-source-staging-dir gs://bkt-prj-maq-workcaptain-nonprod-cb-me/source --gcs-log-dir gs://bkt-prj-maq-workcaptain-nonprod-cb-me/logs
+Creating temporary archive of 27 file(s) totalling 112.3 KiB before compression.
+Some files were not included in the source upload.
+
+Check the gcloud log [/Users/waheebmahmoud/.config/gcloud/logs/2026.04.13/07.59.21.594043.log] to see which files and the contents of the
+default gcloudignore file used (see `$ gcloud topic gcloudignore` to learn
+more).
+
+Uploading tarball of [/Users/waheebmahmoud/dev/pro-work/app/frontend] to [gs://bkt-prj-maq-workcaptain-nonprod-cb-me/source/1776056362.044682-ccf91100380a4a27921eecf6aa311860.tgz]
+Created [https://cloudbuild.googleapis.com/v1/projects/prj-maq-workcaptain-nonprod/locations/me-central2/builds/c97d46e4-d868-43a3-b6fd-6b63429b6de3].
+Logs are available at [ https://console.cloud.google.com/cloud-build/builds;region=me-central2/c97d46e4-d868-43a3-b6fd-6b63429b6de3?project=46511793055 ].
+Waiting for build to complete. Polling interval: 1 second(s).
+----------------------------- REMOTE BUILD OUTPUT ------------------------------
+starting build "c97d46e4-d868-43a3-b6fd-6b63429b6de3"
+
+FETCHSOURCE
+Fetching storage object: gs://bkt-prj-maq-workcaptain-nonprod-cb-me/source/1776056362.044682-ccf91100380a4a27921eecf6aa311860.tgz#1776056363454448
+Copying gs://bkt-prj-maq-workcaptain-nonprod-cb-me/source/1776056362.044682-ccf91100380a4a27921eecf6aa311860.tgz#1776056363454448...
+/ [0 files][    0.0 B/ 26.5 KiB]                                                / [1 files][ 26.5 KiB/ 26.5 KiB]                                                
+Operation completed over 1 objects/26.5 KiB.                                     
+BUILD
+Already have image (with digest): gcr.io/cloud-builders/docker
+Sending build context to Docker daemon  137.7kB
+Step 1/16 : FROM node:20-alpine AS build
+20-alpine: Pulling from library/node
+589002ba0eae: Already exists
+d7f6aca05b78: Pulling fs layer
+62e0e1181d88: Pulling fs layer
+c7734204880f: Pulling fs layer
+c7734204880f: Verifying Checksum
+c7734204880f: Download complete
+62e0e1181d88: Verifying Checksum
+62e0e1181d88: Download complete
+d7f6aca05b78: Verifying Checksum
+d7f6aca05b78: Download complete
+d7f6aca05b78: Pull complete
+62e0e1181d88: Pull complete
+c7734204880f: Pull complete
+Digest: sha256:f598378b5240225e6beab68fa9f356db1fb8efe55173e6d4d8153113bb8f333c
+Status: Downloaded newer image for node:20-alpine
+ ---> ccfb9f0dc7ac
+Step 2/16 : WORKDIR /app
+ ---> Running in 85d30210af09
+Removing intermediate container 85d30210af09
+ ---> 7fba9be5927a
+Step 3/16 : COPY package*.json ./
+ ---> e8bea7d20888
+Step 4/16 : RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+ ---> Running in 82ddf0fc3fb7
+
+added 14 packages, and audited 15 packages in 3s
+
+5 packages are looking for funding
+  run `npm fund` for details
+
+3 high severity vulnerabilities
+
+To address all issues, run:
+  npm audit fix
+
+Run `npm audit` for details.
+[91mnpm notice
+npm notice New major version of npm available! 10.8.2 -> 11.12.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.12.1
+npm notice To update run: npm install -g npm@11.12.1
+npm notice
+[0mRemoving intermediate container 82ddf0fc3fb7
+ ---> edb6c1db8b84
+Step 5/16 : COPY . .
+ ---> f90729c2ddfd
+Step 6/16 : ARG VITE_BACKEND_URL=""
+ ---> Running in 2ca885ad7753
+Removing intermediate container 2ca885ad7753
+ ---> 8e2a08901556
+Step 7/16 : ARG VITE_APP_NAME="WorkCaptain"
+ ---> Running in a6ce90d08734
+Removing intermediate container a6ce90d08734
+ ---> df745a10d35c
+Step 8/16 : ENV VITE_BACKEND_URL="${VITE_BACKEND_URL}"
+ ---> Running in 22cc15e812c7
+Removing intermediate container 22cc15e812c7
+ ---> e1e9e7d2ae2c
+Step 9/16 : ENV VITE_APP_NAME="${VITE_APP_NAME}"
+ ---> Running in 0744cfe99e32
+Removing intermediate container 0744cfe99e32
+ ---> bffc2cd664dc
+Step 10/16 : RUN npm run build
+ ---> Running in e9ee95580016
+
+> prowork-admin-console@0.0.0 build
+> vite build
+
+vite v7.3.1 building client environment for production...
+transforming...
+✓ 19 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                  0.40 kB │ gzip:  0.27 kB
+dist/assets/index-CBF_MT1p.css   4.01 kB │ gzip:  1.26 kB
+dist/assets/index-BW-0KKU3.js   39.25 kB │ gzip: 10.18 kB
+✓ built in 608ms
+Removing intermediate container e9ee95580016
+ ---> f4e90a2d860d
+Step 11/16 : FROM nginx:1.27-alpine
+1.27-alpine: Pulling from library/nginx
+f18232174bc9: Pulling fs layer
+61ca4f733c80: Pulling fs layer
+b464cfdf2a63: Pulling fs layer
+d7e507024086: Pulling fs layer
+81bd8ed7ec67: Pulling fs layer
+197eb75867ef: Pulling fs layer
+34a64644b756: Pulling fs layer
+39c2ddfd6010: Pulling fs layer
+34a64644b756: Waiting
+39c2ddfd6010: Waiting
+d7e507024086: Download complete
+81bd8ed7ec67: Verifying Checksum
+81bd8ed7ec67: Download complete
+b464cfdf2a63: Download complete
+197eb75867ef: Verifying Checksum
+197eb75867ef: Download complete
+f18232174bc9: Verifying Checksum
+f18232174bc9: Download complete
+61ca4f733c80: Verifying Checksum
+61ca4f733c80: Download complete
+f18232174bc9: Pull complete
+34a64644b756: Download complete
+61ca4f733c80: Pull complete
+b464cfdf2a63: Pull complete
+d7e507024086: Pull complete
+81bd8ed7ec67: Pull complete
+197eb75867ef: Pull complete
+34a64644b756: Pull complete
+39c2ddfd6010: Download complete
+39c2ddfd6010: Pull complete
+Digest: sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10
+Status: Downloaded newer image for nginx:1.27-alpine
+ ---> 6769dc3a703c
+Step 12/16 : WORKDIR /usr/share/nginx/html
+ ---> Running in d26a4622e894
+Removing intermediate container d26a4622e894
+ ---> 0f06627aa092
+Step 13/16 : COPY --from=build /app/dist /usr/share/nginx/html
+ ---> 2ded5442231c
+Step 14/16 : COPY nginx.conf.template /etc/nginx/templates/default.conf.template
+ ---> 7e03cc7ede12
+Step 15/16 : EXPOSE 8080
+ ---> Running in a3ff0a8ac12d
+Removing intermediate container a3ff0a8ac12d
+ ---> cf1662669354
+Step 16/16 : CMD ["nginx", "-g", "daemon off;"]
+ ---> Running in 034b159ed4df
+Removing intermediate container 034b159ed4df
+ ---> 0dba2ff58b99
+Successfully built 0dba2ff58b99
+Successfully tagged me-central2-docker.pkg.dev/prj-maq-workcaptain-nonprod/workcaptain-images/web-service:20260413T040204Z
+PUSH
+Pushing me-central2-docker.pkg.dev/prj-maq-workcaptain-nonprod/workcaptain-images/web-service:20260413T040204Z
+The push refers to repository [me-central2-docker.pkg.dev/prj-maq-workcaptain-nonprod/workcaptain-images/web-service]
+2591710659e9: Preparing
+452ad616e992: Preparing
+0d853d50b128: Preparing
+947e805a4ac7: Preparing
+811a4dbbf4a5: Preparing
+b8d7d1d22634: Preparing
+e244aa659f61: Preparing
+c56f134d3805: Preparing
+d71eae0084c1: Preparing
+08000c18d16d: Preparing
+811a4dbbf4a5: Layer already exists
+0d853d50b128: Layer already exists
+08000c18d16d: Layer already exists
+e244aa659f61: Layer already exists
+b8d7d1d22634: Layer already exists
+947e805a4ac7: Layer already exists
+d71eae0084c1: Layer already exists
+c56f134d3805: Layer already exists
+452ad616e992: Pushed
+2591710659e9: Pushed
+20260413T040204Z: digest: sha256:d02c156f4b2c871cc73a07bcc41432bee93a7a1a09e36989af3d81d9ff5f6aac size: 2405
+DONE
+--------------------------------------------------------------------------------
+ID                                    CREATE_TIME                DURATION  SOURCE                                                                                                    IMAGES                                                                                                  STATUS
+c97d46e4-d868-43a3-b6fd-6b63429b6de3  2026-04-13T04:59:24+00:00  33S       gs://bkt-prj-maq-workcaptain-nonprod-cb-me/source/1776056362.044682-ccf91100380a4a27921eecf6aa311860.tgz  me-central2-docker.pkg.dev/prj-maq-workcaptain-nonprod/workcaptain-images/web-service:20260413T040204Z  SUCCESS

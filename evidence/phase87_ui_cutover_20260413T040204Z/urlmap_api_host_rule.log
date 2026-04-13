@@ -1,0 +1,2 @@
+$ gcloud compute url-maps add-host-rule workcaptain-urlmap --hosts=api.workcaptain.ai --path-matcher-name=api-matcher --global --project=prj-maq-workcaptain-nonprod
+Updated [https://www.googleapis.com/compute/v1/projects/prj-maq-workcaptain-nonprod/global/urlMaps/workcaptain-urlmap].

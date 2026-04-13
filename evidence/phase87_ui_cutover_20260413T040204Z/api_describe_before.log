@@ -1,0 +1,15 @@
+$ gcloud run services describe api-service --region=me-central2 --project=prj-maq-workcaptain-nonprod --format=yaml(metadata.name,status.url,status.conditions)
+metadata:
+  name: api-service
+status:
+  conditions:
+  - lastTransitionTime: '2026-04-08T06:46:07.047958Z'
+    status: 'True'
+    type: Ready
+  - lastTransitionTime: '2026-04-08T06:45:57.521432Z'
+    status: 'True'
+    type: ConfigurationsReady
+  - lastTransitionTime: '2026-04-08T06:46:07.008450Z'
+    status: 'True'
+    type: RoutesReady
+  url: https://api-service-nwa6jq77aq-wx.a.run.app

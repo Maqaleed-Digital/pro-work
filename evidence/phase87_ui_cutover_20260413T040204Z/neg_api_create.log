@@ -1,0 +1,3 @@
+$ gcloud compute network-endpoint-groups create neg-api-service --region=me-central2 --network-endpoint-type=serverless --cloud-run-service=api-service --project=prj-maq-workcaptain-nonprod
+Created [https://www.googleapis.com/compute/v1/projects/prj-maq-workcaptain-nonprod/regions/me-central2/networkEndpointGroups/neg-api-service].
+Created network endpoint group [neg-api-service].

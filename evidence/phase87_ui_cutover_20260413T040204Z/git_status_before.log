@@ -1,0 +1,16 @@
+$ git -C /Users/waheebmahmoud/dev/pro-work status --short
+?? app/frontend/.env.production
+?? app/frontend/Dockerfile.web
+?? app/frontend/cloudbuild.yaml
+?? app/frontend/nginx.conf.template
+?? prowork_runtime/api/data/phase44-runtime.json
+?? prowork_runtime/api/data/phase45-runtime.json
+?? prowork_runtime/api/data/phase46-runtime.json
+?? prowork_runtime/api/data/phase47-runtime.json
+?? prowork_runtime/api/data/phase48-runtime.json
+?? prowork_runtime/api/data/phase49-runtime.json
+?? prowork_runtime/api/data/phase50-runtime.json
+?? prowork_runtime/api/data/phase57-usage.json
+?? prowork_runtime/api/data/phase59-production-state.json
+?? prowork_runtime/api/data/phase61-hypercare-state.json
+?? scripts/workcaptain_phase87_ui_cutover.sh

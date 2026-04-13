@@ -1,0 +1,17 @@
+{
+  "phase": "PHASE_87",
+  "status": "PASS",
+  "timestamp": "20260413T040204Z",
+  "project_id": "prj-maq-workcaptain-nonprod",
+  "domain_strategy": "GLOBAL_HTTPS_LOAD_BALANCER_SERVERLESS_NEG",
+  "ui_source": "app/frontend",
+  "web_service": "web-service",
+  "api_service": "api-service",
+  "lb_ip": "34.144.236.130",
+  "lb_ip_name": "workcaptain-lb-ip",
+  "lb_cert": "workcaptain-cert",
+  "lb_urlmap": "workcaptain-urlmap",
+  "public_web": "https://workcaptain.ai",
+  "public_www": "https://www.workcaptain.ai",
+  "public_api": "https://api.workcaptain.ai"
+}

@@ -1,0 +1,21 @@
+{
+  "creationTimestamp": "2026-04-12T21:56:42.150-07:00",
+  "id": "2639899516965341541",
+  "kind": "compute#sslCertificate",
+  "managed": {
+    "domainStatus": {
+      "api.workcaptain.ai": "PROVISIONING",
+      "workcaptain.ai": "PROVISIONING",
+      "www.workcaptain.ai": "PROVISIONING"
+    },
+    "domains": [
+      "workcaptain.ai",
+      "www.workcaptain.ai",
+      "api.workcaptain.ai"
+    ],
+    "status": "PROVISIONING"
+  },
+  "name": "workcaptain-cert",
+  "selfLink": "https://www.googleapis.com/compute/v1/projects/prj-maq-workcaptain-nonprod/global/sslCertificates/workcaptain-cert",
+  "type": "MANAGED"
+}

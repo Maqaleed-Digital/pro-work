@@ -1,0 +1,10 @@
+$ curl -sSI https://api.workcaptain.ai/health
+HTTP/2 200 
+content-type: application/json
+x-cloud-trace-context: f9648976622a0c9dffb87bb2f2743590
+content-length: 59
+date: Mon, 13 Apr 2026 05:12:46 GMT
+server: Google Frontend
+via: 1.1 google
+alt-svc: h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+

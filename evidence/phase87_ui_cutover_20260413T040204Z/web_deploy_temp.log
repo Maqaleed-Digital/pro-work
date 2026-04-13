@@ -1,0 +1,9 @@
+$ gcloud run deploy web-service --image me-central2-docker.pkg.dev/prj-maq-workcaptain-nonprod/workcaptain-images/web-service:20260413T040204Z --region me-central2 --project prj-maq-workcaptain-nonprod --allow-unauthenticated --port 8080 --set-env-vars API_ORIGIN=https://api-service-nwa6jq77aq-wx.a.run.app
+Deploying container to Cloud Run service [web-service] in project [prj-maq-workcaptain-nonprod] region [me-central2]
+Deploying...
+Setting IAM Policy.......................done
+Creating Revision...............................................done
+Routing traffic.....done
+Done.
+Service [web-service] revision [web-service-00003-wcr] has been deployed and is serving 100 percent of traffic.
+Service URL: https://web-service-46511793055.me-central2.run.app

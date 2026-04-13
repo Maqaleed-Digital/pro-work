@@ -1,0 +1,4 @@
+$ gcloud compute url-maps create workcaptain-urlmap --default-service=bs-web-service --global --project=prj-maq-workcaptain-nonprod
+Created [https://www.googleapis.com/compute/v1/projects/prj-maq-workcaptain-nonprod/global/urlMaps/workcaptain-urlmap].
+NAME                DEFAULT_SERVICE
+workcaptain-urlmap  backendServices/bs-web-service

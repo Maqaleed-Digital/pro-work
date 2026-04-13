@@ -1,0 +1,2 @@
+$ gcloud compute backend-services add-backend bs-web-service --global --network-endpoint-group=neg-web-service --network-endpoint-group-region=me-central2 --project=prj-maq-workcaptain-nonprod
+Updated [https://www.googleapis.com/compute/v1/projects/prj-maq-workcaptain-nonprod/global/backendServices/bs-web-service].

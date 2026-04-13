@@ -1,0 +1,3 @@
+$ gcloud config set project prj-maq-workcaptain-nonprod
+[environment: untagged] Read more to tag: g.co/cloud/project-env-tag.
+Updated property [core/project].

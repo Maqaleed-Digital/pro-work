@@ -1,0 +1,17 @@
+{
+  "IPAddress": "34.144.236.130",
+  "IPProtocol": "TCP",
+  "creationTimestamp": "2026-04-12T21:57:01.543-07:00",
+  "description": "",
+  "fingerprint": "GAfhJRNeKoY=",
+  "id": "7410269995565959538",
+  "kind": "compute#forwardingRule",
+  "labelFingerprint": "42WmSpB8rSM=",
+  "loadBalancingScheme": "EXTERNAL",
+  "name": "workcaptain-https-fr",
+  "networkTier": "PREMIUM",
+  "portRange": "443-443",
+  "selfLink": "https://www.googleapis.com/compute/v1/projects/prj-maq-workcaptain-nonprod/global/forwardingRules/workcaptain-https-fr",
+  "selfLinkWithId": "https://www.googleapis.com/compute/v1/projects/prj-maq-workcaptain-nonprod/global/forwardingRules/7410269995565959538",
+  "target": "https://www.googleapis.com/compute/v1/projects/prj-maq-workcaptain-nonprod/global/targetHttpsProxies/workcaptain-https-proxy"
+}

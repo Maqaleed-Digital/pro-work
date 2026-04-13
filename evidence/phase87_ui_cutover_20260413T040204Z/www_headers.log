@@ -1,0 +1,10 @@
+$ curl -sSI https://www.workcaptain.ai
+HTTP/2 200 
+content-type: application/json
+x-cloud-trace-context: e2d2e1f5a42b757a6fe315082d233015
+content-length: 45
+date: Mon, 13 Apr 2026 05:12:45 GMT
+server: Google Frontend
+via: 1.1 google
+alt-svc: h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+

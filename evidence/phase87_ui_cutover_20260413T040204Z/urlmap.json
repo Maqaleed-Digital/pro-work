@@ -1,0 +1,29 @@
+{
+  "creationTimestamp": "2026-04-12T21:56:21.746-07:00",
+  "defaultService": "https://www.googleapis.com/compute/v1/projects/prj-maq-workcaptain-nonprod/global/backendServices/bs-web-service",
+  "fingerprint": "LBJaN_6z18w=",
+  "hostRules": [
+    {
+      "hosts": [
+        "*"
+      ],
+      "pathMatcher": "api-matcher"
+    },
+    {
+      "hosts": [
+        "api.workcaptain.ai"
+      ],
+      "pathMatcher": "api-matcher"
+    }
+  ],
+  "id": "413628293102815642",
+  "kind": "compute#urlMap",
+  "name": "workcaptain-urlmap",
+  "pathMatchers": [
+    {
+      "defaultService": "https://www.googleapis.com/compute/v1/projects/prj-maq-workcaptain-nonprod/global/backendServices/bs-api-service",
+      "name": "api-matcher"
+    }
+  ],
+  "selfLink": "https://www.googleapis.com/compute/v1/projects/prj-maq-workcaptain-nonprod/global/urlMaps/workcaptain-urlmap"
+}

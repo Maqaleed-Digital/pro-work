@@ -1,0 +1,4 @@
+$ gcloud compute backend-services create bs-api-service --global --project=prj-maq-workcaptain-nonprod
+Created [https://www.googleapis.com/compute/v1/projects/prj-maq-workcaptain-nonprod/global/backendServices/bs-api-service].
+NAME            BACKENDS  PROTOCOL
+bs-api-service            HTTP

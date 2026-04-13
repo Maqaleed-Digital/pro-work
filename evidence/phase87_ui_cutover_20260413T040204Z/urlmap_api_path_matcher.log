@@ -1,0 +1,2 @@
+$ gcloud compute url-maps add-path-matcher workcaptain-urlmap --path-matcher-name=api-matcher --default-service=bs-api-service --global --project=prj-maq-workcaptain-nonprod
+Updated [https://www.googleapis.com/compute/v1/projects/prj-maq-workcaptain-nonprod/global/urlMaps/workcaptain-urlmap].

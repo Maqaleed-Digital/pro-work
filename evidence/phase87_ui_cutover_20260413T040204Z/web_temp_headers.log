@@ -1,0 +1,12 @@
+$ curl -sSI https://web-service-nwa6jq77aq-wx.a.run.app
+HTTP/2 200 
+content-type: text/html
+last-modified: Mon, 13 Apr 2026 04:59:46 GMT
+etag: "69dc7842-18d"
+accept-ranges: bytes
+x-cloud-trace-context: 17cc02fabd53a9d583f657b840da0eb2;o=1
+content-length: 397
+date: Mon, 13 Apr 2026 05:00:22 GMT
+server: Google Frontend
+alt-svc: h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+
