@@ -1,0 +1,20 @@
+{
+  "version": "1.0",
+  "frontend_candidates": [
+    "prowork_runtime/web/src/app/layout.tsx",
+    "src/app/layout.tsx",
+    "app/layout.tsx",
+    "src/pages/_app.tsx",
+    "pages/_app.tsx",
+    "src/main.tsx"
+  ],
+  "backend_candidates": [
+    "prowork_runtime/api/src/analytics/bootstrap.ts",
+    "src/server.ts",
+    "src/server/index.ts",
+    "server.ts",
+    "src/app/api/events/route.ts",
+    "src/lib/event_bus.ts",
+    "src/modules/event_bus/index.ts"
+  ]
+}

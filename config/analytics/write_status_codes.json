@@ -1,0 +1,9 @@
+{
+  "version": "1.0",
+  "status_codes": [
+    "BLOCKED_MISSING_ENV",
+    "BLOCKED_AMBIGUOUS_TARGETS",
+    "BLOCKED_PATCH_FAILURE",
+    "PASS"
+  ]
+}

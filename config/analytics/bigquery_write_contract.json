@@ -1,0 +1,12 @@
+{
+  "version": "1.0",
+  "required_env": [
+    "WORKCAPTAIN_BQ_PROJECT_ID",
+    "WORKCAPTAIN_BQ_DATASET"
+  ],
+  "raw_tables": [
+    "raw_frontend_events",
+    "raw_platform_events"
+  ],
+  "shared_writer_path": "src/lib/analytics/bigqueryEventWriter.ts"
+}
