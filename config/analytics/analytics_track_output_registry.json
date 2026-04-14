@@ -1,0 +1,13 @@
+{
+  "version": "1.0",
+  "output_name": "truthful_executive_kpi_output",
+  "sql_path": "analytics/sql/018_track_truthful_executive_output.sql",
+  "required_fields": [
+    "event_date",
+    "daily_active_users",
+    "session_count",
+    "api_request_volume",
+    "milestones_completed_count",
+    "evidence_packs_generated_count"
+  ]
+}

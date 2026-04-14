@@ -1,0 +1,12 @@
+ANALYTICS_TRACK_VERIFICATION
+============================
+PASS: required documents present
+PASS: registry files present
+PASS: SQL files present
+PASS: JSON validation complete
+
+LIVE STATUS:
+STATUS_CODE=BLOCKED_MISSING_ENV
+AUTH_OK=0
+VIEWS_OK=0
+QUERY_OK=0

@@ -1,0 +1,19 @@
+{
+  "version": "1.0",
+  "gate_order": [
+    "env",
+    "bq",
+    "auth",
+    "views",
+    "query",
+    "PASS"
+  ],
+  "status_codes": [
+    "BLOCKED_MISSING_ENV",
+    "BLOCKED_MISSING_BQ",
+    "BLOCKED_AUTH_FAILURE",
+    "BLOCKED_MISSING_VIEWS",
+    "BLOCKED_QUERY_FAILURE",
+    "PASS"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "version": "1.0",
+  "required_env": [
+    "WORKCAPTAIN_BQ_PROJECT_ID",
+    "WORKCAPTAIN_BQ_DATASET"
+  ],
+  "optional_env": [
+    "GOOGLE_APPLICATION_CREDENTIALS"
+  ],
+  "required_tools": [
+    "bq"
+  ],
+  "required_views": [
+    "mart_daily_product_kpis",
+    "mart_daily_execution_kpis",
+    "mart_daily_trust_kpis"
+  ],
+  "truth_mode": "PASS_OR_BLOCKED_ONLY"
+}

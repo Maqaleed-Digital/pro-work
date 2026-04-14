@@ -1,0 +1,3 @@
+TRUTHFUL_EXECUTIVE_OUTPUT=BLOCKED
+STATUS_CODE=BLOCKED_MISSING_ENV
+SQL_PATH=analytics/sql/018_track_truthful_executive_output.sql
