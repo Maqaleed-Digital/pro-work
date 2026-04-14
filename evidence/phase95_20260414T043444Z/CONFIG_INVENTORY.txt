@@ -1,0 +1,4 @@
+/opt/prowork/config/analytics/authenticated_bq_session_checks.json
+/opt/prowork/config/analytics/first_gate_advancement_registry.json
+/opt/prowork/config/analytics/live_operator_export_requirements.json
+/opt/prowork/config/analytics/operator_env.live.example

@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0",
+  "phase": 95,
+  "scope": "AUTHENTICATED_BQ_SESSION",
+  "checks": [
+    {
+      "check_id": "bq_cli_present",
+      "description": "bq CLI binary is present in PATH",
+      "command": "command -v bq",
+      "blocked_status_if_fail": "BLOCKED_MISSING_BQ"
+    },
+    {
+      "check_id": "auth_gate",
+      "description": "SELECT 1 executes successfully via bq CLI",
+      "sql_file": "011_auth_gate_check.sql",
+      "blocked_status_if_fail": "BLOCKED_AUTH_FAILURE"
+    },
+    {
+      "check_id": "gate_advancement_probe",
+      "description": "Gate advancement probe query executes successfully",
+      "sql_file": "015_first_gate_advancement_probe.sql",
+      "blocked_status_if_fail": "BLOCKED_QUERY_FAILURE"
+    },
+    {
+      "check_id": "dataset_schema_probe",
+      "description": "Dataset schema probe via INFORMATION_SCHEMA.SCHEMATA",
+      "sql_file": "014_session_auth_dataset_check.sql",
+      "note": "Uses region-us; may return 0 rows for me-central2 datasets — not a hard gate failure"
+    }
+  ],
+  "terminal_state_if_all_pass": "BLOCKED_MISSING_VIEWS"
+}
