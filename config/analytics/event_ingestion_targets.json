@@ -1,0 +1,17 @@
+{
+  "version": "1.0",
+  "frontend_targets": [
+    "analytics_abstraction_module",
+    "route_render_trigger",
+    "auth_success_trigger",
+    "dashboard_entry_trigger"
+  ],
+  "platform_targets": [
+    "domain_event_publisher",
+    "trust_evidence_completion_trigger"
+  ],
+  "required_raw_tables": [
+    "raw_frontend_events",
+    "raw_platform_events"
+  ]
+}

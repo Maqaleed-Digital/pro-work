@@ -1,0 +1,10 @@
+{
+  "version": "1.0",
+  "status_codes": [
+    "BLOCKED_NO_RAW_EVENTS",
+    "BLOCKED_EMPTY_MARTS",
+    "BLOCKED_EMPTY_EXECUTIVE_OUTPUT",
+    "BLOCKED_QUERY_FAILURE",
+    "PASS"
+  ]
+}
