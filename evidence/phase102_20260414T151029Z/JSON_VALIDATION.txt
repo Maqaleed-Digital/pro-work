@@ -1,0 +1,3 @@
+JSON_OK /Users/waheebmahmoud/dev/pro-work/config/analytics/executive_alert_registry.json
+JSON_OK /Users/waheebmahmoud/dev/pro-work/config/analytics/kpi_threshold_registry.json
+JSON_OK /Users/waheebmahmoud/dev/pro-work/config/analytics/anomaly_readiness_registry.json

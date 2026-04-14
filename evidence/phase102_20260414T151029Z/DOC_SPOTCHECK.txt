@@ -1,0 +1,4 @@
+46:## 4. PASS Condition
+4:    "traffic_drop",
+4:    "daily_active_users_min": 1,
+7:    "recent_data_present"

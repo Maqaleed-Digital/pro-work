@@ -1,0 +1,9 @@
+{
+  "version": "1.0",
+  "required_dimensions": [
+    "trend_coverage_present",
+    "funnel_coverage_present",
+    "kpi_snapshot_present",
+    "recent_data_present"
+  ]
+}

@@ -1,0 +1,8 @@
+[
+  {
+    "api_request_volume_alert": "kpi_inactivity", 
+    "daily_active_users_alert": "traffic_drop", 
+    "evidence_alert": "ok", 
+    "snapshot_date": "2026-04-14"
+  }
+]

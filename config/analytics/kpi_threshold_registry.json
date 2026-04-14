@@ -1,0 +1,9 @@
+{
+  "version": "1.0",
+  "thresholds": {
+    "daily_active_users_min": 1,
+    "api_request_volume_min": 1,
+    "funnel_sessions_min": 1,
+    "evidence_packs_generated_min": 0
+  }
+}

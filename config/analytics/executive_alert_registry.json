@@ -1,0 +1,12 @@
+{
+  "version": "1.0",
+  "alert_families": [
+    "traffic_drop",
+    "kpi_inactivity",
+    "funnel_stagnation",
+    "trust_execution_inactivity"
+  ],
+  "required_outputs": [
+    "executive_alert_snapshot"
+  ]
+}
