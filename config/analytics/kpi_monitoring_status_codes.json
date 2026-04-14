@@ -1,0 +1,7 @@
+{
+  "version": "1.0",
+  "status_codes": [
+    "BLOCKED_QUERY_FAILURE",
+    "PASS"
+  ]
+}

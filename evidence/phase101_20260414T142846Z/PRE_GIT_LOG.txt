@@ -1,0 +1,5 @@
+8e81306 DOCS: final Notion update for live monitored analytics-active KPI-real state
+a692519 PHASE_100: runtime rebuild + redeploy — STATUS_CODE=PASS — FRONTEND_ROWS=4
+b3f0cb3 PHASE_99_ENV_PATCH: web-service+api-service BQ env vars set — still BLOCKED_NO_RAW_EVENTS (emitters not yet wired to live builds)
+1be0b64 PHASE_99: runtime deploy discovery + BQ env patch + trigger execution — BLOCKED_PHASE97_FAILURE (no raw rows yet; Cloud Run not redeployed)
+736024a PHASE_98: implement app-side BigQuery event writes to raw analytics tables

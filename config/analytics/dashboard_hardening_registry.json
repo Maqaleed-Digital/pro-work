@@ -1,0 +1,12 @@
+{
+  "version": "1.0",
+  "dashboards": [
+    "executive_overview",
+    "trend_dashboard",
+    "kpi_health_dashboard"
+  ],
+  "required_outputs": [
+    "7_day_trend",
+    "kpi_health_snapshot"
+  ]
+}

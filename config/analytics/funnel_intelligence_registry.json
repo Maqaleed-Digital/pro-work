@@ -1,0 +1,12 @@
+{
+  "version": "1.0",
+  "funnel_name": "core_activation_funnel",
+  "required_steps": [
+    "landing_view",
+    "signup_started",
+    "signup_completed",
+    "login_success",
+    "dashboard_view",
+    "primary_action_completed"
+  ]
+}

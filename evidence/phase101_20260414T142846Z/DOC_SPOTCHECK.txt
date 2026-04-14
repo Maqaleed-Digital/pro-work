@@ -1,0 +1,4 @@
+45:## 4. PASS Condition
+9:    "7_day_trend",
+3:  "funnel_name": "core_activation_funnel",
+8:FROM `{{PROJECT_ID}}.{{DATASET}}.mart_daily_product_kpis` p

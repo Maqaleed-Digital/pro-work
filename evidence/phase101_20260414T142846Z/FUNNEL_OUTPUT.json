@@ -1,0 +1,4 @@
+BigQuery error in query operation: Error processing job 'prj-maq-workcaptain-
+nonprod:bqjob_rb4fce50f0053b45_0000019d8c65386d_1': Not found: Table prj-maq-
+workcaptain-nonprod:workcaptain_analytics.mart_funnel_steps was not found in
+location me-central2
