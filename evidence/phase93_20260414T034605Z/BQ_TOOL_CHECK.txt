@@ -1,0 +1,2 @@
+BQ_CLI_STATUS=PRESENT
+This is BigQuery CLI 2.1.31

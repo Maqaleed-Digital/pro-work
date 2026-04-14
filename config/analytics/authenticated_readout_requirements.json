@@ -1,0 +1,17 @@
+{
+  "version": "1.0",
+  "required_env": [
+    "WORKCAPTAIN_BQ_PROJECT_ID",
+    "WORKCAPTAIN_BQ_DATASET"
+  ],
+  "required_tools": [
+    "bq"
+  ],
+  "required_views": [
+    "mart_daily_product_kpis",
+    "mart_daily_execution_kpis",
+    "mart_daily_trust_kpis"
+  ],
+  "auth_required": true,
+  "truth_mode": "PASS_OR_BLOCKED_ONLY"
+}

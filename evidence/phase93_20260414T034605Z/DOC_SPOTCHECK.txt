@@ -1,0 +1,5 @@
+8:## 1. Objective
+3:  "output_name": "first_truthful_executive_kpi_output",
+4:  "sql_path": "analytics/sql/009_first_truthful_executive_kpi_output.sql",
+7:    "BLOCKED_AUTH_FAILURE",
+8:FROM `{{PROJECT_ID}}.{{DATASET}}.mart_daily_product_kpis` p

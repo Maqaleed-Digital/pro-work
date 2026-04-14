@@ -1,0 +1,3 @@
+FIRST_EXECUTIVE_KPI_OUTPUT=BLOCKED
+STATUS_CODE=BLOCKED_MISSING_ENV
+SQL_PATH=analytics/sql/009_first_truthful_executive_kpi_output.sql

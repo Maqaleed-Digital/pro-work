@@ -1,0 +1,11 @@
+{
+  "version": "1.0",
+  "status_codes": [
+    "PASS",
+    "BLOCKED_MISSING_ENV",
+    "BLOCKED_MISSING_BQ",
+    "BLOCKED_AUTH_FAILURE",
+    "BLOCKED_MISSING_VIEWS",
+    "BLOCKED_QUERY_FAILURE"
+  ]
+}
