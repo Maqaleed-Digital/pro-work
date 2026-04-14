@@ -1,0 +1,9 @@
+{
+  "version": "1.0",
+  "frontend_trigger_url": "https://workcaptain.ai",
+  "backend_trigger_candidates": [
+    "https://api.workcaptain.ai/analytics/bootstrap",
+    "https://api.workcaptain.ai/api/analytics/bootstrap",
+    "https://api.workcaptain.ai/health"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "version": "1.0",
+  "status_codes": [
+    "BLOCKED_AMBIGUOUS_DEPLOY_TARGET",
+    "BLOCKED_DEPLOY_FAILURE",
+    "BLOCKED_TRIGGER_FAILURE",
+    "BLOCKED_PHASE97_FAILURE",
+    "PASS"
+  ]
+}

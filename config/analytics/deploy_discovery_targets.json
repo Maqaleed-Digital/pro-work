@@ -1,0 +1,15 @@
+{
+  "version": "1.0",
+  "deploy_candidates": [
+    "infrastructure/gcp/deploy.sh",
+    "scripts/deploy.sh",
+    "scripts/workcaptain_deploy.sh",
+    "scripts/workcaptain_cloud_run_deploy.sh",
+    "prowork_runtime/deploy.sh",
+    "infrastructure/docker/.env"
+  ],
+  "required_env": {
+    "WORKCAPTAIN_BQ_PROJECT_ID": "prj-maq-workcaptain-nonprod",
+    "WORKCAPTAIN_BQ_DATASET": "workcaptain_analytics"
+  }
+}
