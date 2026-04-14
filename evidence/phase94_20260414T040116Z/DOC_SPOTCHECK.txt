@@ -1,0 +1,4 @@
+55:## 4. Gate Advancement Order
+14:    "BLOCKED_AUTH_FAILURE",
+9:      "name": "dataset_access",
+8:FROM `{{PROJECT_ID}}.{{DATASET}}.mart_daily_product_kpis` p

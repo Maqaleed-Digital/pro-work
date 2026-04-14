@@ -1,0 +1,21 @@
+{
+  "version": "1.0",
+  "checks": [
+    {
+      "name": "bq_cli_exists",
+      "required": true
+    },
+    {
+      "name": "dataset_access",
+      "required": true
+    },
+    {
+      "name": "derived_views_access",
+      "required": true
+    },
+    {
+      "name": "truthful_query_execution",
+      "required": true
+    }
+  ]
+}

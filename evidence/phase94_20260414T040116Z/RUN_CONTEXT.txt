@@ -1,0 +1,5 @@
+PHASE_94_SCOPE=REAL_ENV_EXPORT_BQ_ACCESS_ACTIVATION_STATUS_ADVANCEMENT
+RUN_AT_UTC=2026-04-14T04:03:55Z
+REPO_ROOT=/Users/waheebmahmoud/dev/pro-work
+CURRENT_HEAD=9fbeb9387bdc9b07c5ad11016f12b32da1ddb8e6
+CURRENT_BRANCH=sprint/phase11-permission-bound-operational-control
