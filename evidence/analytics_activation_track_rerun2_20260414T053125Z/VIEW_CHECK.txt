@@ -1,0 +1,7 @@
++---------------------------+
+|        table_name         |
++---------------------------+
+| mart_daily_execution_kpis |
+| mart_daily_product_kpis   |
+| mart_daily_trust_kpis     |
++---------------------------+

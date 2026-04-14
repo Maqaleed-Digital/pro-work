@@ -1,0 +1,4 @@
+48:## 4. Preferred Truthful Output
+18:  "truth_mode": "PASS_OR_BLOCKED_ONLY"
+16:    "BLOCKED_QUERY_FAILURE",
+7:  t.evidence_packs_generated_count
