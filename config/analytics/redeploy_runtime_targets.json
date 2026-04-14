@@ -1,0 +1,13 @@
+{
+  "version": "1.0",
+  "project_id": "prj-maq-workcaptain-nonprod",
+  "region": "me-central2",
+  "web_service": "web-service",
+  "api_service": "api-service",
+  "web_source_dir": "prowork_runtime/web",
+  "api_source_dir": "prowork_runtime/api",
+  "bq_env": {
+    "WORKCAPTAIN_BQ_PROJECT_ID": "prj-maq-workcaptain-nonprod",
+    "WORKCAPTAIN_BQ_DATASET": "workcaptain_analytics"
+  }
+}

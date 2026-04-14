@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { BigQuery } from '@google-cloud/bigquery'
 
 export type AnalyticsSourceLayer = 'frontend' | 'platform'
@@ -17,6 +16,7 @@ export interface AnalyticsEventRow {
   entity_type?: string | null
   entity_id?: string | null
   status?: string | null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   metadata?: Record<string, any>
 }
 

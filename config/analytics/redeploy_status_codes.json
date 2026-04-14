@@ -1,0 +1,10 @@
+{
+  "version": "1.0",
+  "status_codes": [
+    "BLOCKED_WEB_BUILD_FAILURE",
+    "BLOCKED_API_BUILD_FAILURE",
+    "BLOCKED_TRIGGER_FAILURE",
+    "BLOCKED_PHASE97_FAILURE",
+    "PASS"
+  ]
+}

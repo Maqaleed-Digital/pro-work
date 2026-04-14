@@ -1,0 +1,5 @@
+54:## 4. PASS Condition
+8:  "manual_seed_forbidden": true
+5:    "BLOCKED_EMPTY_EXECUTIVE_OUTPUT",
+2:  'raw_frontend_events' AS table_name,
+4:FROM `{{PROJECT_ID}}.{{DATASET}}.raw_frontend_events`

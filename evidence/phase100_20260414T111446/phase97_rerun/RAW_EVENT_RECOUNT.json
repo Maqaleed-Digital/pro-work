@@ -1,0 +1,10 @@
+[
+  {
+    "row_count": "4", 
+    "table_name": "raw_frontend_events"
+  }, 
+  {
+    "row_count": "0", 
+    "table_name": "raw_platform_events"
+  }
+]
