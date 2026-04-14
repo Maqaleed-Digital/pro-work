@@ -1,0 +1,4 @@
+/Users/waheebmahmoud/dev/pro-work/analytics/sql/001_mart_daily_product_kpis.sql
+/Users/waheebmahmoud/dev/pro-work/analytics/sql/002_mart_daily_execution_kpis.sql
+/Users/waheebmahmoud/dev/pro-work/analytics/sql/003_mart_daily_trust_kpis.sql
+/Users/waheebmahmoud/dev/pro-work/analytics/sql/004_mart_funnel_steps.sql

@@ -1,0 +1,8 @@
+/Users/waheebmahmoud/dev/pro-work/config/analytics/bigquery_tables.json
+/Users/waheebmahmoud/dev/pro-work/config/analytics/dashboard_registry.json
+/Users/waheebmahmoud/dev/pro-work/config/analytics/first_kpi_queries.json
+/Users/waheebmahmoud/dev/pro-work/config/analytics/ga4.events.json
+/Users/waheebmahmoud/dev/pro-work/config/analytics/kpi_registry.json
+/Users/waheebmahmoud/dev/pro-work/config/analytics/platform.events.json
+/Users/waheebmahmoud/dev/pro-work/config/analytics/runtime_activation_targets.json
+/Users/waheebmahmoud/dev/pro-work/config/analytics/runtime_env.example

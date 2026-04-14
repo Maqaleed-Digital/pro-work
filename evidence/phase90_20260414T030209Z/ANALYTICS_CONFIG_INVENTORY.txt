@@ -1,0 +1,8 @@
+config/analytics/bigquery_tables.json
+config/analytics/dashboard_registry.json
+config/analytics/first_kpi_queries.json
+config/analytics/ga4.events.json
+config/analytics/kpi_registry.json
+config/analytics/platform.events.json
+config/analytics/runtime_activation_targets.json
+config/analytics/runtime_env.example

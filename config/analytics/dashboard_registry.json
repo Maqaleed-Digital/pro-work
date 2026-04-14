@@ -1,0 +1,42 @@
+{
+  "version": "1.0",
+  "dashboards": [
+    {
+      "dashboard_name": "executive_overview",
+      "widget_kpis": [
+        "daily_active_users",
+        "session_count",
+        "api_request_volume",
+        "milestones_completed_count",
+        "evidence_packs_generated_count"
+      ]
+    },
+    {
+      "dashboard_name": "funnel_dashboard",
+      "widget_kpis": [
+        "landing_to_signup_conversion_rate",
+        "signup_to_login_conversion_rate",
+        "login_to_dashboard_conversion_rate",
+        "dashboard_to_first_action_conversion_rate"
+      ]
+    },
+    {
+      "dashboard_name": "platform_execution_dashboard",
+      "widget_kpis": [
+        "projects_created_count",
+        "execution_jobs_completed_count",
+        "deliverables_approved_count",
+        "milestones_completed_count"
+      ]
+    },
+    {
+      "dashboard_name": "ai_trust_dashboard",
+      "widget_kpis": [
+        "agent_jobs_completed_count",
+        "phr_reviews_approved_count",
+        "trust_ledger_appends_count",
+        "tokens_issued_count"
+      ]
+    }
+  ]
+}

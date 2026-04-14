@@ -1,0 +1,49 @@
+{
+  "version": "1.0",
+  "activation_targets": [
+    {
+      "target_class": "frontend_analytics_abstraction",
+      "required": true,
+      "candidate_paths": [
+        "src/lib/analytics.ts",
+        "src/lib/ga.ts",
+        "src/utils/analytics.ts",
+        "app/lib/analytics.ts",
+        "lib/analytics.ts"
+      ]
+    },
+    {
+      "target_class": "frontend_route_hook",
+      "required": true,
+      "candidate_paths": [
+        "src/app/layout.tsx",
+        "app/layout.tsx",
+        "src/pages/_app.tsx",
+        "pages/_app.tsx",
+        "src/main.tsx"
+      ]
+    },
+    {
+      "target_class": "api_request_middleware",
+      "required": true,
+      "candidate_paths": [
+        "src/middleware/analytics.ts",
+        "src/middleware/request.ts",
+        "src/server/middleware/analytics.ts",
+        "server/middleware/analytics.ts",
+        "middleware/analytics.ts"
+      ]
+    },
+    {
+      "target_class": "domain_event_publisher",
+      "required": false,
+      "candidate_paths": [
+        "src/modules/event_bus/index.ts",
+        "src/lib/event_bus.ts",
+        "src/events/publisher.ts",
+        "app/modules/event_bus/index.ts",
+        "lib/event_bus.ts"
+      ]
+    }
+  ]
+}

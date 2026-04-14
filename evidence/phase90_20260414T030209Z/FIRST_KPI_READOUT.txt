@@ -1,0 +1,4 @@
+KPI_READOUT_STATUS=BLOCKED
+REASON=Missing WORKCAPTAIN_BQ_PROJECT_ID and/or WORKCAPTAIN_BQ_DATASET
+SELECTED_KPI=daily_active_users
+QUERY_PATH=analytics/sql/001_mart_daily_product_kpis.sql

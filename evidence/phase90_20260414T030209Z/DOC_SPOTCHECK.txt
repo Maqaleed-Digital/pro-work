@@ -1,0 +1,4 @@
+8:## 1. Objective
+5:      "dashboard_name": "executive_overview",
+5:      "kpi_name": "daily_active_users",
+1:CREATE OR REPLACE VIEW `{{PROJECT_ID}}.{{DATASET}}.mart_daily_product_kpis` AS

@@ -1,0 +1,25 @@
+{
+  "version": "1.0",
+  "queries": [
+    {
+      "kpi_name": "daily_active_users",
+      "sql_path": "analytics/sql/001_mart_daily_product_kpis.sql",
+      "table_dependency": "mart_daily_product_kpis"
+    },
+    {
+      "kpi_name": "api_request_volume",
+      "sql_path": "analytics/sql/001_mart_daily_product_kpis.sql",
+      "table_dependency": "mart_daily_product_kpis"
+    },
+    {
+      "kpi_name": "projects_created_count",
+      "sql_path": "analytics/sql/002_mart_daily_execution_kpis.sql",
+      "table_dependency": "mart_daily_execution_kpis"
+    },
+    {
+      "kpi_name": "evidence_packs_generated_count",
+      "sql_path": "analytics/sql/003_mart_daily_trust_kpis.sql",
+      "table_dependency": "mart_daily_trust_kpis"
+    }
+  ]
+}

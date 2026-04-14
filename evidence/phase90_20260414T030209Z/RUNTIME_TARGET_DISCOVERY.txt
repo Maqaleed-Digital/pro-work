@@ -1,0 +1,16 @@
+TARGET_CLASS=frontend_analytics_abstraction
+REQUIRED=TRUE
+FOUND=
+---
+TARGET_CLASS=frontend_route_hook
+REQUIRED=TRUE
+FOUND=
+---
+TARGET_CLASS=api_request_middleware
+REQUIRED=TRUE
+FOUND=
+---
+TARGET_CLASS=domain_event_publisher
+REQUIRED=FALSE
+FOUND=
+---
