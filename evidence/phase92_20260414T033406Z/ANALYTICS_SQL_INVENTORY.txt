@@ -1,0 +1,8 @@
+analytics/sql/001_mart_daily_product_kpis.sql
+analytics/sql/002_mart_daily_execution_kpis.sql
+analytics/sql/003_mart_daily_trust_kpis.sql
+analytics/sql/004_mart_funnel_steps.sql
+analytics/sql/005_executive_dashboard_first_readout.sql
+analytics/sql/006_dataset_activation_check.sql
+analytics/sql/007_first_truthful_kpi_readout.sql
+analytics/sql/008_required_raw_tables_check.sql

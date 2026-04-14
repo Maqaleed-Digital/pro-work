@@ -1,0 +1,14 @@
+{
+  "version": "1.0",
+  "required_env": [
+    "WORKCAPTAIN_BQ_PROJECT_ID",
+    "WORKCAPTAIN_BQ_DATASET"
+  ],
+  "optional_env": [
+    "GOOGLE_APPLICATION_CREDENTIALS"
+  ],
+  "required_tools": [
+    "bq"
+  ],
+  "truth_mode": "PASS_OR_BLOCKED_ONLY"
+}

@@ -1,0 +1,14 @@
+{
+  "version": "1.0",
+  "checks": [
+    {
+      "name": "bq_version",
+      "command": "bq version"
+    },
+    {
+      "name": "bq_query_capability",
+      "command": "bq query --nouse_legacy_sql"
+    }
+  ],
+  "required": true
+}

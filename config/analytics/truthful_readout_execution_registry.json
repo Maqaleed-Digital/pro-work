@@ -1,0 +1,8 @@
+{
+  "version": "1.0",
+  "preferred_kpi": "daily_active_users",
+  "sql_path": "analytics/sql/007_first_truthful_kpi_readout.sql",
+  "raw_table_check_sql_path": "analytics/sql/008_required_raw_tables_check.sql",
+  "pass_condition": "real query result returned",
+  "blocked_condition": "missing env, missing bq, inaccessible dataset, missing raw tables, or failed query"
+}

@@ -1,0 +1,4 @@
+FIRST_KPI_READOUT=BLOCKED
+REASON=Missing WORKCAPTAIN_BQ_PROJECT_ID and/or WORKCAPTAIN_BQ_DATASET
+SELECTED_KPI=daily_active_users
+SQL_PATH=analytics/sql/007_first_truthful_kpi_readout.sql

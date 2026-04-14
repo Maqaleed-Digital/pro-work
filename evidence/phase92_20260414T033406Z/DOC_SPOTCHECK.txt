@@ -1,0 +1,4 @@
+8:## 1. Objective
+3:  "preferred_kpi": "daily_active_users",
+5:      "name": "bq_version",
+4:FROM `{{PROJECT_ID}}.{{DATASET}}.mart_daily_product_kpis`

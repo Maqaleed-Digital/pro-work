@@ -1,0 +1,3 @@
+JSON_OK /Users/waheebmahmoud/dev/pro-work/config/analytics/operator_env_required.json
+JSON_OK /Users/waheebmahmoud/dev/pro-work/config/analytics/bq_cli_enablement_checks.json
+JSON_OK /Users/waheebmahmoud/dev/pro-work/config/analytics/truthful_readout_execution_registry.json
