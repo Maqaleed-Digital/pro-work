@@ -1,0 +1,3 @@
+BigQuery error in query operation: Error processing job 'prj-maq-workcaptain-
+nonprod:bqjob_r5ba67ffd714351ed_0000019d8a738ba0_1': Not found: Dataset prj-maq-
+workcaptain-nonprod:workcaptain_analytics was not found in location US

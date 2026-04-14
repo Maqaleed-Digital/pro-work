@@ -1,0 +1,3 @@
+WORKCAPTAIN_BQ_PROJECT_ID=prj-maq-workcaptain-nonprod
+WORKCAPTAIN_BQ_DATASET=workcaptain_analytics
+CURRENT_GCLOUD_PROJECT=prj-maq-workcaptain-nonprod

@@ -1,0 +1,10 @@
+=== BQ VERSION ===
+This is BigQuery CLI 2.1.31
+
+=== GCLOUD ACCOUNT ===
+   Credentialed Accounts
+ACTIVE  ACCOUNT
+*       admin@maqaleed.tech
+
+=== GCLOUD PROJECT ===
+project: prj-maq-workcaptain-nonprod

@@ -1,0 +1,7 @@
+STATUS_CODE=BLOCKED_AUTH_FAILURE
+GATE=bq_ls
+ERROR=Reauthentication failed. cannot prompt during non-interactive execution.
+WORKCAPTAIN_BQ_PROJECT_ID=prj-maq-workcaptain-nonprod
+WORKCAPTAIN_BQ_DATASET=workcaptain_analytics
+ACTIVE_ACCOUNT=admin@maqaleed.tech
+RESOLUTION_REQUIRED=gcloud auth login OR gcloud auth application-default login

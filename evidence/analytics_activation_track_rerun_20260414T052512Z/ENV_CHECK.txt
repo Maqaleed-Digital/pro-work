@@ -1,0 +1,2 @@
+PRESENT_ENV=WORKCAPTAIN_BQ_PROJECT_ID=prj-maq-workcaptain-nonprod
+PRESENT_ENV=WORKCAPTAIN_BQ_DATASET=workcaptain_analytics
