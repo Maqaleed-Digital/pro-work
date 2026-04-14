@@ -1,0 +1,23 @@
+{
+  "version": "1.0",
+  "required_env": [
+    "WORKCAPTAIN_BQ_PROJECT_ID",
+    "WORKCAPTAIN_BQ_DATASET"
+  ],
+  "optional_env": [
+    "GOOGLE_APPLICATION_CREDENTIALS"
+  ],
+  "required_tools": [
+    "bq"
+  ],
+  "required_raw_tables": [
+    "raw_frontend_events",
+    "raw_platform_events"
+  ],
+  "required_views": [
+    "mart_daily_product_kpis",
+    "mart_daily_execution_kpis",
+    "mart_daily_trust_kpis",
+    "mart_funnel_steps"
+  ]
+}

@@ -1,0 +1,4 @@
+8:## 1. Objective
+3:  "dashboard_name": "executive_overview",
+5:      "kpi_name": "daily_active_users",
+8:FROM `{{PROJECT_ID}}.{{DATASET}}.mart_daily_product_kpis` p

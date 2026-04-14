@@ -1,0 +1,3 @@
+JSON_OK /Users/waheebmahmoud/dev/pro-work/config/analytics/bigquery_env_contract.json
+JSON_OK /Users/waheebmahmoud/dev/pro-work/config/analytics/executive_dashboard_readout_registry.json
+JSON_OK /Users/waheebmahmoud/dev/pro-work/config/analytics/live_kpi_targets.json
