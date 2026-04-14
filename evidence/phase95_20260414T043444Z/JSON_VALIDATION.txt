@@ -1,0 +1,3 @@
+JSON_OK /opt/prowork/config/analytics/live_operator_export_requirements.json
+JSON_OK /opt/prowork/config/analytics/authenticated_bq_session_checks.json
+JSON_OK /opt/prowork/config/analytics/first_gate_advancement_registry.json
