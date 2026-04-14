@@ -1,0 +1,18 @@
+{
+  "version": "1.0",
+  "frontend_targets": [
+    "analytics_abstraction_module",
+    "route_render_event",
+    "auth_success_event",
+    "dashboard_entry_event"
+  ],
+  "platform_targets": [
+    "project_lifecycle_event_publisher",
+    "milestone_completion_publisher",
+    "trust_evidence_completion_publisher"
+  ],
+  "required_destinations": [
+    "raw_frontend_events",
+    "raw_platform_events"
+  ]
+}

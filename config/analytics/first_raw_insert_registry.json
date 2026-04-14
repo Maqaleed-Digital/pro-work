@@ -1,0 +1,9 @@
+{
+  "version": "1.0",
+  "required_condition": "at least one live raw event row exists",
+  "accepted_raw_tables": [
+    "raw_frontend_events",
+    "raw_platform_events"
+  ],
+  "manual_seed_forbidden": true
+}
