@@ -1386,6 +1386,8 @@ function matchRoute(method, pathname) {
 
   // Sprint B+C: sovereign status + AI recommendations + evidence packs
   if (m === "GET"  && pathname === "/api/sovereign/status")               return { name: "sovereign.status",                    params: {} }
+  if (m === "GET"  && pathname === "/api/admin/governance/closure")       return { name: "admin.governance.closure",            params: {} }
+  if (m === "GET"  && pathname === "/api/admin/eri/all")                  return { name: "admin.eri.all",                       params: {} }
   if (m === "GET"  && pathname === "/api/admin/governance/recommendations") return { name: "admin.governance.recommendations",    params: {} }
   if (m === "GET"  && pathname === "/api/admin/evidence-packs")           return { name: "admin.evidence_packs.list",           params: {} }
   if (m === "POST" && pathname === "/api/admin/evidence-packs")           return { name: "admin.evidence_packs.create",         params: {} }
@@ -4212,6 +4214,82 @@ if (route.name === "admin.scheduler.preview") {
       }
 
       return ok(res, { items: eriItems, summary })
+    }
+
+    // ── Sprint E: governance closure gate summary ─────────────────────────────
+    if (route.name === "admin.governance.closure") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      const tenant = getTenantStore(tenantId)
+      const packs  = tenant.evidencePacks || []
+      const events = tenant.wosEvidenceEvents || []
+      const gates  = [
+        { gate: "S25-G1", label: "Foundation APIs",          status: "PASS",        closed_at: nowIso() },
+        { gate: "S25-G2", label: "Sovereign Compliance",     status: "PASS",        closed_at: nowIso() },
+        { gate: "S25-G3", label: "Trust Ledger + Evidence",  status: packs.length > 0 ? "PASS" : "IN_PROGRESS", closed_at: null },
+        { gate: "S25-G4", label: "ERI + AI Recommendations", status: "IN_PROGRESS", closed_at: null },
+        { gate: "S25-G5", label: "CEO Exit",                 status: "PENDING",     closed_at: null },
+      ]
+      const open = gates.filter(g => g.status !== "PASS").length
+      return ok(res, {
+        gates,
+        open_gates:     open,
+        closed_gates:   gates.length - open,
+        evidence_packs: packs.length,
+        audit_events:   events.length,
+        schema_version: "1.0",
+        evaluated_at:   nowIso(),
+      })
+    }
+
+    // ── Sprint E: ERI all-tenants aggregate ───────────────────────────────────
+    if (route.name === "admin.eri.all") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      const allWorkers = []
+      for (const [tid, t] of store.tenants.entries()) {
+        for (const w of t.wosWorkers.values()) {
+          allWorkers.push({ ...w, _tenant: tid })
+        }
+      }
+      const scored = allWorkers.map(w => {
+        let score = 100
+        const factors = []
+        if (!w.iban_verified) {
+          score -= 25
+          factors.push({ factor: "WPS/IBAN unverified", weight: 25 })
+        }
+        if (w.probation_end) {
+          const days = (new Date(w.probation_end) - Date.now()) / 86400000
+          if (days > 0 && days <= 80) {
+            score -= 30
+            factors.push({ factor: `Probation expiring in ${Math.ceil(days)}d`, weight: 30 })
+          }
+        }
+        if (!w.pod_id) {
+          score -= 15
+          factors.push({ factor: "No pod assignment", weight: 15 })
+        }
+        if ((w.utilisation || 1) < 0.4) {
+          score -= 15
+          factors.push({ factor: `Low utilisation (${Math.round((w.utilisation||0)*100)}%)`, weight: 15 })
+        }
+        if (w.status !== "active") {
+          score -= 15
+          factors.push({ factor: `Status: ${w.status}`, weight: 15 })
+        }
+        score = Math.max(0, score)
+        const band = score >= 80 ? "CLEAR" : score >= 60 ? "LOW" : score >= 40 ? "MEDIUM" : "HIGH"
+        return { id: w.id, name: w.name || w.id, tenant: w._tenant, score, band, factors }
+      }).sort((a, b) => a.score - b.score)
+
+      return ok(res, {
+        workers:      scored,
+        total:        scored.length,
+        high_risk:    scored.filter(w => w.band === "HIGH").length,
+        medium_risk:  scored.filter(w => w.band === "MEDIUM").length,
+        evaluated_at: nowIso(),
+      })
     }
 
     // ── Sprint B+C: sovereign status ──────────────────────────────────────────
