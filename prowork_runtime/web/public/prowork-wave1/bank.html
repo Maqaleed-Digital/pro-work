@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ربط الحساب البنكي — Work Captain</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark"></div>
+        <div>
+          <h1>Work Captain</h1>
+          <small>نظام تشغيل العمل</small>
+        </div>
+      </div>
+      <div class="nav-group">
+        <h3>المنصة</h3>
+        <nav class="nav">
+          <a href="index.html">الرئيسية</a>
+          <a href="control-tower.html">برج التحكم</a>
+          <a href="operations.html">العمليات</a>
+          <a href="verticals.html">القطاعات</a>
+          <a href="onboarding.html">تأهيل المستأجر</a>
+          <a href="payments.html">الدفع</a>
+          <a href="bank.html" class="active">الحساب البنكي</a>
+        </nav>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="container">
+        <section class="hero">
+          <h2>ربط الحساب البنكي</h2>
+          <p>أضف حسابك البنكي لاستقبال المدفوعات وإجراء التحويلات.</p>
+        </section>
+
+        <div class="card" style="margin-top:24px;max-width:600px">
+          <h3>بيانات الحساب</h3>
+          <div class="form-grid" style="margin-top:16px">
+            <div>
+              <label class="small">اسم البنك</label>
+              <input class="input" type="text" placeholder="مثال: مصرف الراجحي" />
+            </div>
+            <div>
+              <label class="small">اسم صاحب الحساب</label>
+              <input class="input" type="text" placeholder="الاسم الكامل" />
+            </div>
+            <div>
+              <label class="small">رقم الآيبان</label>
+              <input class="input" type="text" placeholder="SA00 0000 0000 0000 0000 0000" />
+            </div>
+            <div>
+              <label class="small">العملة</label>
+              <select class="select">
+                <option>SAR — ريال سعودي</option>
+                <option>USD — دولار أمريكي</option>
+                <option>AED — درهم إماراتي</option>
+              </select>
+            </div>
+          </div>
+          <div class="row" style="margin-top:20px">
+            <button class="btn primary">حفظ الحساب البنكي</button>
+            <button class="btn ghost">إلغاء</button>
+          </div>
+          <p id="bank-status" style="margin-top:14px;color:#c6d4ef"></p>
+        </div>
+
+        <div class="footer">© Work Captain. All rights reserved.</div>
+      </div>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
