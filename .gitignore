@@ -32,3 +32,7 @@ app/data/authz_audit.jsonl
 
 # Docker local environment overrides (not committed)
 infrastructure/docker/.env
+app/data/tenants/
+prowork_runtime/web/.next/
+prowork_runtime/web/.wave2_backup_*/
+prowork_runtime/api/data/phase*.json
