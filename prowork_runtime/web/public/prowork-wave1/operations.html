@@ -1,192 +1,78 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en">
 <head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <base target="_top">
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Work Captain — Operations</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="shell">
-    <aside class="sidebar">
-      <div class="brand">
-        <div class="brand-mark"></div>
-        <div>
-          <h1>Work Captain</h1>
-          <small>Playbooks, AI, trust</small>
-        </div>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand"><div class="brand-mark"></div><div><h1>Work Captain</h1><small>Playbooks, AI, trust</small></div></div>
+    <div class="nav-group"><h3>Platform</h3><nav class="nav">
+      <a href="index.html">Landing</a><a href="control-tower.html">Control Tower</a><a href="operations.html">Operations</a>
+      <a href="verticals.html">Verticals</a><a href="onboarding.html">Tenant Onboarding</a>
+      <a href="payments.html">Payments</a><a href="bank.html">Bank Account</a>
+    </nav></div>
+  </aside>
+  <main class="main">
+    <div class="topbar">
+      <div class="badge ai">AI operators supervised</div>
+      <div class="topbar-actions">
+        <a class="btn ghost" href="ar-operations.html">العربية</a>
+        <button class="btn ghost" data-demo-action="trigger-playbook">Trigger playbook</button>
+        <button class="btn primary" data-demo-action="open-override">Open override queue</button>
       </div>
-      <div class="nav-group">
-        <h3>Platform</h3>
-        <nav class="nav">
-          <a data-nav href="index.html">Landing</a>
-          <a data-nav href="control-tower.html">Control Tower</a>
-          <a data-nav href="operations.html">Operations</a>
-          <a data-nav href="verticals.html">Verticals</a>
-          <a data-nav href="onboarding.html">Tenant Onboarding</a>
-        <a href="payments.html">الدفع</a><a href="bank.html">الحساب البنكي</a></nav>
+    </div>
+    <div class="container">
+      <section class="hero">
+        <h2>Live operations across workflows, playbooks, AI operators, and trust evidence.</h2>
+        <p>Governed execution with AI labeling, override controls, and audit-ready traceability.</p>
+      </section>
+      <div class="section-title"><div><h2>Playbook registry</h2><p>Templates, approvals, evidence requirements, and industry context.</p></div></div>
+      <div class="card">
+        <table class="table">
+          <thead><tr><th>Playbook</th><th>Industry</th><th>Trigger</th><th>Approval model</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>Onboarding Recovery</td><td>Cross-tenant</td><td>Activation score below threshold</td><td>Ops manager</td><td><span class="badge good">Active</span></td></tr>
+            <tr><td>Collections Escalation</td><td>Fintech / Credit</td><td>Receivable aging signal</td><td>Compliance + finance</td><td><span class="badge warn">Approval required</span></td></tr>
+            <tr><td>Supplier Compliance Review</td><td>Industrial</td><td>Document expiry / policy mismatch</td><td>Procurement lead</td><td><span class="badge good">Active</span></td></tr>
+          </tbody>
+        </table>
       </div>
-    </aside>
-
-    <main class="main">
-      <div class="topbar">
-        <div class="badge ai">AI operators supervised</div>
-        <div class="topbar-actions">
-          <button class="btn ghost" data-demo-action="trigger-playbook">Trigger playbook</button>
-          <button class="btn primary" data-demo-action="open-override">Open override queue</button>
-        </div>
+      <div class="section-title"><div><h2>AI operator console</h2><p>Workload, supervision, and override visibility.</p></div></div>
+      <div class="grid cols-3">
+        <div class="card"><h3>Operator utilization</h3><div class="stack"><div class="stat-line"><span>Analytics operator</span><strong>76%</strong></div><div class="stat-line"><span>Execution operator</span><strong>68%</strong></div><div class="stat-line"><span>Compliance operator</span><strong>59%</strong></div></div></div>
+        <div class="card"><h3>Supervision state</h3><div class="stack"><div class="stat-line"><span>Policy-blocked actions</span><strong class="warn">3</strong></div><div class="stat-line"><span>Pending overrides</span><strong>6</strong></div><div class="stat-line"><span>Human-approved outputs</span><strong class="good">94%</strong></div></div></div>
+        <div class="card"><h3>AI telemetry</h3><div class="stack"><div class="stat-line"><span>Artifacts generated</span><strong>1,284</strong></div><div class="stat-line"><span>Override rate</span><strong>4.8%</strong></div><div class="stat-line"><span>Quality score</span><strong class="good">91</strong></div></div></div>
       </div>
-
-      <div class="container">
-        <section class="hero">
-          <h2>Live operations across workflows, playbooks, AI operators, and trust evidence.</h2>
-          <p>Use this workspace to show how Work Captain runs governed execution with AI labeling, override controls, and audit-ready traceability.</p>
-        </section>
-
-        <div class="section-title">
-          <div>
-            <h2>Playbook registry</h2>
-            <p>Templates, approvals, evidence requirements, and industry context.</p>
+      <div class="section-title"><div><h2>Trust &amp; evidence</h2><p>Evidence-linked execution and immutable visibility.</p></div></div>
+      <div class="grid cols-2">
+        <div class="card">
+          <h3>Trust ledger</h3>
+          <div class="timeline">
+            <div class="timeline-item"><div class="badge human">Human-reviewed</div><h3 style="margin-top:10px">PHR_REVIEW_APPROVED</h3><p>Deliverable approved by reviewer. Evidence pack attached. Workflow and actor context linked.</p></div>
+            <div class="timeline-item"><div class="badge ai">AI-generated</div><h3 style="margin-top:10px">AI_OPERATOR_EXECUTED</h3><p>Execution operator completed onboarding analysis. Policy profile applied and logged.</p></div>
+            <div class="timeline-item"><div class="badge good">Evidence-linked</div><h3 style="margin-top:10px">EVIDENCE_PACK_FINALIZED</h3><p>Export-ready compliance pack available for tenant activation audit.</p></div>
           </div>
         </div>
-
         <div class="card">
+          <h3>Audit queue</h3>
           <table class="table">
-            <thead>
-              <tr>
-                <th>Playbook</th>
-                <th>Industry</th>
-                <th>Trigger</th>
-                <th>Approval model</th>
-                <th>Status</th>
-              </tr>
-            </thead>
+            <thead><tr><th>Queue</th><th>Count</th><th>Priority</th></tr></thead>
             <tbody>
-              <tr>
-                <td>Onboarding Recovery</td>
-                <td>Cross-tenant</td>
-                <td>Activation score below threshold</td>
-                <td>Ops manager</td>
-                <td><span class="badge good">Active</span></td>
-              </tr>
-              <tr>
-                <td>Collections Escalation</td>
-                <td>Fintech / Credit</td>
-                <td>Receivable aging signal</td>
-                <td>Compliance + finance</td>
-                <td><span class="badge warn">Approval required</span></td>
-              </tr>
-              <tr>
-                <td>Supplier Compliance Review</td>
-                <td>Industrial</td>
-                <td>Document expiry / policy mismatch</td>
-                <td>Procurement lead</td>
-                <td><span class="badge good">Active</span></td>
-              </tr>
+              <tr><td>Human review</td><td>12</td><td><span class="badge warn">High</span></td></tr>
+              <tr><td>Compliance review</td><td>4</td><td><span class="badge bad">Critical</span></td></tr>
+              <tr><td>Export requests</td><td>9</td><td><span class="badge good">Ready</span></td></tr>
             </tbody>
           </table>
+          <p id="demo-status" style="margin-top:14px;color:#c6d4ef"></p>
         </div>
-
-        <div class="section-title">
-          <div>
-            <h2>AI operator console</h2>
-            <p>Workload, supervision, and override visibility.</p>
-          </div>
-        </div>
-
-        <div class="grid cols-3">
-          <div class="card">
-            <h3>Operator utilization</h3>
-            <div class="stack">
-              <div class="stat-line"><span>Analytics operator</span><strong>76%</strong></div>
-              <div class="stat-line"><span>Execution operator</span><strong>68%</strong></div>
-              <div class="stat-line"><span>Compliance operator</span><strong>59%</strong></div>
-            </div>
-          </div>
-          <div class="card">
-            <h3>Supervision state</h3>
-            <div class="stack">
-              <div class="stat-line"><span>Policy-blocked actions</span><strong class="warn">3</strong></div>
-              <div class="stat-line"><span>Pending overrides</span><strong>6</strong></div>
-              <div class="stat-line"><span>Human-approved outputs</span><strong class="good">94%</strong></div>
-            </div>
-          </div>
-          <div class="card">
-            <h3>AI telemetry</h3>
-            <div class="stack">
-              <div class="stat-line"><span>Artifacts generated</span><strong>1,284</strong></div>
-              <div class="stat-line"><span>Override rate</span><strong>4.8%</strong></div>
-              <div class="stat-line"><span>Quality score</span><strong class="good">91</strong></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="section-title">
-          <div>
-            <h2>Trust &amp; evidence</h2>
-            <p>Evidence-linked execution and immutable visibility.</p>
-          </div>
-        </div>
-
-        <div class="grid cols-2">
-          <div class="card">
-            <h3>Trust ledger</h3>
-            <div class="timeline">
-              <div class="timeline-item">
-                <div class="badge human">Human-reviewed</div>
-                <h3 style="margin-top:10px">PHR_REVIEW_APPROVED</h3>
-                <p>Deliverable approved by reviewer. Evidence pack attached. Workflow and actor context linked.</p>
-              </div>
-              <div class="timeline-item">
-                <div class="badge ai">AI-generated</div>
-                <h3 style="margin-top:10px">AI_OPERATOR_EXECUTED</h3>
-                <p>Execution operator completed onboarding analysis. Policy profile applied and logged.</p>
-              </div>
-              <div class="timeline-item">
-                <div class="badge good">Evidence-linked</div>
-                <h3 style="margin-top:10px">EVIDENCE_PACK_FINALIZED</h3>
-                <p>Export-ready compliance pack available for tenant activation audit.</p>
-              </div>
-            </div>
-          </div>
-
-          <div class="card">
-            <h3>Audit queue</h3>
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>Queue</th>
-                  <th>Count</th>
-                  <th>Priority</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>Human review</td>
-                  <td>12</td>
-                  <td><span class="badge warn">High</span></td>
-                </tr>
-                <tr>
-                  <td>Compliance review</td>
-                  <td>4</td>
-                  <td><span class="badge bad">Critical</span></td>
-                </tr>
-                <tr>
-                  <td>Export requests</td>
-                  <td>9</td>
-                  <td><span class="badge good">Ready</span></td>
-                </tr>
-              </tbody>
-            </table>
-            <p id="demo-status" style="margin-top:14px;color:#c6d4ef"></p>
-          </div>
-        </div>
-
-        <div class="footer">© Work Captain. All rights reserved.</div>
       </div>
-    </main>
-  </div>
-  <script src="app.js"></script>
-</body>
-</html>
+      <div class="footer">© Work Captain. All rights reserved.</div>
+    </div>
+  </main>
+</div>
+<script src="app.js"></script>
+</body></html>

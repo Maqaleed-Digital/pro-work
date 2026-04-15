@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <base target="_top">
+  <title>Work Captain — تأهيل المستأجر</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>body{font-family:Tahoma,"Segoe UI",Arial,sans-serif}</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand"><div class="brand-mark"></div><div><h1>Work Captain</h1><small>تأهيل المستأجر</small></div></div>
+    <div class="nav-group"><h3>المنصة</h3><nav class="nav">
+      <a href="ar-index.html">الرئيسية</a><a href="ar-control-tower.html">برج التحكم</a><a href="ar-operations.html">العمليات</a>
+      <a href="ar-verticals.html">القطاعات</a><a href="ar-onboarding.html">تأهيل المستأجر</a>
+      <a href="ar-payments.html">المدفوعات</a><a href="ar-bank.html">الحساب البنكي</a>
+    </nav></div>
+  </aside>
+  <main class="main">
+    <div class="topbar">
+      <div class="badge human">تفعيل المستأجر جاهز للعرض</div>
+      <div class="topbar-actions">
+        <a class="btn ghost" href="onboarding.html">English</a>
+        <button class="btn ghost" data-demo-action="generate-validation-pack">إنشاء حزمة التحقق</button>
+        <button class="btn primary" data-demo-action="queue-kickoff-playbook">وضع كتاب الانطلاق في قائمة الانتظار</button>
+      </div>
+    </div>
+    <div class="container">
+      <section class="hero">
+        <h2>من المشتري الموقِّع إلى تفعيل المستأجر المباشر.</h2>
+        <p>التزويد والتحقق والحوكمة وجاهزية الانطلاق في تجربة إعداد واحدة متكاملة.</p>
+      </section>
+      <div class="section-title"><div><h2>تدفق الإعداد</h2><p>تسليم جاهز للمبيعات مع التحقق وتفعيل كتاب اللعب.</p></div></div>
+      <div class="flow">
+        <div class="flow-step"><h3>1. ملف المشتري</h3><p>نوع المستأجر والقطاع والحزمة والمنطقة والمالك.</p></div>
+        <div class="flow-step"><h3>2. حزمة التحقق</h3><p>متطلبات الحوكمة والسياسة والثقة والتكوين.</p></div>
+        <div class="flow-step"><h3>3. التزويد</h3><p>مساحة العمل والمستخدمون ونطاقات الوصول وإعدادات كتاب اللعب.</p></div>
+        <div class="flow-step"><h3>4. الانطلاق</h3><p>خطة النجاح وسير العمل الأول وخط الأساس لدرجة التبنّي.</p></div>
+      </div>
+      <div class="section-title"><div><h2>نموذج تأهيل المستأجر</h2><p>نموذج العرض التجريبي للتسليم للمبيعات ومعاينة التفعيل.</p></div></div>
+      <div class="card">
+        <form id="onboarding-form">
+          <div class="form-grid">
+            <div><label class="small">اسم المستأجر</label><input class="input" type="text" placeholder="مثال: مجموعة الخليج الاستشارية" required /></div>
+            <div><label class="small">القطاع الرئيسي</label><select class="select" required><option value="">اختر القطاع</option><option>الاستشارات</option><option>التكنولوجيا المالية / الائتمان</option><option>الصناعي / الأسمدة / سلسلة التوريد</option></select></div>
+            <div><label class="small">الحزمة</label><select class="select" required><option value="">اختر الحزمة</option><option>المبتدئ</option><option>النمو</option><option>المؤسسات</option></select></div>
+            <div><label class="small">المنطقة</label><select class="select" required><option value="">اختر المنطقة</option><option>المملكة العربية السعودية</option><option>دول الخليج</option><option>عالمي</option></select></div>
+            <div><label class="small">الراعي التنفيذي</label><input class="input" type="text" placeholder="الاسم الكامل" required /></div>
+            <div><label class="small">هدف الإطلاق</label><input class="input" type="date" required /></div>
+          </div>
+          <div style="margin-top:16px"><label class="small">ملاحظات الإعداد</label><textarea class="input" placeholder="معايير النجاح، وسير العمل للتفعيل أولاً، والموافقات المطلوبة، والضوابط الخاصة..."></textarea></div>
+          <div class="row" style="margin-top:18px">
+            <button class="btn primary" type="submit">إرسال العرض التجريبي</button>
+            <button class="btn" type="button" data-demo-action="preview-success-plan">معاينة خطة النجاح</button>
+          </div>
+        </form>
+        <p id="onboarding-status" style="margin-top:16px;color:#c6d4ef"></p>
+      </div>
+      <div class="footer">© Work Captain. جميع الحقوق محفوظة.</div>
+    </div>
+  </main>
+</div>
+<script src="app.js"></script>
+</body></html>

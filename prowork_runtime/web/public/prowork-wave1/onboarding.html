@@ -1,132 +1,64 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en">
 <head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <base target="_top">
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Work Captain — Tenant Onboarding</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="shell">
-    <aside class="sidebar">
-      <div class="brand">
-        <div class="brand-mark"></div>
-        <div>
-          <h1>Work Captain</h1>
-          <small>Tenant onboarding UX</small>
-        </div>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand"><div class="brand-mark"></div><div><h1>Work Captain</h1><small>Tenant onboarding</small></div></div>
+    <div class="nav-group"><h3>Platform</h3><nav class="nav">
+      <a href="index.html">Landing</a><a href="control-tower.html">Control Tower</a><a href="operations.html">Operations</a>
+      <a href="verticals.html">Verticals</a><a href="onboarding.html">Tenant Onboarding</a>
+      <a href="payments.html">Payments</a><a href="bank.html">Bank Account</a>
+    </nav></div>
+  </aside>
+  <main class="main">
+    <div class="topbar">
+      <div class="badge human">Demo-ready tenant activation</div>
+      <div class="topbar-actions">
+        <a class="btn ghost" href="ar-onboarding.html">العربية</a>
+        <button class="btn ghost" data-demo-action="generate-validation-pack">Generate validation pack</button>
+        <button class="btn primary" data-demo-action="queue-kickoff-playbook">Queue kickoff playbook</button>
       </div>
-      <div class="nav-group">
-        <h3>Platform</h3>
-        <nav class="nav">
-          <a data-nav href="index.html">Landing</a>
-          <a data-nav href="control-tower.html">Control Tower</a>
-          <a data-nav href="operations.html">Operations</a>
-          <a data-nav href="verticals.html">Verticals</a>
-          <a data-nav href="onboarding.html">Tenant Onboarding</a>
-        <a href="payments.html">الدفع</a><a href="bank.html">الحساب البنكي</a></nav>
+    </div>
+    <div class="container">
+      <section class="hero">
+        <h2>From signed buyer to live tenant activation.</h2>
+        <p>Provisioning, validation, governance, and kickoff readiness in a single onboarding experience.</p>
+      </section>
+      <div class="section-title"><div><h2>Onboarding flow</h2><p>Sales-ready handoff with validation and playbook activation.</p></div></div>
+      <div class="flow">
+        <div class="flow-step"><h3>1. Buyer profile</h3><p>Tenant type, vertical, package, region, owner.</p></div>
+        <div class="flow-step"><h3>2. Validation pack</h3><p>Governance, policy, trust, and configuration requirements.</p></div>
+        <div class="flow-step"><h3>3. Provisioning</h3><p>Workspace, users, access scopes, playbook presets.</p></div>
+        <div class="flow-step"><h3>4. Kickoff</h3><p>Success plan, first workflow, and adoption score baseline.</p></div>
       </div>
-    </aside>
-
-    <main class="main">
-      <div class="topbar">
-        <div class="badge human">Demo-ready tenant activation</div>
-        <div class="topbar-actions">
-          <button class="btn ghost" data-demo-action="generate-validation-pack">Generate validation pack</button>
-          <button class="btn primary" data-demo-action="queue-kickoff-playbook">Queue kickoff playbook</button>
-        </div>
-      </div>
-
-      <div class="container">
-        <section class="hero">
-          <h2>From signed buyer to live tenant activation.</h2>
-          <p>Use this demo flow to show provisioning, validation, governance, and kickoff readiness in a polished onboarding experience.</p>
-        </section>
-
-        <div class="section-title">
-          <div>
-            <h2>Onboarding flow</h2>
-            <p>Sales-ready handoff with validation and playbook activation.</p>
+      <div class="section-title"><div><h2>Tenant onboarding form</h2><p>Demo form for sales handoff and activation preview.</p></div></div>
+      <div class="card">
+        <form id="onboarding-form">
+          <div class="form-grid">
+            <div><label class="small">Tenant name</label><input class="input" type="text" placeholder="e.g. Gulf Advisory Group" required /></div>
+            <div><label class="small">Primary vertical</label><select class="select" required><option value="">Select vertical</option><option>Consulting</option><option>Fintech / Credit</option><option>Industrial / Fertilizer / Supply Chain</option></select></div>
+            <div><label class="small">Package</label><select class="select" required><option value="">Select package</option><option>Starter</option><option>Growth</option><option>Enterprise</option></select></div>
+            <div><label class="small">Region</label><select class="select" required><option value="">Select region</option><option>KSA</option><option>GCC</option><option>Global</option></select></div>
+            <div><label class="small">Executive sponsor</label><input class="input" type="text" placeholder="Name" required /></div>
+            <div><label class="small">Go-live target</label><input class="input" type="date" required /></div>
           </div>
-        </div>
-
-        <div class="flow">
-          <div class="flow-step"><h3>1. Buyer profile</h3><p>Tenant type, vertical, package, region, owner.</p></div>
-          <div class="flow-step"><h3>2. Validation pack</h3><p>Governance, policy, trust, and configuration requirements.</p></div>
-          <div class="flow-step"><h3>3. Provisioning</h3><p>Workspace, users, access scopes, playbook presets.</p></div>
-          <div class="flow-step"><h3>4. Kickoff</h3><p>Success plan, first workflow, and adoption score baseline.</p></div>
-        </div>
-
-        <div class="section-title">
-          <div>
-            <h2>Tenant onboarding form</h2>
-            <p>Demo form for sales handoff and activation preview.</p>
+          <div style="margin-top:16px"><label class="small">Onboarding notes</label><textarea class="input" placeholder="Success criteria, workflows to activate first, approvals required, special controls..."></textarea></div>
+          <div class="row" style="margin-top:18px">
+            <button class="btn primary" type="submit">Submit onboarding demo</button>
+            <button class="btn" type="button" data-demo-action="preview-success-plan">Preview success plan</button>
           </div>
-        </div>
-
-        <div class="card">
-          <form id="onboarding-form">
-            <div class="form-grid">
-              <div>
-                <label class="small">Tenant name</label>
-                <input class="input" type="text" placeholder="Example: Gulf Advisory Group" required />
-              </div>
-              <div>
-                <label class="small">Primary vertical</label>
-                <select class="select" required>
-                  <option value="">Select vertical</option>
-                  <option>Consulting</option>
-                  <option>Fintech / Credit</option>
-                  <option>Industrial / Fertilizer / Supply Chain</option>
-                </select>
-              </div>
-              <div>
-                <label class="small">Package</label>
-                <select class="select" required>
-                  <option value="">Select package</option>
-                  <option>Starter</option>
-                  <option>Growth</option>
-                  <option>Enterprise</option>
-                </select>
-              </div>
-              <div>
-                <label class="small">Region</label>
-                <select class="select" required>
-                  <option value="">Select region</option>
-                  <option>KSA</option>
-                  <option>GCC</option>
-                  <option>Global</option>
-                </select>
-              </div>
-              <div>
-                <label class="small">Executive sponsor</label>
-                <input class="input" type="text" placeholder="Name" required />
-              </div>
-              <div>
-                <label class="small">Go-live target</label>
-                <input class="input" type="date" required />
-              </div>
-            </div>
-
-            <div style="margin-top:16px">
-              <label class="small">Onboarding notes</label>
-              <textarea class="input" placeholder="Success criteria, workflows to activate first, approvals required, special controls..."></textarea>
-            </div>
-
-            <div class="row" style="margin-top:18px">
-              <button class="btn primary" type="submit">Submit onboarding demo</button>
-              <button class="btn" type="button" data-demo-action="preview-success-plan">Preview success plan</button>
-            </div>
-          </form>
-
-          <p id="onboarding-status" style="margin-top:16px;color:#c6d4ef"></p>
-        </div>
-
-        <div class="footer">© Work Captain. All rights reserved.</div>
+        </form>
+        <p id="onboarding-status" style="margin-top:16px;color:#c6d4ef"></p>
       </div>
-    </main>
-  </div>
-  <script src="app.js"></script>
-</body>
-</html>
+      <div class="footer">© Work Captain. All rights reserved.</div>
+    </div>
+  </main>
+</div>
+<script src="app.js"></script>
+</body></html>

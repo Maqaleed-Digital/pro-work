@@ -1,71 +1,42 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>إعدادات الدفع — Work Captain</title>
-<link rel="stylesheet" href="styles.css" />
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <base target="_top">
+  <title>Work Captain — Payments</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="shell">
-    <aside class="sidebar">
-      <div class="brand">
-        <div class="brand-mark"></div>
-        <div>
-          <h1>Work Captain</h1>
-          <small>نظام تشغيل العمل</small>
-        </div>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand"><div class="brand-mark"></div><div><h1>Work Captain</h1><small>Payments &amp; billing</small></div></div>
+    <div class="nav-group"><h3>Platform</h3><nav class="nav">
+      <a href="index.html">Landing</a><a href="control-tower.html">Control Tower</a><a href="operations.html">Operations</a>
+      <a href="verticals.html">Verticals</a><a href="onboarding.html">Tenant Onboarding</a>
+      <a href="payments.html">Payments</a><a href="bank.html">Bank Account</a>
+    </nav></div>
+  </aside>
+  <main class="main">
+    <div class="topbar">
+      <div class="badge good">Billing active</div>
+      <div class="topbar-actions">
+        <a class="btn ghost" href="ar-payments.html">العربية</a>
+        <button class="btn primary" data-demo-action="add-payment-method">Add payment method</button>
       </div>
-      <div class="nav-group">
-        <h3>المنصة</h3>
-        <nav class="nav">
-          <a href="index.html">الرئيسية</a>
-          <a href="control-tower.html">برج التحكم</a>
-          <a href="operations.html">العمليات</a>
-          <a href="verticals.html">القطاعات</a>
-          <a href="onboarding.html">تأهيل المستأجر</a>
-          <a href="payments.html" class="active">الدفع</a>
-          <a href="bank.html">الحساب البنكي</a>
-        </nav>
+    </div>
+    <div class="container">
+      <section class="hero">
+        <h2>Payment settings &amp; billing.</h2>
+        <p>Manage your subscription, payment methods, and download invoices.</p>
+      </section>
+      <div class="grid cols-3" style="margin-top:24px">
+        <div class="card"><h3>Current plan</h3><p>Enterprise — Custom</p><div class="badge good" style="margin-top:12px">Active</div></div>
+        <div class="card"><h3>Payment method</h3><div class="stack" style="margin-top:12px"><button class="btn primary">Add card</button><button class="btn">Bank transfer</button></div></div>
+        <div class="card"><h3>Invoices</h3><div class="stack"><div class="stat-line"><span>Last invoice</span><strong>2,999 SAR</strong></div><div class="stat-line"><span>Status</span><strong class="good">Paid</strong></div></div><button class="btn" style="margin-top:12px">Download invoice</button></div>
       </div>
-    </aside>
-
-    <main class="main">
-      <div class="container">
-        <section class="hero">
-          <h2>إعدادات الدفع</h2>
-          <p>إدارة الاشتراكات والفواتير وطرق الدفع.</p>
-        </section>
-
-        <div class="grid cols-3" style="margin-top:24px">
-          <div class="card">
-            <h3>الخطة الحالية</h3>
-            <p>Enterprise — مخصص</p>
-            <div class="badge good" style="margin-top:12px">نشطة</div>
-          </div>
-
-          <div class="card">
-            <h3>طريقة الدفع</h3>
-            <div class="stack" style="margin-top:12px">
-              <button class="btn primary">إضافة بطاقة</button>
-              <button class="btn">تحويل بنكي</button>
-            </div>
-          </div>
-
-          <div class="card">
-            <h3>الفواتير</h3>
-            <div class="stack">
-              <div class="stat-line"><span>آخر فاتورة</span><strong>2,999 SAR</strong></div>
-              <div class="stat-line"><span>الحالة</span><strong class="good">مدفوعة</strong></div>
-            </div>
-            <button class="btn" style="margin-top:12px">تنزيل الفاتورة</button>
-          </div>
-        </div>
-
-        <div class="footer">© Work Captain. All rights reserved.</div>
-      </div>
-    </main>
-  </div>
-  <script src="app.js"></script>
-</body>
-</html>
+      <div class="footer">© Work Captain. All rights reserved.</div>
+    </div>
+  </main>
+</div>
+<script src="app.js"></script>
+</body></html>
