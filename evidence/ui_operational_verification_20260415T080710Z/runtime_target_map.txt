@@ -1,0 +1,10 @@
+TARGET_FRONTEND=prowork_runtime/web
+PACKAGE_MANAGER=npm
+BRANCH=sprint/phase11-permission-bound-operational-control
+TARGET_RUNTIME=Next.js App Router / governed frontend target
+EXPECTED_LIVE_ROUTES=/
+EXPECTED_LIVE_ROUTES=/control-tower
+EXPECTED_LIVE_ROUTES=/operations
+EXPECTED_LIVE_ROUTES=/verticals
+EXPECTED_LIVE_ROUTES=/onboarding
+EXPECTED_PUBLIC_PREFIX=/prowork-wave1

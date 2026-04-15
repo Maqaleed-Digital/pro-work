@@ -1,0 +1,780 @@
+{
+  "timestamp": "2026-04-15T08:07:12.334Z",
+  "baseUrl": "http://127.0.0.1:3401",
+  "frontendRoot": "/Users/waheebmahmoud/dev/pro-work/prowork_runtime/web",
+  "routerMode": "app",
+  "fileChecks": [
+    {
+      "path": "/Users/waheebmahmoud/dev/pro-work/prowork_runtime/web/public/prowork-wave1/README.md",
+      "ok": true
+    },
+    {
+      "path": "/Users/waheebmahmoud/dev/pro-work/prowork_runtime/web/public/prowork-wave1/styles.css",
+      "ok": true
+    },
+    {
+      "path": "/Users/waheebmahmoud/dev/pro-work/prowork_runtime/web/public/prowork-wave1/app.js",
+      "ok": true
+    },
+    {
+      "path": "/Users/waheebmahmoud/dev/pro-work/prowork_runtime/web/public/prowork-wave1/index.html",
+      "ok": true
+    },
+    {
+      "path": "/Users/waheebmahmoud/dev/pro-work/prowork_runtime/web/public/prowork-wave1/control-tower.html",
+      "ok": true
+    },
+    {
+      "path": "/Users/waheebmahmoud/dev/pro-work/prowork_runtime/web/public/prowork-wave1/operations.html",
+      "ok": true
+    },
+    {
+      "path": "/Users/waheebmahmoud/dev/pro-work/prowork_runtime/web/public/prowork-wave1/verticals.html",
+      "ok": true
+    },
+    {
+      "path": "/Users/waheebmahmoud/dev/pro-work/prowork_runtime/web/public/prowork-wave1/onboarding.html",
+      "ok": true
+    }
+  ],
+  "routeFileChecks": [
+    {
+      "path": "/Users/waheebmahmoud/dev/pro-work/prowork_runtime/web/src/app/page.tsx",
+      "ok": true
+    },
+    {
+      "path": "/Users/waheebmahmoud/dev/pro-work/prowork_runtime/web/src/app/control-tower/page.tsx",
+      "ok": true
+    },
+    {
+      "path": "/Users/waheebmahmoud/dev/pro-work/prowork_runtime/web/src/app/operations/page.tsx",
+      "ok": true
+    },
+    {
+      "path": "/Users/waheebmahmoud/dev/pro-work/prowork_runtime/web/src/app/verticals/page.tsx",
+      "ok": true
+    },
+    {
+      "path": "/Users/waheebmahmoud/dev/pro-work/prowork_runtime/web/src/app/onboarding/page.tsx",
+      "ok": true
+    }
+  ],
+  "liveRoutes": [
+    {
+      "route": "/",
+      "status": 200,
+      "ms": 79,
+      "iframeSrcExpected": "/prowork-wave1/index.html",
+      "iframeOk": true,
+      "pass": true
+    },
+    {
+      "route": "/control-tower",
+      "status": 200,
+      "ms": 25,
+      "iframeSrcExpected": "/prowork-wave1/control-tower.html",
+      "iframeOk": true,
+      "pass": true
+    },
+    {
+      "route": "/operations",
+      "status": 200,
+      "ms": 31,
+      "iframeSrcExpected": "/prowork-wave1/operations.html",
+      "iframeOk": true,
+      "pass": true
+    },
+    {
+      "route": "/verticals",
+      "status": 200,
+      "ms": 22,
+      "iframeSrcExpected": "/prowork-wave1/verticals.html",
+      "iframeOk": true,
+      "pass": true
+    },
+    {
+      "route": "/onboarding",
+      "status": 200,
+      "ms": 21,
+      "iframeSrcExpected": "/prowork-wave1/onboarding.html",
+      "iframeOk": true,
+      "pass": true
+    }
+  ],
+  "staticPages": [
+    {
+      "page": "/prowork-wave1/index.html",
+      "status": 200,
+      "ms": 11,
+      "markerMisses": [],
+      "navMisses": [],
+      "pass": true
+    },
+    {
+      "page": "/prowork-wave1/control-tower.html",
+      "status": 200,
+      "ms": 6,
+      "markerMisses": [],
+      "navMisses": [],
+      "pass": true
+    },
+    {
+      "page": "/prowork-wave1/operations.html",
+      "status": 200,
+      "ms": 5,
+      "markerMisses": [],
+      "navMisses": [],
+      "pass": true
+    },
+    {
+      "page": "/prowork-wave1/verticals.html",
+      "status": 200,
+      "ms": 6,
+      "markerMisses": [],
+      "navMisses": [],
+      "pass": true
+    },
+    {
+      "page": "/prowork-wave1/onboarding.html",
+      "status": 200,
+      "ms": 6,
+      "markerMisses": [],
+      "navMisses": [],
+      "pass": true
+    }
+  ],
+  "assets": [
+    {
+      "asset": "/prowork-wave1/styles.css",
+      "status": 200,
+      "ms": 5,
+      "pass": true
+    },
+    {
+      "asset": "/prowork-wave1/app.js",
+      "status": 200,
+      "ms": 4,
+      "pass": true
+    },
+    {
+      "asset": "/prowork-wave1/index.html",
+      "status": 200,
+      "ms": 4,
+      "pass": true
+    },
+    {
+      "asset": "/prowork-wave1/control-tower.html",
+      "status": 200,
+      "ms": 3,
+      "pass": true
+    },
+    {
+      "asset": "/prowork-wave1/operations.html",
+      "status": 200,
+      "ms": 5,
+      "pass": true
+    },
+    {
+      "asset": "/prowork-wave1/verticals.html",
+      "status": 200,
+      "ms": 4,
+      "pass": true
+    },
+    {
+      "asset": "/prowork-wave1/onboarding.html",
+      "status": 200,
+      "ms": 4,
+      "pass": true
+    }
+  ],
+  "concurrency": {
+    "concurrency": 12,
+    "rounds": 8,
+    "totalRequests": 96,
+    "failures": 0,
+    "avgMs": 65,
+    "maxMs": 120,
+    "results": [
+      {
+        "target": "/",
+        "status": 200,
+        "ms": 118,
+        "ok": true
+      },
+      {
+        "target": "/control-tower",
+        "status": 200,
+        "ms": 119,
+        "ok": true
+      },
+      {
+        "target": "/operations",
+        "status": 200,
+        "ms": 119,
+        "ok": true
+      },
+      {
+        "target": "/verticals",
+        "status": 200,
+        "ms": 120,
+        "ok": true
+      },
+      {
+        "target": "/onboarding",
+        "status": 200,
+        "ms": 120,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/index.html",
+        "status": 200,
+        "ms": 75,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/control-tower.html",
+        "status": 200,
+        "ms": 83,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/operations.html",
+        "status": 200,
+        "ms": 92,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/verticals.html",
+        "status": 200,
+        "ms": 107,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/onboarding.html",
+        "status": 200,
+        "ms": 109,
+        "ok": true
+      },
+      {
+        "target": "/",
+        "status": 200,
+        "ms": 119,
+        "ok": true
+      },
+      {
+        "target": "/control-tower",
+        "status": 200,
+        "ms": 119,
+        "ok": true
+      },
+      {
+        "target": "/operations",
+        "status": 200,
+        "ms": 85,
+        "ok": true
+      },
+      {
+        "target": "/verticals",
+        "status": 200,
+        "ms": 85,
+        "ok": true
+      },
+      {
+        "target": "/onboarding",
+        "status": 200,
+        "ms": 85,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/index.html",
+        "status": 200,
+        "ms": 80,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/control-tower.html",
+        "status": 200,
+        "ms": 79,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/operations.html",
+        "status": 200,
+        "ms": 79,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/verticals.html",
+        "status": 200,
+        "ms": 81,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/onboarding.html",
+        "status": 200,
+        "ms": 80,
+        "ok": true
+      },
+      {
+        "target": "/",
+        "status": 200,
+        "ms": 83,
+        "ok": true
+      },
+      {
+        "target": "/control-tower",
+        "status": 200,
+        "ms": 83,
+        "ok": true
+      },
+      {
+        "target": "/operations",
+        "status": 200,
+        "ms": 83,
+        "ok": true
+      },
+      {
+        "target": "/verticals",
+        "status": 200,
+        "ms": 82,
+        "ok": true
+      },
+      {
+        "target": "/onboarding",
+        "status": 200,
+        "ms": 68,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/index.html",
+        "status": 200,
+        "ms": 65,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/control-tower.html",
+        "status": 200,
+        "ms": 66,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/operations.html",
+        "status": 200,
+        "ms": 66,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/verticals.html",
+        "status": 200,
+        "ms": 66,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/onboarding.html",
+        "status": 200,
+        "ms": 66,
+        "ok": true
+      },
+      {
+        "target": "/",
+        "status": 200,
+        "ms": 68,
+        "ok": true
+      },
+      {
+        "target": "/control-tower",
+        "status": 200,
+        "ms": 68,
+        "ok": true
+      },
+      {
+        "target": "/operations",
+        "status": 200,
+        "ms": 68,
+        "ok": true
+      },
+      {
+        "target": "/verticals",
+        "status": 200,
+        "ms": 68,
+        "ok": true
+      },
+      {
+        "target": "/onboarding",
+        "status": 200,
+        "ms": 68,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/index.html",
+        "status": 200,
+        "ms": 65,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/control-tower.html",
+        "status": 200,
+        "ms": 38,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/operations.html",
+        "status": 200,
+        "ms": 38,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/verticals.html",
+        "status": 200,
+        "ms": 39,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/onboarding.html",
+        "status": 200,
+        "ms": 38,
+        "ok": true
+      },
+      {
+        "target": "/",
+        "status": 200,
+        "ms": 40,
+        "ok": true
+      },
+      {
+        "target": "/control-tower",
+        "status": 200,
+        "ms": 40,
+        "ok": true
+      },
+      {
+        "target": "/operations",
+        "status": 200,
+        "ms": 40,
+        "ok": true
+      },
+      {
+        "target": "/verticals",
+        "status": 200,
+        "ms": 40,
+        "ok": true
+      },
+      {
+        "target": "/onboarding",
+        "status": 200,
+        "ms": 40,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/index.html",
+        "status": 200,
+        "ms": 37,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/control-tower.html",
+        "status": 200,
+        "ms": 37,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/operations.html",
+        "status": 200,
+        "ms": 37,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/verticals.html",
+        "status": 200,
+        "ms": 44,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/onboarding.html",
+        "status": 200,
+        "ms": 48,
+        "ok": true
+      },
+      {
+        "target": "/",
+        "status": 200,
+        "ms": 50,
+        "ok": true
+      },
+      {
+        "target": "/control-tower",
+        "status": 200,
+        "ms": 51,
+        "ok": true
+      },
+      {
+        "target": "/operations",
+        "status": 200,
+        "ms": 51,
+        "ok": true
+      },
+      {
+        "target": "/verticals",
+        "status": 200,
+        "ms": 51,
+        "ok": true
+      },
+      {
+        "target": "/onboarding",
+        "status": 200,
+        "ms": 51,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/index.html",
+        "status": 200,
+        "ms": 48,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/control-tower.html",
+        "status": 200,
+        "ms": 49,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/operations.html",
+        "status": 200,
+        "ms": 48,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/verticals.html",
+        "status": 200,
+        "ms": 48,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/onboarding.html",
+        "status": 200,
+        "ms": 48,
+        "ok": true
+      },
+      {
+        "target": "/",
+        "status": 200,
+        "ms": 60,
+        "ok": true
+      },
+      {
+        "target": "/control-tower",
+        "status": 200,
+        "ms": 61,
+        "ok": true
+      },
+      {
+        "target": "/operations",
+        "status": 200,
+        "ms": 61,
+        "ok": true
+      },
+      {
+        "target": "/verticals",
+        "status": 200,
+        "ms": 60,
+        "ok": true
+      },
+      {
+        "target": "/onboarding",
+        "status": 200,
+        "ms": 61,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/index.html",
+        "status": 200,
+        "ms": 56,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/control-tower.html",
+        "status": 200,
+        "ms": 57,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/operations.html",
+        "status": 200,
+        "ms": 57,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/verticals.html",
+        "status": 200,
+        "ms": 57,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/onboarding.html",
+        "status": 200,
+        "ms": 57,
+        "ok": true
+      },
+      {
+        "target": "/",
+        "status": 200,
+        "ms": 61,
+        "ok": true
+      },
+      {
+        "target": "/control-tower",
+        "status": 200,
+        "ms": 60,
+        "ok": true
+      },
+      {
+        "target": "/operations",
+        "status": 200,
+        "ms": 74,
+        "ok": true
+      },
+      {
+        "target": "/verticals",
+        "status": 200,
+        "ms": 74,
+        "ok": true
+      },
+      {
+        "target": "/onboarding",
+        "status": 200,
+        "ms": 74,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/index.html",
+        "status": 200,
+        "ms": 69,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/control-tower.html",
+        "status": 200,
+        "ms": 71,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/operations.html",
+        "status": 200,
+        "ms": 71,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/verticals.html",
+        "status": 200,
+        "ms": 71,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/onboarding.html",
+        "status": 200,
+        "ms": 71,
+        "ok": true
+      },
+      {
+        "target": "/",
+        "status": 200,
+        "ms": 73,
+        "ok": true
+      },
+      {
+        "target": "/control-tower",
+        "status": 200,
+        "ms": 72,
+        "ok": true
+      },
+      {
+        "target": "/operations",
+        "status": 200,
+        "ms": 72,
+        "ok": true
+      },
+      {
+        "target": "/verticals",
+        "status": 200,
+        "ms": 72,
+        "ok": true
+      },
+      {
+        "target": "/onboarding",
+        "status": 200,
+        "ms": 45,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/index.html",
+        "status": 200,
+        "ms": 40,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/control-tower.html",
+        "status": 200,
+        "ms": 41,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/operations.html",
+        "status": 200,
+        "ms": 41,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/verticals.html",
+        "status": 200,
+        "ms": 41,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/onboarding.html",
+        "status": 200,
+        "ms": 41,
+        "ok": true
+      },
+      {
+        "target": "/",
+        "status": 200,
+        "ms": 45,
+        "ok": true
+      },
+      {
+        "target": "/control-tower",
+        "status": 200,
+        "ms": 45,
+        "ok": true
+      },
+      {
+        "target": "/operations",
+        "status": 200,
+        "ms": 44,
+        "ok": true
+      },
+      {
+        "target": "/verticals",
+        "status": 200,
+        "ms": 44,
+        "ok": true
+      },
+      {
+        "target": "/onboarding",
+        "status": 200,
+        "ms": 44,
+        "ok": true
+      },
+      {
+        "target": "/prowork-wave1/index.html",
+        "status": 200,
+        "ms": 40,
+        "ok": true
+      }
+    ]
+  },
+  "summary": {
+    "pass": true,
+    "failures": []
+  }
+}
