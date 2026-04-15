@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ProWork — Control Tower</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark"></div>
+        <div>
+          <h1>ProWork</h1>
+          <small>Executive control tower</small>
+        </div>
+      </div>
+      <div class="nav-group">
+        <h3>Platform</h3>
+        <nav class="nav">
+          <a data-nav href="index.html">Landing</a>
+          <a data-nav href="control-tower.html">Control Tower</a>
+          <a data-nav href="operations.html">Operations</a>
+          <a data-nav href="verticals.html">Verticals</a>
+          <a data-nav href="onboarding.html">Tenant Onboarding</a>
+        </nav>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div class="badge human">Human-reviewed decisions</div>
+        <div class="topbar-actions">
+          <button class="btn ghost" data-demo-action="export-board-pack">Export board pack</button>
+          <button class="btn primary" data-demo-action="approve-decision">Approve decision</button>
+        </div>
+      </div>
+
+      <div class="container">
+        <section class="hero">
+          <h2>Executive command across work, AI, trust, and revenue.</h2>
+          <p>Control Tower is the operating cockpit for KPI command, anomaly response, executive decisions, and institutional posture.</p>
+        </section>
+
+        <div class="section-title">
+          <div>
+            <h2>KPI command</h2>
+            <p>High-signal metrics with revenue, operating, and trust context.</p>
+          </div>
+        </div>
+
+        <div class="grid cols-4">
+          <div class="card kpi"><div class="label">ARR Run Rate</div><div class="value">$1.42M</div><div class="delta good">+18.2% vs last cycle</div></div>
+          <div class="card kpi"><div class="label">Tenant Health</div><div class="value">89</div><div class="delta good">Healthy portfolio average</div></div>
+          <div class="card kpi"><div class="label">Playbook Success</div><div class="value">93.4%</div><div class="delta info">412 successful runs</div></div>
+          <div class="card kpi"><div class="label">AI Override Rate</div><div class="value">4.8%</div><div class="delta warn">Monitor on high-impact flows</div></div>
+        </div>
+
+        <div class="section-title">
+          <div>
+            <h2>Alerts &amp; anomalies</h2>
+            <p>Ranked by severity and linked to recommended actions.</p>
+          </div>
+        </div>
+
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>Priority anomalies</h3>
+            <div class="timeline">
+              <div class="timeline-item">
+                <div class="row">
+                  <span class="badge bad">Critical</span>
+                  <span class="badge ai">AI-detected</span>
+                </div>
+                <h3 style="margin-top:10px">Activation drop in fintech cohort</h3>
+                <p>Activation conversion fell 11.6% in the last 48 hours. Suggested playbook: onboarding recovery + manual escalation.</p>
+              </div>
+              <div class="timeline-item">
+                <div class="row">
+                  <span class="badge warn">Warning</span>
+                  <span class="badge human">Human-reviewed</span>
+                </div>
+                <h3 style="margin-top:10px">Trust evidence latency rising</h3>
+                <p>Evidence pack completion time increased for enterprise onboarding flows. Suggested action: review approval bottlenecks.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Decision center</h3>
+            <div class="stack">
+              <div class="stat-line"><span>Pending executive decisions</span><strong>7</strong></div>
+              <div class="stat-line"><span>Approved this week</span><strong>13</strong></div>
+              <div class="stat-line"><span>Linked execution runs</span><strong>29</strong></div>
+              <div class="stat-line"><span>Board-ready export state</span><strong class="good">Ready</strong></div>
+            </div>
+            <div class="callout" style="margin-top:16px">
+              Latest recommendation: expand Growth tier onboarding automation to consulting cohort. Expected impact: +7.4% activation quality.
+            </div>
+            <p id="demo-status" style="margin-top:14px;color:#c6d4ef"></p>
+          </div>
+        </div>
+
+        <div class="section-title">
+          <div>
+            <h2>Board view</h2>
+            <p>Institutional summary framing with export-ready surfaces.</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Domain</th>
+                <th>Status</th>
+                <th>Signal</th>
+                <th>Executive takeaway</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Revenue</td>
+                <td><span class="badge good">On plan</span></td>
+                <td>Expansion revenue accelerating</td>
+                <td>Increase enterprise packaging push in strongest cohort.</td>
+              </tr>
+              <tr>
+                <td>Operations</td>
+                <td><span class="badge warn">Watch</span></td>
+                <td>Approval latency increasing in regulated flows</td>
+                <td>Route high-friction flows to institutional fast-lane review.</td>
+              </tr>
+              <tr>
+                <td>AI</td>
+                <td><span class="badge good">Stable</span></td>
+                <td>Override rate below alert threshold</td>
+                <td>Maintain current AI policy boundaries.</td>
+              </tr>
+              <tr>
+                <td>Trust</td>
+                <td><span class="badge good">Strong</span></td>
+                <td>Evidence completion at 96.1%</td>
+                <td>Use trust signal as sales proof in board materials.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="footer">ProWork UI Wave 1 — control tower implemented.</div>
+      </div>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
