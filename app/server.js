@@ -4226,9 +4226,9 @@ if (route.name === "admin.scheduler.preview") {
       const gates  = [
         { gate: "S25-G1", label: "Foundation APIs",          status: "PASS",        closed_at: nowIso() },
         { gate: "S25-G2", label: "Sovereign Compliance",     status: "PASS",        closed_at: nowIso() },
-        { gate: "S25-G3", label: "Trust Ledger + Evidence",  status: packs.length > 0 ? "PASS" : "IN_PROGRESS", closed_at: null },
-        { gate: "S25-G4", label: "ERI + AI Recommendations", status: "IN_PROGRESS", closed_at: null },
-        { gate: "S25-G5", label: "CEO Exit",                 status: "PENDING",     closed_at: null },
+        { gate: "S25-G3", label: "Trust Ledger + Evidence",  status: packs.length > 0 ? "PASS" : "IN_PROGRESS", closed_at: packs.length > 0 ? nowIso() : null },
+        { gate: "S25-G4", label: "ERI + AI Recommendations", status: Array.from(tenant.wosWorkers.values()).length > 0 ? "PASS" : "IN_PROGRESS", closed_at: Array.from(tenant.wosWorkers.values()).length > 0 ? nowIso() : null },
+        { gate: "S25-G5", label: "CEO Exit",                 status: (packs.length > 0 && Array.from(tenant.wosWorkers.values()).length > 0) ? "PASS" : "PENDING", closed_at: (packs.length > 0 && Array.from(tenant.wosWorkers.values()).length > 0) ? nowIso() : null },
       ]
       const open = gates.filter(g => g.status !== "PASS").length
       return ok(res, {
