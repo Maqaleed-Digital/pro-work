@@ -11,17 +11,19 @@ export function clearTenantOptions() {
 }
 
 const TABS = [
-  { key: "dashboard",   label: "⌂ Command Center" },
-  { key: "workers",     label: "👥 Workforce"      },
-  { key: "pods",        label: "🔷 Pods"           },
-  { key: "assignments", label: "📋 Execution"      },
-  { key: "ai_control",  label: "🤖 AI Control"     },
-  { key: "compliance",  label: "⚖️ Compliance"     },
-  { key: "evidence",    label: "🧾 Evidence"       },
-  { key: "governance",  label: "🏛 Governance"     },
-  { key: "analytics",   label: "📊 Analytics"      },
-  { key: "tenants",     label: "🏢 Tenants"        },
-  { key: "system",      label: "⚙️ System"         },
+  { key: "dashboard",    label: "⌂ Command Center" },
+  { key: "workers",      label: "👥 Workforce"      },
+  { key: "pods",         label: "🔷 Pods"           },
+  { key: "assignments",  label: "📋 Execution"      },
+  { key: "ai_control",   label: "🤖 AI Control"     },
+  { key: "compliance",   label: "⚖️ Compliance"     },
+  { key: "evidence",     label: "🧾 Evidence"       },
+  { key: "trust_ledger", label: "📒 Trust Ledger"   },
+  { key: "eri",          label: "⚠ ERI"             },
+  { key: "governance",   label: "🏛 Governance"     },
+  { key: "analytics",    label: "📊 Analytics"      },
+  { key: "tenants",      label: "🏢 Tenants"        },
+  { key: "system",       label: "⚙️ System"         },
 ]
 
 let _signOutCb = null

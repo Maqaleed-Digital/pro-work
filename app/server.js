@@ -1390,6 +1390,11 @@ function matchRoute(method, pathname) {
   if (m === "GET"  && pathname === "/api/admin/evidence-packs")           return { name: "admin.evidence_packs.list",           params: {} }
   if (m === "POST" && pathname === "/api/admin/evidence-packs")           return { name: "admin.evidence_packs.create",         params: {} }
 
+  // Sprint D: trust ledger, export, ERI
+  if (m === "GET"  && pathname === "/api/admin/trust-ledger")             return { name: "admin.trust_ledger.list",             params: {} }
+  if (m === "GET"  && pathname === "/api/admin/export/evidence-packs")    return { name: "admin.export.evidence_packs",         params: {} }
+  if (m === "GET"  && pathname === "/api/admin/eri")                      return { name: "admin.eri.list",                      params: {} }
+
   // Phase 11: permission-bound operational control routes
   if (m === "GET"  && pathname === "/api/ops/status")        return { name: "ops.status",        params: {} }
   if (m === "POST" && pathname === "/api/ops/execute")       return { name: "ops.execute",       params: {} }
@@ -4049,6 +4054,165 @@ if (route.name === "admin.scheduler.preview") {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+
+    // ── Sprint D: trust ledger ────────────────────────────────────────────────
+    if (route.name === "admin.trust_ledger.list") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      const tenant  = getTenantStore(tenantId)
+      const url2    = new URL(req.url, `http://${req.headers.host || HOST}`)
+      const limit   = Math.min(Number(url2.searchParams.get("limit")  || 100), 500)
+      const offset  = Math.max(Number(url2.searchParams.get("offset") || 0),   0)
+      const actor   = url2.searchParams.get("actor")  || null
+      const action  = url2.searchParams.get("action") || null
+
+      let events = tenant.wosEvidenceEvents.slice()
+      const packs = (tenant.evidencePacks || []).map(p => ({
+        id:          p.id,
+        tenant_id:   tenantId,
+        actor:       p.actor,
+        action:      "evidence_pack.created",
+        entity_type: "evidence_pack",
+        entity_id:   p.id,
+        timestamp:   p.ts,
+        pack_type:   p.type,
+        status:      p.status,
+      }))
+
+      // Merge evidence events + pack events into unified ledger
+      let ledger = [...events, ...packs].sort((a, b) => {
+        const ta = a.timestamp || a.ts || ""
+        const tb = b.timestamp || b.ts || ""
+        return tb.localeCompare(ta)  // newest first
+      })
+
+      if (actor)  ledger = ledger.filter(e => e.actor  === actor)
+      if (action) ledger = ledger.filter(e => e.action === action)
+
+      const total   = ledger.length
+      const items   = ledger.slice(offset, offset + limit)
+
+      // Attach a ledger sequence number (global position)
+      items.forEach((e, i) => { e._seq = total - offset - i })
+
+      return ok(res, { items, total, offset, limit })
+    }
+
+    // ── Sprint D: evidence pack ZIP export ────────────────────────────────────
+    if (route.name === "admin.export.evidence_packs") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      const tenant = getTenantStore(tenantId)
+      const packs  = tenant.evidencePacks || []
+      const events = tenant.wosEvidenceEvents || []
+
+      const files = {}
+      files["manifest.json"] = Buffer.from(JSON.stringify({
+        exported_at: nowIso(),
+        tenant_id:   tenantId,
+        exported_by: ap.principal.id,
+        pack_count:  packs.length,
+        event_count: events.length,
+      }, null, 2), "utf8")
+
+      files["evidence_packs.json"] = Buffer.from(JSON.stringify(packs, null, 2), "utf8")
+      files["audit_log.json"]      = Buffer.from(JSON.stringify(events, null, 2), "utf8")
+
+      packs.forEach(p => {
+        files[`packs/${p.id}.json`] = Buffer.from(JSON.stringify(p, null, 2), "utf8")
+      })
+
+      const zipBuf = buildZip(files)
+      res.writeHead(200, {
+        "content-type":        "application/zip",
+        "content-disposition": `attachment; filename="evidence-export-${tenantId}-${Date.now()}.zip"`,
+        "content-length":      String(zipBuf.length),
+      })
+      return res.end(zipBuf)
+    }
+
+    // ── Sprint D: Employee Risk Index (ERI) ───────────────────────────────────
+    if (route.name === "admin.eri.list") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      const tenant      = getTenantStore(tenantId)
+      const workers     = Array.from(tenant.wosWorkers.values())
+      const assignments = Array.from(tenant.wosAssignments.values())
+      const pods        = Array.from(tenant.wosPods.values())
+
+      const assignedWorkerIds = new Set(assignments.map(a => a.worker_id).filter(Boolean))
+      const podById           = Object.fromEntries(pods.map(p => [p.id, p]))
+
+      const eriItems = workers.map(w => {
+        const factors = []
+        let score = 0
+
+        // Factor 1: WPS / IBAN missing (FTE only)
+        if (w.worker_type === "FTE" && !w.iban_verified) {
+          factors.push({ code: "WPS_IBAN_MISSING", weight: 30, label: "IBAN not verified (WPS risk)" })
+          score += 30
+        }
+
+        // Factor 2: probation expiring within 15 days
+        if (w.probation_end) {
+          const days = (new Date(w.probation_end) - Date.now()) / 86400000
+          if (days > 0 && days <= 15) {
+            factors.push({ code: "PROB_EXPIRING_SOON", weight: 25, label: `Probation expires in ${Math.ceil(days)}d` })
+            score += 25
+          } else if (days > 15 && days <= 80) {
+            factors.push({ code: "PROB_DAY80_APPROACHING", weight: 15, label: `Day-80 approaching (${Math.ceil(days)}d left)` })
+            score += 15
+          }
+        }
+
+        // Factor 3: no active assignment
+        if (!assignedWorkerIds.has(w.id)) {
+          factors.push({ code: "NO_ASSIGNMENT", weight: 20, label: "No active assignment" })
+          score += 20
+        }
+
+        // Factor 4: pod utilisation low (if assigned)
+        const workerAssignment = assignments.find(a => a.worker_id === w.id)
+        if (workerAssignment && podById[workerAssignment.pod_id]) {
+          const pod = podById[workerAssignment.pod_id]
+          if ((pod.utilisation || 0) < 0.4) {
+            factors.push({ code: "LOW_POD_UTILISATION", weight: 10, label: `Pod utilisation ${Math.round((pod.utilisation||0)*100)}%` })
+            score += 10
+          }
+        }
+
+        // Factor 5: inactive worker
+        if (w.status && w.status !== "active") {
+          factors.push({ code: "WORKER_INACTIVE", weight: 15, label: `Worker status: ${w.status}` })
+          score += 15
+        }
+
+        const risk_level = score >= 50 ? "HIGH" : score >= 25 ? "MEDIUM" : score > 0 ? "LOW" : "CLEAR"
+        return {
+          worker_id:   w.id,
+          name:        w.name || w.full_name || w.id,
+          worker_type: w.worker_type || "—",
+          status:      w.status || "unknown",
+          eri_score:   score,
+          risk_level,
+          factors,
+          computed_at: nowIso(),
+        }
+      })
+
+      // Sort by ERI score descending
+      eriItems.sort((a, b) => b.eri_score - a.eri_score)
+
+      const summary = {
+        total:  eriItems.length,
+        high:   eriItems.filter(e => e.risk_level === "HIGH").length,
+        medium: eriItems.filter(e => e.risk_level === "MEDIUM").length,
+        low:    eriItems.filter(e => e.risk_level === "LOW").length,
+        clear:  eriItems.filter(e => e.risk_level === "CLEAR").length,
+      }
+
+      return ok(res, { items: eriItems, summary })
+    }
 
     // ── Sprint B+C: sovereign status ──────────────────────────────────────────
     if (route.name === "sovereign.status") {

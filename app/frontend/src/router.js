@@ -10,22 +10,26 @@ import governance  from "./pages/governance.js"
 import tenants     from "./pages/tenants.js"
 import analytics   from "./pages/analytics.js"
 import system      from "./pages/system.js"
-import compliance  from "./pages/compliance.js"
-import ai_control  from "./pages/ai_control.js"
+import compliance   from "./pages/compliance.js"
+import ai_control   from "./pages/ai_control.js"
+import trust_ledger from "./pages/trust_ledger.js"
+import eri          from "./pages/eri.js"
 
 const ROUTES = {
-  "dashboard":   dashboard,
-  "workers":     workers,
-  "pods":        pods,
-  "assignments": assignments,
-  "evidence":    evidence,
-  "scheduler":   scheduler,
-  "governance":  governance,
-  "tenants":     tenants,
-  "analytics":   analytics,
-  "system":      system,
-  "compliance":  compliance,
-  "ai_control":  ai_control,
+  "dashboard":    dashboard,
+  "workers":      workers,
+  "pods":         pods,
+  "assignments":  assignments,
+  "evidence":     evidence,
+  "scheduler":    scheduler,
+  "governance":   governance,
+  "tenants":      tenants,
+  "analytics":    analytics,
+  "system":       system,
+  "compliance":   compliance,
+  "ai_control":   ai_control,
+  "trust_ledger": trust_ledger,
+  "eri":          eri,
 }
 
 const DEFAULT = "dashboard"

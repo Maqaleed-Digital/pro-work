@@ -88,6 +88,38 @@ export default {
         })
     }
 
+    // Export ZIP button
+    const exportBtn = document.createElement("button")
+    exportBtn.className = "btn btn-primary"
+    exportBtn.style.cssText = "margin-bottom:14px;align-self:flex-start"
+    exportBtn.textContent = "⬇ Export All (ZIP)"
+    exportBtn.addEventListener("click", async () => {
+      exportBtn.disabled = true
+      exportBtn.textContent = "Preparing…"
+      try {
+        const token  = localStorage.getItem("pw_token") || ""
+        const tenant = localStorage.getItem("pw_tenant") || "default"
+        const resp   = await fetch("/api/admin/export/evidence-packs", {
+          headers: { Authorization: "Bearer " + token, "x-tenant-id": tenant }
+        })
+        if (!resp.ok) throw new Error("Export failed: " + resp.status)
+        const blob = await resp.blob()
+        const url  = URL.createObjectURL(blob)
+        const a    = document.createElement("a")
+        a.href     = url
+        a.download = `evidence-export-${tenant}-${Date.now()}.zip`
+        a.click()
+        URL.revokeObjectURL(url)
+        toast.ok("Export downloaded")
+      } catch (e) {
+        toast.err(e.message)
+      } finally {
+        exportBtn.disabled = false
+        exportBtn.textContent = "⬇ Export All (ZIP)"
+      }
+    })
+    genCard.appendChild(exportBtn)
+
     const PACK_TYPES = [
       ["EP-WOS-RECRUIT-01 · Candidate Evaluation",  "EP-WOS-RECRUIT"],
       ["EP-WOS-HIRE-01 · Offer & Contract Signed",   "EP-WOS-HIRE"],
