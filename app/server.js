@@ -17,6 +17,8 @@ const DisclosureLegalHold  = require("./lib/disclosure_legal_hold")
 const ExternalReviewGateway  = require("./lib/external_review_gateway")
 const IncidentRegistry       = require("./lib/incident_registry")
 const ContinuityDR           = require("./lib/continuity_dr")
+let   PgClient               = null
+try { PgClient = require("./lib/persistence/postgres_client") } catch (_) {}
 const RestorationRegistry    = require("./lib/restoration_registry")
 const ControlAttestation     = require("./lib/control_attestation")
 const GovernanceClosure      = require("./lib/governance_closure")
@@ -593,10 +595,11 @@ function saveTenantStore(tenantId) {
   const dir = tenantDataDir(tenantId)
   fs.mkdirSync(dir, { recursive: true })
   const t = getTenantStore(tenantId)
-  fs.writeFileSync(path.join(dir, "workers.json"),     JSON.stringify(Array.from(t.wosWorkers.entries()),    null, 2))
-  fs.writeFileSync(path.join(dir, "pods.json"),        JSON.stringify(Array.from(t.wosPods.entries()),       null, 2))
-  fs.writeFileSync(path.join(dir, "assignments.json"), JSON.stringify(Array.from(t.wosAssignments.entries()), null, 2))
-  fs.writeFileSync(path.join(dir, "evidence.json"),    JSON.stringify(t.wosEvidenceEvents,                   null, 2))
+  fs.writeFileSync(path.join(dir, "workers.json"),        JSON.stringify(Array.from(t.wosWorkers.entries()),    null, 2))
+  fs.writeFileSync(path.join(dir, "pods.json"),           JSON.stringify(Array.from(t.wosPods.entries()),       null, 2))
+  fs.writeFileSync(path.join(dir, "assignments.json"),    JSON.stringify(Array.from(t.wosAssignments.entries()), null, 2))
+  fs.writeFileSync(path.join(dir, "evidence.json"),       JSON.stringify(t.wosEvidenceEvents,                   null, 2))
+  fs.writeFileSync(path.join(dir, "evidence_packs.json"), JSON.stringify(t.evidencePacks || [],                 null, 2))
 }
 
 function loadAllTenants() {
@@ -616,13 +619,23 @@ function loadAllTenants() {
       } catch { return null }
     }
     const workers = tryLoad("workers.json")
-    if (Array.isArray(workers)) for (const [id, w] of workers) t.wosWorkers.set(id, w)
+    if (Array.isArray(workers)) for (const [id, w] of workers) {
+      // S26: pod_id is static profile; assigned_pod is scheduler runtime state
+      if (w.pod_id && w.assigned_pod === undefined) w.assigned_pod = null
+      t.wosWorkers.set(id, w)
+    }
     const pods = tryLoad("pods.json")
-    if (Array.isArray(pods)) for (const [id, p] of pods) t.wosPods.set(id, p)
+    if (Array.isArray(pods)) for (const [id, p] of pods) {
+      // S26: normalise pod state field — scheduler uses p.state, seeds may use p.status
+      if (!p.state && p.status) p.state = p.status
+      t.wosPods.set(id, p)
+    }
     const assignments = tryLoad("assignments.json")
     if (Array.isArray(assignments)) for (const [id, a] of assignments) t.wosAssignments.set(id, a)
     const evidence = tryLoad("evidence.json")
     if (Array.isArray(evidence)) t.wosEvidenceEvents.push(...evidence)
+    const evidencePacks = tryLoad("evidence_packs.json")
+    if (Array.isArray(evidencePacks)) t.evidencePacks = evidencePacks
     console.log(`[persist] loaded tenant "${tid}": ${t.wosWorkers.size} workers, ${t.wosAssignments.size} assignments, ${t.wosEvidenceEvents.length} events`)
   }
 }
@@ -4422,6 +4435,14 @@ loadAllTenants()
 loadTenantRegistry()
 ApprovalControl.loadState()   // Phase 13: hydrate approval state from JSONL
 SovereignRegistry.loadRegistry()  // Phase 14: load sovereign control registry
+// S26: init Postgres schema if DATABASE_URL is configured (non-blocking, file persistence remains primary)
+if (PgClient && process.env.DATABASE_URL) {
+  PgClient.initSchema().then(() => {
+    console.log("[postgres] schema ready")
+  }).catch(e => {
+    console.warn("[postgres] init failed (non-fatal):", e.message)
+  })
+}
 TenantJurisdiction.initTenantGovernance(tenantRegistry)  // Phase 15: initialize tenant/jurisdiction governance
 
 // S34: init scheduler engine — wired to SchedulerJobs.runForTenant
