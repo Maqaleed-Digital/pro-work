@@ -1,0 +1,5 @@
+aaeb620 PHASE_103: executive alert delivery + anomaly signal scoring + board intelligence pack
+988cce2 PHASE_102: executive alerting + KPI thresholds + anomaly detection readiness
+301c8e4 PHASE_101_FIX: mart_funnel_steps view created; funnel query PASS; evidence updated
+d463c6e PHASE_101: KPI monitoring + executive dashboard hardening + funnel intelligence expansion
+8e81306 DOCS: final Notion update for live monitored analytics-active KPI-real state

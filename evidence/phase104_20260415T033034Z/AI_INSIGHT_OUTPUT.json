@@ -1,0 +1,9 @@
+[
+  {
+    "activity_interpretation": "Activity is below expected operating threshold.", 
+    "anomaly_interpretation": "Traffic is too low for strong anomaly confidence.", 
+    "execution_interpretation": "Execution telemetry is structurally available for monitoring.", 
+    "funnel_interpretation": "Funnel coverage is not yet available.", 
+    "snapshot_date": "2026-04-15"
+  }
+]

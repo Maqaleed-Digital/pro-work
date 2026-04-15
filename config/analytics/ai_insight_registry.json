@@ -1,0 +1,9 @@
+{
+  "version": "1.0",
+  "required_outputs": [
+    "activity_interpretation",
+    "execution_interpretation",
+    "funnel_interpretation",
+    "anomaly_interpretation"
+  ]
+}

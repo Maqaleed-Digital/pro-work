@@ -1,0 +1,10 @@
+{
+  "version": "1.0",
+  "required_sections": [
+    "current_kpi_interpretation",
+    "recommendation_summary",
+    "alert_context",
+    "anomaly_context",
+    "next_best_action_summary"
+  ]
+}

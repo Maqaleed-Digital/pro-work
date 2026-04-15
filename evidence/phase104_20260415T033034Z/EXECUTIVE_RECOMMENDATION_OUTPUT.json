@@ -1,0 +1,30 @@
+[
+  {
+    "priority_band": "high", 
+    "rationale": "Grounded in current active usage footprint and early KPI maturity.", 
+    "recommendation_text": "Increase live traffic acquisition and repeat usage measurement across the last 7-day window.", 
+    "recommendation_type": "growth_recommendation", 
+    "snapshot_date": "2026-04-15"
+  }, 
+  {
+    "priority_band": "high", 
+    "rationale": "Grounded in current funnel step availability and early runtime telemetry depth.", 
+    "recommendation_text": "Expand event coverage for mid-funnel steps to improve conversion explainability.", 
+    "recommendation_type": "funnel_recommendation", 
+    "snapshot_date": "2026-04-15"
+  }, 
+  {
+    "priority_band": "medium", 
+    "rationale": "Grounded in current execution signal breadth.", 
+    "recommendation_text": "Increase completion-linked operational events to strengthen execution observability.", 
+    "recommendation_type": "execution_recommendation", 
+    "snapshot_date": "2026-04-15"
+  }, 
+  {
+    "priority_band": "medium", 
+    "rationale": "Grounded in current trust/evidence monitoring structure.", 
+    "recommendation_text": "Increase evidence cadence tracking to improve trust-state interpretability.", 
+    "recommendation_type": "trust_recommendation", 
+    "snapshot_date": "2026-04-15"
+  }
+]

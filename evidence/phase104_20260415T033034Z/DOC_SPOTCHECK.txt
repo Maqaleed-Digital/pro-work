@@ -1,0 +1,4 @@
+45:## 4. PASS Condition
+4:    "activity_interpretation",
+9:  "priority_bands": [
+3:  "required_sections": [

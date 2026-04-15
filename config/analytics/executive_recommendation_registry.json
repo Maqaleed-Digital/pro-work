@@ -1,0 +1,14 @@
+{
+  "version": "1.0",
+  "required_outputs": [
+    "growth_recommendation",
+    "funnel_recommendation",
+    "execution_recommendation",
+    "trust_recommendation"
+  ],
+  "priority_bands": [
+    "low",
+    "medium",
+    "high"
+  ]
+}

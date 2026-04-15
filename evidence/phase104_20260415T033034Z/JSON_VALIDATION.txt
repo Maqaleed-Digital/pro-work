@@ -1,0 +1,3 @@
+JSON_OK /Users/waheebmahmoud/dev/pro-work/config/analytics/ai_insight_registry.json
+JSON_OK /Users/waheebmahmoud/dev/pro-work/config/analytics/executive_recommendation_registry.json
+JSON_OK /Users/waheebmahmoud/dev/pro-work/config/analytics/decision_support_pack_registry.json
