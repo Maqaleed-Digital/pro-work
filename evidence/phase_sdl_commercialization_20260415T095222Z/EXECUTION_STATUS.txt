@@ -1,0 +1,8 @@
+PHASE_SDL_COMMERCIALIZATION_PASS
+LIVE_BASE_URL=https://web-service-nwa6jq77aq-wx.a.run.app
+BRANCH=sprint/phase11-permission-bound-operational-control
+HEAD=3b3221ab97a5e512366439165ec511921c721c6f
+ROUTES_PASS=1
+MARKERS_PASS=1
+DEMO_LOCK=1
+PRICING_LOCK=1

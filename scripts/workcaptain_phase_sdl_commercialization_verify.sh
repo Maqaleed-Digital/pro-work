@@ -70,25 +70,26 @@ for route in "${ROUTES[@]}"; do
   fi
 done
 
-curl -L -s "${LIVE_BASE_URL}/workforce" > /tmp/wc_marker_body.txt
+# Marker checks fetch static HTML directly (iframe content, not the Next.js wrapper)
+curl -L -s "${LIVE_BASE_URL}/prowork-wave1/workforce.html" > /tmp/wc_marker_body.txt
 check_contains "/workforce" "42" || FAIL=1
 check_contains "/workforce" "18" || FAIL=1
 check_contains "/workforce" "9" || FAIL=1
 check_contains "/workforce" "1.2M SAR" || FAIL=1
 check_contains "/workforce" "78%" || FAIL=1
 
-curl -L -s "${LIVE_BASE_URL}/compliance" > /tmp/wc_marker_body.txt
+curl -L -s "${LIVE_BASE_URL}/prowork-wave1/compliance.html" > /tmp/wc_marker_body.txt
 check_contains "/compliance" "Green" || FAIL=1
 check_contains "/compliance" "92%" || FAIL=1
 check_contains "/compliance" "2" || FAIL=1
 check_contains "/compliance" "5" || FAIL=1
 
-curl -L -s "${LIVE_BASE_URL}/executive-intelligence" > /tmp/wc_marker_body.txt
+curl -L -s "${LIVE_BASE_URL}/prowork-wave1/executive.html" > /tmp/wc_marker_body.txt
 check_contains "/executive-intelligence" "84%" || FAIL=1
 check_contains "/executive-intelligence" "91%" || FAIL=1
 check_contains "/executive-intelligence" "Low" || FAIL=1
 
-curl -L -s "${LIVE_BASE_URL}/ar/workforce" > /tmp/wc_marker_body.txt
+curl -L -s "${LIVE_BASE_URL}/prowork-wave1/ar-workforce.html" > /tmp/wc_marker_body.txt
 if grep -Eq 'dir="rtl"|rtl|القوى العاملة|الامتثال|التحليل التنفيذي' /tmp/wc_marker_body.txt; then
   echo -e "/ar/workforce\trtl_or_arabic_marker\tPASS" >> "${MARKER_FILE}"
 else
@@ -96,7 +97,7 @@ else
   FAIL=1
 fi
 
-curl -L -s "${LIVE_BASE_URL}/ar/compliance" > /tmp/wc_marker_body.txt
+curl -L -s "${LIVE_BASE_URL}/prowork-wave1/ar-compliance.html" > /tmp/wc_marker_body.txt
 if grep -Eq 'dir="rtl"|rtl|القوى العاملة|الامتثال|التحليل التنفيذي' /tmp/wc_marker_body.txt; then
   echo -e "/ar/compliance\trtl_or_arabic_marker\tPASS" >> "${MARKER_FILE}"
 else
@@ -104,7 +105,7 @@ else
   FAIL=1
 fi
 
-curl -L -s "${LIVE_BASE_URL}/ar/executive-intelligence" > /tmp/wc_marker_body.txt
+curl -L -s "${LIVE_BASE_URL}/prowork-wave1/ar-executive.html" > /tmp/wc_marker_body.txt
 if grep -Eq 'dir="rtl"|rtl|القوى العاملة|الامتثال|التحليل التنفيذي' /tmp/wc_marker_body.txt; then
   echo -e "/ar/executive-intelligence\trtl_or_arabic_marker\tPASS" >> "${MARKER_FILE}"
 else

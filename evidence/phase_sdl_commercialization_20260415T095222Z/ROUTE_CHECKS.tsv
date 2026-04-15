@@ -1,0 +1,17 @@
+route	http_code	result
+/	200	PASS
+/control-tower	200	PASS
+/operations	200	PASS
+/verticals	200	PASS
+/onboarding	200	PASS
+/workforce	200	PASS
+/compliance	200	PASS
+/executive-intelligence	200	PASS
+/ar	200	PASS
+/ar/control-tower	200	PASS
+/ar/operations	200	PASS
+/ar/verticals	200	PASS
+/ar/onboarding	200	PASS
+/ar/workforce	200	PASS
+/ar/compliance	200	PASS
+/ar/executive-intelligence	200	PASS

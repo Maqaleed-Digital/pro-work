@@ -1,0 +1,16 @@
+page	marker	result
+/workforce	42	PASS
+/workforce	18	PASS
+/workforce	9	PASS
+/workforce	1.2M SAR	PASS
+/workforce	78%	PASS
+/compliance	Green	PASS
+/compliance	92%	PASS
+/compliance	2	PASS
+/compliance	5	PASS
+/executive-intelligence	84%	PASS
+/executive-intelligence	91%	PASS
+/executive-intelligence	Low	PASS
+/ar/workforce	rtl_or_arabic_marker	PASS
+/ar/compliance	rtl_or_arabic_marker	PASS
+/ar/executive-intelligence	rtl_or_arabic_marker	PASS

@@ -1,0 +1,4 @@
+CANONICAL_DEMO_SEQUENCE=LOCKED
+PRIMARY_ENGLISH=/>/control-tower>/workforce>/compliance>/executive-intelligence
+PRIMARY_ARABIC=/ar>/ar/control-tower>/ar/workforce>/ar/compliance>/ar/executive-intelligence
+MESSAGE=CONTROL_WORKFORCE_COMPLIANCE_AND_AI_EXECUTION
