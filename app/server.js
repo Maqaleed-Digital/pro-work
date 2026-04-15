@@ -600,8 +600,10 @@ function saveTenantStore(tenantId) {
   fs.writeFileSync(path.join(dir, "assignments.json"),    JSON.stringify(Array.from(t.wosAssignments.entries()), null, 2))
   fs.writeFileSync(path.join(dir, "evidence.json"),       JSON.stringify(t.wosEvidenceEvents,                   null, 2))
   fs.writeFileSync(path.join(dir, "evidence_packs.json"), JSON.stringify(t.evidencePacks || [],                 null, 2))
-  fs.writeFileSync(path.join(dir, "consents.json"),       JSON.stringify(t.consents      || [],                 null, 2))
-  fs.writeFileSync(path.join(dir, "wps_salaries.json"),   JSON.stringify(t.wpsSalaries   || [],                 null, 2))
+  fs.writeFileSync(path.join(dir, "consents.json"),        JSON.stringify(t.consents        || [], null, 2))
+  fs.writeFileSync(path.join(dir, "wps_salaries.json"),   JSON.stringify(t.wpsSalaries     || [], null, 2))
+  fs.writeFileSync(path.join(dir, "identity_tokens.json"),JSON.stringify(t.identityTokens  || [], null, 2))
+  fs.writeFileSync(path.join(dir, "identity_graph.json"), JSON.stringify(t.identityGraph   || [], null, 2))
 }
 
 function loadAllTenants() {
@@ -642,6 +644,10 @@ function loadAllTenants() {
     if (Array.isArray(consents)) t.consents = consents
     const wpsSalaries = tryLoad("wps_salaries.json")
     if (Array.isArray(wpsSalaries)) t.wpsSalaries = wpsSalaries
+    const identityTokens = tryLoad("identity_tokens.json")
+    if (Array.isArray(identityTokens)) t.identityTokens = identityTokens
+    const identityGraph = tryLoad("identity_graph.json")
+    if (Array.isArray(identityGraph)) t.identityGraph = identityGraph
     console.log(`[persist] loaded tenant "${tid}": ${t.wosWorkers.size} workers, ${t.wosAssignments.size} assignments, ${t.wosEvidenceEvents.length} events`)
   }
 }
@@ -1418,6 +1424,16 @@ function matchRoute(method, pathname) {
   if (m === "DELETE" && consentDelMatch)                                  return { name: "admin.consents.withdraw", params: { id: consentDelMatch[1] } }
   if (m === "GET"  && pathname === "/api/admin/wps/salary-pack")         return { name: "admin.wps.list",         params: {} }
   if (m === "POST" && pathname === "/api/admin/wps/salary-pack")         return { name: "admin.wps.create",       params: {} }
+
+  // Sprint S29: Work Identity Layer
+  if (m === "GET"  && pathname === "/api/identity/summary")              return { name: "identity.summary",      params: {} }
+  if (m === "GET"  && pathname === "/api/identity/tokens")               return { name: "identity.tokens.list",  params: {} }
+  if (m === "POST" && pathname === "/api/identity/tokens/issue")         return { name: "identity.tokens.issue", params: {} }
+  if (m === "GET"  && pathname === "/api/identity/graph")                return { name: "identity.graph",        params: {} }
+  const identityTokenIdMatch  = pathname.match(/^\/api\/identity\/tokens\/([^/]+)$/)
+  if (m === "GET"  && identityTokenIdMatch)                              return { name: "identity.tokens.get",   params: { id: identityTokenIdMatch[1] } }
+  const identityWorkerIdMatch = pathname.match(/^\/api\/identity\/workers\/([^/]+)$/)
+  if (m === "GET"  && identityWorkerIdMatch)                             return { name: "identity.workers.get",  params: { workerId: identityWorkerIdMatch[1] } }
 
   // Sprint D: trust ledger, export, ERI
   if (m === "GET"  && pathname === "/api/admin/trust-ledger")             return { name: "admin.trust_ledger.list",             params: {} }
@@ -4543,6 +4559,282 @@ if (route.name === "admin.scheduler.preview") {
       })
       schedulePersist(tenantId)
       return ok(res, pack, 201)
+    }
+
+    // ── Sprint S29: Work Identity Layer ──────────────────────────────────────
+
+    // Helper: derive tokens from existing trusted records (idempotent)
+    function deriveIdentityTokens(tenant) {
+      if (!tenant.identityTokens) tenant.identityTokens = []
+      const existing = new Set(tenant.identityTokens.map(t => t.source_key))
+      const issued   = []
+      const now      = nowIso()
+
+      // Assignments → PROJECT_COMPLETION_TOKEN
+      for (const [, asgn] of tenant.wosAssignments) {
+        const key = `assignment:${asgn.id}`
+        if (!existing.has(key)) {
+          const tok = {
+            id:              "tok-" + Date.now() + "-" + Math.random().toString(36).slice(2,6),
+            token_type:      "PROJECT_COMPLETION_TOKEN",
+            owner_worker_id: asgn.worker_id,
+            source_type:     "assignment",
+            source_id:       asgn.id,
+            source_key:      key,
+            evidence_ref:    null,
+            status:          "ISSUED",
+            issued_at:       now,
+            metadata:        { pod_id: asgn.pod_id, role: asgn.role, state: asgn.state },
+          }
+          tenant.identityTokens.push(tok)
+          existing.add(key)
+          issued.push(tok)
+        }
+      }
+
+      // WPS ready → COMPLIANCE_VERIFICATION_TOKEN
+      for (const sal of (tenant.wpsSalaries || [])) {
+        if (sal.wps_status !== "ready") continue
+        const key = `wps:${sal.worker_id}:${sal.payment_period}`
+        if (!existing.has(key)) {
+          const tok = {
+            id:              "tok-" + Date.now() + "-" + Math.random().toString(36).slice(2,6),
+            token_type:      "COMPLIANCE_VERIFICATION_TOKEN",
+            owner_worker_id: sal.worker_id,
+            source_type:     "wps_salary",
+            source_id:       sal.id,
+            source_key:      key,
+            evidence_ref:    null,
+            status:          "ISSUED",
+            issued_at:       now,
+            metadata:        { verification_type: "WPS_IBAN", payment_period: sal.payment_period },
+          }
+          tenant.identityTokens.push(tok)
+          existing.add(key)
+          issued.push(tok)
+        }
+      }
+
+      // Active consents → COMPLIANCE_VERIFICATION_TOKEN (PDPL)
+      for (const consent of (tenant.consents || [])) {
+        if (consent.withdrawn_at) continue
+        const key = `consent:${consent.id}`
+        if (!existing.has(key)) {
+          const tok = {
+            id:              "tok-" + Date.now() + "-" + Math.random().toString(36).slice(2,6),
+            token_type:      "COMPLIANCE_VERIFICATION_TOKEN",
+            owner_worker_id: consent.worker_id,
+            source_type:     "pdpl_consent",
+            source_id:       consent.id,
+            source_key:      key,
+            evidence_ref:    null,
+            status:          "ISSUED",
+            issued_at:       now,
+            metadata:        { verification_type: "PDPL_CONSENT", scope: consent.scope },
+          }
+          tenant.identityTokens.push(tok)
+          existing.add(key)
+          issued.push(tok)
+        }
+      }
+
+      return issued
+    }
+
+    // Helper: derive identity graph from pod co-membership (idempotent)
+    function deriveIdentityGraph(tenant) {
+      if (!tenant.identityGraph) tenant.identityGraph = []
+      const existingEdges = new Set(tenant.identityGraph.map(e => e.edge_key))
+      const added = []
+      const now   = nowIso()
+
+      // Group assignments by pod
+      const podMap = {}
+      for (const [, asgn] of tenant.wosAssignments) {
+        if (!podMap[asgn.pod_id]) podMap[asgn.pod_id] = []
+        podMap[asgn.pod_id].push(asgn)
+      }
+
+      // WORKED_WITH: co-members in same pod
+      for (const [podId, members] of Object.entries(podMap)) {
+        for (let i = 0; i < members.length; i++) {
+          for (let j = i + 1; j < members.length; j++) {
+            const a = members[i], b = members[j]
+            const key = `WORKED_WITH:${[a.worker_id,b.worker_id].sort().join(":")}:${podId}`
+            if (!existingEdges.has(key)) {
+              const edge = {
+                id:            "rel-" + Date.now() + "-" + Math.random().toString(36).slice(2,6),
+                relation_type: "WORKED_WITH",
+                from_worker_id: a.worker_id,
+                to_worker_id:   b.worker_id,
+                source_type:    "pod_assignment",
+                source_id:      podId,
+                edge_key:       key,
+                established_at: now,
+                metadata:       { pod_id: podId },
+              }
+              tenant.identityGraph.push(edge)
+              existingEdges.add(key)
+              added.push(edge)
+            }
+          }
+        }
+      }
+
+      // COMPLETED_PROJECT: worker → pod
+      for (const [, asgn] of tenant.wosAssignments) {
+        const key = `COMPLETED_PROJECT:${asgn.worker_id}:${asgn.pod_id}`
+        if (!existingEdges.has(key)) {
+          const edge = {
+            id:            "rel-" + Date.now() + "-" + Math.random().toString(36).slice(2,6),
+            relation_type: "COMPLETED_PROJECT",
+            from_worker_id: asgn.worker_id,
+            to_worker_id:   null,
+            source_type:    "assignment",
+            source_id:      asgn.id,
+            edge_key:       key,
+            established_at: now,
+            metadata:       { pod_id: asgn.pod_id, role: asgn.role },
+          }
+          tenant.identityGraph.push(edge)
+          existingEdges.add(key)
+          added.push(edge)
+        }
+      }
+
+      // PASSED_COMPLIANCE: workers with WPS ready
+      for (const sal of (tenant.wpsSalaries || [])) {
+        if (sal.wps_status !== "ready") continue
+        const key = `PASSED_COMPLIANCE:${sal.worker_id}:WPS`
+        if (!existingEdges.has(key)) {
+          const edge = {
+            id:            "rel-" + Date.now() + "-" + Math.random().toString(36).slice(2,6),
+            relation_type: "PASSED_COMPLIANCE",
+            from_worker_id: sal.worker_id,
+            to_worker_id:   null,
+            source_type:    "wps_salary",
+            source_id:      sal.id,
+            edge_key:       key,
+            established_at: now,
+            metadata:       { compliance_type: "WPS_IBAN" },
+          }
+          tenant.identityGraph.push(edge)
+          existingEdges.add(key)
+          added.push(edge)
+        }
+      }
+
+      return added
+    }
+
+    if (route.name === "identity.tokens.issue") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      const tenant       = getTenantStore(tenantId)
+      const newTokens    = deriveIdentityTokens(tenant)
+      const newEdges     = deriveIdentityGraph(tenant)
+      if (newTokens.length > 0 || newEdges.length > 0) {
+        emitWosEvidenceEvent(tenantId, {
+          actor: ap.principal.id, action: "identity.tokens.derived",
+          entity_type: "identity", entity_id: "batch",
+          data: { tokens_issued: newTokens.length, graph_edges_added: newEdges.length },
+        })
+        schedulePersist(tenantId)
+      }
+      return ok(res, {
+        tokens_issued:      newTokens.length,
+        graph_edges_added:  newEdges.length,
+        tokens:             newTokens,
+        edges:              newEdges,
+      }, 201)
+    }
+
+    if (route.name === "identity.summary") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      const tenant = getTenantStore(tenantId)
+      const tokens = tenant.identityTokens || []
+      const graph  = tenant.identityGraph  || []
+      const byType = {}
+      tokens.forEach(t => { byType[t.token_type] = (byType[t.token_type] || 0) + 1 })
+      const byRelation = {}
+      graph.forEach(e => { byRelation[e.relation_type] = (byRelation[e.relation_type] || 0) + 1 })
+      const tokenWorkers = new Set(tokens.map(t => t.owner_worker_id))
+      return ok(res, {
+        total_tokens:       tokens.length,
+        total_graph_edges:  graph.length,
+        token_workers:      tokenWorkers.size,
+        tokens_by_type:     byType,
+        edges_by_relation:  byRelation,
+        issued_tokens:      tokens.filter(t => t.status === "ISSUED").length,
+        revoked_tokens:     tokens.filter(t => t.status === "REVOKED").length,
+      })
+    }
+
+    if (route.name === "identity.tokens.list") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      const tenant  = getTenantStore(tenantId)
+      const url     = new URL("http://x" + req.url)
+      const wid     = url.searchParams.get("worker_id")
+      const ttype   = url.searchParams.get("token_type")
+      let items     = tenant.identityTokens || []
+      if (wid)   items = items.filter(t => t.owner_worker_id === wid)
+      if (ttype) items = items.filter(t => t.token_type === ttype)
+      return ok(res, { items, total: items.length })
+    }
+
+    if (route.name === "identity.tokens.get") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      const tenant = getTenantStore(tenantId)
+      const tok    = (tenant.identityTokens || []).find(t => t.id === route.params.id)
+      if (!tok) return fail(res, "NOT_FOUND", "Token not found", 404)
+      return ok(res, tok)
+    }
+
+    if (route.name === "identity.graph") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      const tenant  = getTenantStore(tenantId)
+      const url     = new URL("http://x" + req.url)
+      const wid     = url.searchParams.get("worker_id")
+      const rtype   = url.searchParams.get("relation_type")
+      let items     = tenant.identityGraph || []
+      if (wid)   items = items.filter(e => e.from_worker_id === wid || e.to_worker_id === wid)
+      if (rtype) items = items.filter(e => e.relation_type === rtype)
+      return ok(res, { items, total: items.length })
+    }
+
+    if (route.name === "identity.workers.get") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      const tenant   = getTenantStore(tenantId)
+      const wid      = route.params.workerId
+      const worker   = tenant.wosWorkers.get(wid)
+      if (!worker) return fail(res, "NOT_FOUND", "Worker not found", 404)
+      const tokens   = (tenant.identityTokens || []).filter(t => t.owner_worker_id === wid)
+      const edges    = (tenant.identityGraph  || []).filter(e => e.from_worker_id === wid || e.to_worker_id === wid)
+      const wps      = (tenant.wpsSalaries    || []).find(s => s.worker_id === wid)
+      const consent  = (tenant.consents       || []).find(c => c.worker_id === wid && !c.withdrawn_at)
+      const tokensByType = {}
+      tokens.forEach(t => { tokensByType[t.token_type] = (tokensByType[t.token_type] || 0) + 1 })
+      return ok(res, {
+        worker_id:       wid,
+        name:            worker.name,
+        worker_type:     worker.worker_type,
+        status:          worker.status,
+        iban_verified:   worker.iban_verified || false,
+        pdpl_consented:  !!consent,
+        wps_status:      wps ? wps.wps_status : null,
+        token_count:     tokens.length,
+        tokens_by_type:  tokensByType,
+        tokens:          tokens,
+        graph_edges:     edges,
+        identity_health: tokens.length >= 2 ? "STRONG"
+          : tokens.length === 1 ? "BUILDING"
+          : "UNVERIFIED",
+      })
     }
 
     return methodNotAllowed(res)
