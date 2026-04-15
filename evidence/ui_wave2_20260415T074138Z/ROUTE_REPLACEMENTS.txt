@@ -1,0 +1,6 @@
+APP_ROUTER_FILES_REPLACED:
+prowork_runtime/web/src/app/page.tsx (replaced - backup in .wave2_backup_*)
+prowork_runtime/web/src/app/control-tower/page.tsx (created)
+prowork_runtime/web/src/app/operations/page.tsx (created)
+prowork_runtime/web/src/app/verticals/page.tsx (created)
+prowork_runtime/web/src/app/onboarding/page.tsx (created)

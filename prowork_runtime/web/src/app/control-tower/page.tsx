@@ -3,7 +3,7 @@ export default function ProWorkRuntimePage() {
     <main style={{ margin: 0, padding: 0, minHeight: "100vh", background: "#090e1d" }}>
       <iframe
         title="ProWork Runtime"
-        src="/prowork-wave1/index.html"
+        src="/prowork-wave1/control-tower.html"
         style={{
           width: "100%",
           minHeight: "100vh",

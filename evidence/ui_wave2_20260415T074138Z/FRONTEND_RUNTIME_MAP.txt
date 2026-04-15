@@ -1,0 +1,8 @@
+PROJECT_ROOT=/Users/waheebmahmoud/dev/pro-work
+FRONTEND_ROOT=prowork_runtime/web
+ROUTER_MODE=app
+NEXT_VERSION=15.5.7
+NEXT_PACKAGE_JSON=prowork_runtime/web/package.json
+UI_WAVE1_SOURCE=ui_wave1
+PUBLIC_TARGET=prowork_runtime/web/public/prowork-wave1
+DISCOVERY_NOTE=explicit_target_multi_frontend_repo
