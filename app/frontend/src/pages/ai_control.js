@@ -122,6 +122,78 @@ export default {
       toast.err(e.message)
     })
 
+    // Override capture card
+    const overrideCard = document.createElement("div")
+    overrideCard.className = "card"
+    overrideCard.style.marginTop = "16px"
+    overrideCard.innerHTML = `
+      <div class="card-title">✍️ Override Capture</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:14px">
+        Record a human override — overrides are immutably logged to the audit trail.
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)">
+          Override Type
+          <select id="override-type" style="padding:8px 10px;border:1px solid var(--border);border-radius:10px;font-size:13px">
+            <option value="workforce.allocation">Workforce Allocation</option>
+            <option value="compliance.exception">Compliance Exception</option>
+            <option value="probation.extension">Probation Extension</option>
+            <option value="wps.manual">WPS Manual Adjustment</option>
+            <option value="evidence.correction">Evidence Correction</option>
+          </select>
+        </label>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)">
+          Reference (worker/pack ID)
+          <input id="override-ref" type="text" placeholder="e.g. w-001 or EP-001"
+            style="padding:8px 10px;border:1px solid var(--border);border-radius:10px;font-size:13px">
+        </label>
+      </div>
+      <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);margin-bottom:12px">
+        Rationale (required)
+        <textarea id="override-rationale" rows="3" placeholder="Explain why this override is necessary…"
+          style="padding:8px 10px;border:1px solid var(--border);border-radius:10px;font-size:13px;resize:vertical"></textarea>
+      </label>
+      <button id="override-submit" class="btn btn-danger">Record Override</button>
+      <div id="override-result" style="margin-top:10px;font-size:13px"></div>`
+    container.appendChild(overrideCard)
+
+    document.getElementById("override-submit").addEventListener("click", async () => {
+      const type      = document.getElementById("override-type").value
+      const ref       = document.getElementById("override-ref").value.trim()
+      const rationale = document.getElementById("override-rationale").value.trim()
+      const resultEl  = document.getElementById("override-result")
+      if (!rationale) { toast.err("Rationale is required"); return }
+
+      const btn = document.getElementById("override-submit")
+      btn.disabled = true; btn.textContent = "Recording…"
+      try {
+        const token  = localStorage.getItem("pw_token") || ""
+        const tenant = localStorage.getItem("pw_tenant") || "default"
+        const res = await fetch("/api/admin/evidence", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: "Bearer " + token, "x-tenant-id": tenant },
+          body: JSON.stringify({
+            actor:       "HUMAN_OVERRIDE",
+            action:      "ai.override.recorded",
+            entity_type: "override",
+            entity_id:   ref || "manual",
+            data:        { override_type: type, reference: ref, rationale, reviewer: "operator" },
+          })
+        })
+        if (!res.ok) throw new Error((await res.json()).error || "Failed")
+        const ev = await res.json()
+        resultEl.innerHTML = `<span class="check-status pass">RECORDED</span> Event ID: ${ev.data?.id || ev.id || "logged"}`
+        toast.ok("Override recorded to audit trail")
+        document.getElementById("override-rationale").value = ""
+        document.getElementById("override-ref").value = ""
+      } catch(e) {
+        resultEl.innerHTML = `<span class="check-status fail">ERROR</span> ${e.message}`
+        toast.err(e.message)
+      } finally {
+        btn.disabled = false; btn.textContent = "Record Override"
+      }
+    })
+
     // Governance rules — hard-enforced display
     const rulesCard = document.createElement("div")
     rulesCard.className = "card"

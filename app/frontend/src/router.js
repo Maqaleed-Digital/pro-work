@@ -16,6 +16,8 @@ import trust_ledger from "./pages/trust_ledger.js"
 import eri          from "./pages/eri.js"
 import pdpl         from "./pages/pdpl.js"
 import wps          from "./pages/wps.js"
+import payments     from "./pages/payments.js"
+import identity     from "./pages/identity.js"
 
 const ROUTES = {
   "dashboard":    dashboard,
@@ -34,6 +36,8 @@ const ROUTES = {
   "eri":          eri,
   "pdpl":         pdpl,
   "wps":          wps,
+  "payments":     payments,
+  "identity":     identity,
 }
 
 const DEFAULT = "dashboard"

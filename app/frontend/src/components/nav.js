@@ -22,6 +22,8 @@ const TABS = [
   { key: "eri",          label: "⚠ ERI"             },
   { key: "pdpl",         label: "🔒 PDPL"           },
   { key: "wps",          label: "💳 WPS"            },
+  { key: "payments",     label: "💰 Payments"       },
+  { key: "identity",     label: "🪪 Identity"       },
   { key: "governance",   label: "🏛 Governance"     },
   { key: "analytics",    label: "📊 Analytics"      },
   { key: "tenants",      label: "🏢 Tenants"        },

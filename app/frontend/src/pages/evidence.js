@@ -1,4 +1,4 @@
-import { apiGet, apiPost, getTenant } from "../api.js"
+import { apiGet, apiGetJson, apiPost, getTenant } from "../api.js"
 import { toast } from "../components/toast.js"
 
 function epItem(pack) {
@@ -132,6 +132,51 @@ export default {
     })
 
     loadPacks()
+
+    // ── Audit timeline card ───────────────────────────────────────────────────
+    const timelineCard = document.createElement("div")
+    timelineCard.className = "card"
+    timelineCard.style.marginTop = "16px"
+    timelineCard.innerHTML = `<div class="card-title">🕐 Audit Event Timeline</div>`
+    const timelineBody = document.createElement("div")
+    timelineBody.innerHTML = '<div class="page-load">Loading timeline…</div>'
+    timelineCard.appendChild(timelineBody)
+    container.appendChild(timelineCard)
+
+    apiGetJson("/api/admin/evidence", { limit: 20 })
+      .then(data => {
+        timelineBody.innerHTML = ""
+        const events = (data.items || []).slice().reverse()
+        if (events.length === 0) {
+          timelineBody.innerHTML = '<div style="font-size:13px;color:var(--muted)">No audit events yet</div>'
+          return
+        }
+        const tl = document.createElement("div")
+        tl.style.cssText = "display:flex;flex-direction:column;gap:0;position:relative"
+        events.forEach((ev, i) => {
+          const row = document.createElement("div")
+          row.style.cssText = "display:flex;gap:14px;padding:10px 0;border-bottom:1px solid var(--border)"
+          const actionCls = ev.action?.includes("pdpl") ? "green"
+            : ev.action?.includes("wps") ? "gold"
+            : ev.action?.includes("override") ? "red"
+            : ev.action?.includes("consent") ? "green"
+            : "pending"
+          row.innerHTML = `
+            <div style="font-family:monospace;font-size:11px;color:var(--muted);white-space:nowrap;min-width:140px">
+              ${ev.ts ? new Date(ev.ts).toLocaleString() : "—"}
+            </div>
+            <div style="flex:1">
+              <span class="ep-status ${actionCls}" style="margin-right:8px">${ev.action || ev.event_type || "event"}</span>
+              <span style="font-size:12px;color:var(--muted)">${ev.actor || "system"}</span>
+              ${ev.entity_id ? `<span style="font-size:11px;color:var(--muted);margin-left:8px">${ev.entity_type || ""}:${ev.entity_id}</span>` : ""}
+            </div>`
+          tl.appendChild(row)
+        })
+        timelineBody.appendChild(tl)
+      })
+      .catch(() => {
+        timelineBody.innerHTML = '<div style="font-size:13px;color:var(--muted)">Timeline unavailable</div>'
+      })
 
     // ── Schema card ───────────────────────────────────────────────────────────
     const schemaCard = document.createElement("div")

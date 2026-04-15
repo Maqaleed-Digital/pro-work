@@ -32,10 +32,36 @@ export default {
     loading.textContent = "Loading compliance status…"
     container.appendChild(loading)
 
-    apiGet("/api/sovereign/status")
-      .catch(() => null)
-      .then(sovereign => {
+    Promise.all([
+      apiGet("/api/sovereign/status").catch(() => null),
+      apiGet("/api/admin/eri").catch(() => null),
+      apiGet("/api/admin/consents").catch(() => null),
+      apiGet("/api/admin/wps/salary-pack").catch(() => null),
+    ]).then(([sovereign, eri, consents, wps]) => {
         loading.remove()
+
+        // Compliance alert strip
+        const alerts = []
+        const eriHigh = (eri?.items || []).filter(e => e.risk_level === "HIGH").length
+        const wpsPending = (wps?.items || []).filter(s => s.wps_status !== "ready").length
+        const activeConsents = (consents?.items || []).filter(c => !c.withdrawn_at).length
+        if (eriHigh > 0)     alerts.push({ text: `${eriHigh} high-risk worker(s) detected by ERI`, cls: "fail",  btn: "eri" })
+        if (wpsPending > 0)  alerts.push({ text: `${wpsPending} WPS record(s) incomplete`, cls: "warn", btn: "wps" })
+        if (activeConsents === 0) alerts.push({ text: "No PDPL consents active — review consent register", cls: "warn", btn: "pdpl" })
+
+        if (alerts.length > 0) {
+          const alertBar = document.createElement("div")
+          alertBar.style.cssText = "display:flex;flex-direction:column;gap:8px;margin-bottom:16px"
+          alerts.forEach(a => {
+            const item = document.createElement("div")
+            item.style.cssText = `display:flex;align-items:center;gap:12px;padding:10px 16px;border-radius:10px;background:var(--bg);border:1px solid var(--border)`
+            item.innerHTML = `<span class="check-status ${a.cls}" style="white-space:nowrap">${a.cls === "fail" ? "URGENT" : "ACTION"}</span>
+              <span style="flex:1;font-size:13px">${a.text}</span>
+              <button class="btn btn-primary btn-sm" onclick="location.hash='${a.btn}'">Review →</button>`
+            alertBar.appendChild(item)
+          })
+          container.appendChild(alertBar)
+        }
 
         const grid = document.createElement("div")
         grid.className = "cc-grid-2"
@@ -62,13 +88,16 @@ export default {
         grid.appendChild(wrapCard("Nitaqat Status", [zoneEl, nitaqatChecks]))
 
         // ── WPS Readiness card ────────────────────────────────
-        const wpsPending = sovereign?.wps_pending || 0
+        const wpsItems   = wps?.items || []
+        const wpsReady   = wpsItems.filter(s => s.wps_status === "ready").length
+        const wpsPendingCount = wpsItems.length - wpsReady
         const wpsChecks = document.createElement("div")
         wpsChecks.className = "check-list"
-        wpsChecks.appendChild(checkItem("🏦", `IBAN verification — ${wpsPending} pending`,
-          wpsPending > 0 ? "ACTION" : "PASS", wpsPending > 0 ? "fail" : "pass"))
-        wpsChecks.appendChild(checkItem("🪪", "Identity documents collected",
-          sovereign?.id_docs_ok ? "PASS" : "PENDING", sovereign?.id_docs_ok ? "pass" : "warn"))
+        wpsChecks.appendChild(checkItem("🏦", `IBAN verification — ${wpsPendingCount > 0 ? wpsPendingCount + " pending" : "all verified"}`,
+          wpsPendingCount > 0 ? "ACTION" : "PASS", wpsPendingCount > 0 ? "fail" : "pass"))
+        wpsChecks.appendChild(checkItem("📦", `Salary records — ${wpsReady} ready / ${wpsItems.length} total`,
+          wpsReady === wpsItems.length && wpsItems.length > 0 ? "PASS" : "PENDING",
+          wpsReady === wpsItems.length && wpsItems.length > 0 ? "pass" : "warn"))
         wpsChecks.appendChild(checkItem("✅", "Bank confirmation artifacts",
           sovereign?.bank_conf_ok ? "PASS" : "PENDING", sovereign?.bank_conf_ok ? "pass" : "warn"))
         wpsChecks.appendChild(checkItem("📦", "WPS-ready salary data package", "CONFIGURED", "pass"))
@@ -110,6 +139,24 @@ export default {
         esbBtn.addEventListener("click", () => toast.ok("ESB calculation engine ready"))
 
         grid.appendChild(wrapCard("ESB Calculator", [esbInfo, esbBtn]))
+
+        // ── PDPL / Consent card ───────────────────────────────
+        const pdplChecks = document.createElement("div")
+        pdplChecks.className = "check-list"
+        pdplChecks.appendChild(checkItem("✅", `Active consents — ${activeConsents} workers`,
+          activeConsents > 0 ? "ACTIVE" : "ACTION", activeConsents > 0 ? "pass" : "fail"))
+        pdplChecks.appendChild(checkItem("🔒", "PII redaction in export", "ACTIVE", "pass"))
+        pdplChecks.appendChild(checkItem("📋", "Consent / withdrawal audit trail", "ACTIVE", "pass"))
+        pdplChecks.appendChild(checkItem("⚠️", "DSR portal", "PENDING", "warn"))
+        pdplChecks.appendChild(checkItem("⚠️", "Cross-border DPIA template", "PENDING", "warn"))
+
+        const pdplBtn = document.createElement("button")
+        pdplBtn.className = "btn btn-primary"
+        pdplBtn.style.marginTop = "14px"
+        pdplBtn.textContent = "Open PDPL Console"
+        pdplBtn.addEventListener("click", () => { location.hash = "pdpl" })
+
+        grid.appendChild(wrapCard("PDPL Compliance", [pdplChecks, pdplBtn]))
       })
   }
 }

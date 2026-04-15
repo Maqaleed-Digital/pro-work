@@ -81,8 +81,11 @@ export default {
     qa.appendChild(qaBtn("⚡", "Assign Worker",     "assignments"))
     qa.appendChild(qaBtn("📄", "Generate Contract", "governance"))
     qa.appendChild(qaBtn("🔍", "Evidence Pack",     "evidence"))
-    qa.appendChild(qaBtn("⚖️", "Compliance Check",  "compliance"))
+    qa.appendChild(qaBtn("⚖️", "Compliance",        "compliance"))
     qa.appendChild(qaBtn("🤖", "AI Control",        "ai_control"))
+    qa.appendChild(qaBtn("💳", "Payments",          "payments"))
+    qa.appendChild(qaBtn("👤", "Identity",          "identity"))
+    qa.appendChild(qaBtn("🔒", "PDPL",              "pdpl"))
     container.appendChild(qa)
 
     // KPI strip — placeholder until data loads
@@ -112,13 +115,53 @@ export default {
     grid.appendChild(aiPlaceholder)
     grid.appendChild(activityPlaceholder)
 
+    // ERI risk strip placeholder
+    const eriStrip = document.createElement("div")
+    eriStrip.style.cssText = "display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap"
+    eriStrip.innerHTML = '<div class="page-load" style="flex:1">Loading risk data…</div>'
+    container.insertBefore(eriStrip, grid)
+
     Promise.all([
       apiGet("/api/admin/health"),
       apiGetJson("/api/admin/evidence", { limit: 10 }),
       apiGet("/api/admin/governance/closure").catch(() => null),
       apiGet("/api/sovereign/status").catch(() => null),
-    ]).then(([health, evidence, closure, sovereign]) => {
+      apiGet("/api/admin/eri").catch(() => null),
+      apiGet("/api/admin/consents").catch(() => null),
+    ]).then(([health, evidence, closure, sovereign, eri, consents]) => {
       const counts = health.counts || {}
+
+      // ERI risk strip
+      const eriSummary = eri?.summary || {}
+      const eriItems   = eri?.items   || []
+      eriStrip.innerHTML = ""
+      const eriDefs = [
+        ["High Risk",   eriSummary.high   ?? "—", "workers",  eriSummary.high   > 0 ? "red"   : ""],
+        ["Medium Risk", eriSummary.medium ?? "—", "workers",  eriSummary.medium > 0 ? "amber" : ""],
+        ["Low Risk",    eriSummary.low    ?? "—", "workers",  ""],
+        ["Clear",       eriSummary.clear  ?? "—", "no issues","green"],
+      ]
+      eriDefs.forEach(([l, v, s, c]) => {
+        const d = document.createElement("div")
+        d.className = "kpi-card " + c
+        d.style.cssText = "flex:1;min-width:100px;cursor:pointer"
+        d.innerHTML = `<div class="kpi-label">${l}</div><div class="kpi-value">${v}</div><div class="kpi-sub">${s}</div>`
+        d.addEventListener("click", () => { location.hash = "eri" })
+        eriStrip.appendChild(d)
+      })
+      // Top ERI risk workers
+      const topRisk = eriItems.filter(e => e.risk_level !== "CLEAR").slice(0, 3)
+      if (topRisk.length > 0) {
+        const topCard = document.createElement("div")
+        topCard.className = "kpi-card amber"
+        topCard.style.cssText = "flex:2;cursor:pointer"
+        topCard.innerHTML = `<div class="kpi-label">Top Risk Workers</div>
+          <div style="font-size:12px;margin-top:4px">${topRisk.map(w =>
+            `<span style="margin-right:10px">⚠ ${w.name || w.worker_id} <strong>${w.eri_score}</strong></span>`
+          ).join("")}</div>`
+        topCard.addEventListener("click", () => { location.hash = "eri" })
+        eriStrip.appendChild(topCard)
+      }
 
       // KPI strip
       kpiStrip.innerHTML = ""
@@ -143,6 +186,11 @@ export default {
         signals.push([`${sovereign.probation_expiring} probations expiring`, "red", "URGENT"])
       if (closure && closure.open_gates > 0)
         signals.push([`${closure.open_gates} governance gates open`, "amber", "REVIEW"])
+      const activeConsents = (consents?.items || []).filter(c => !c.withdrawn_at).length
+      if (activeConsents === 0)
+        signals.push(["No PDPL consents recorded — check consent register", "amber", "PDPL"])
+      if (eriSummary.high > 0)
+        signals.push([`ERI: ${eriSummary.high} high-risk worker(s)`, "red", "URGENT"])
       if (signals.length === 0)
         signals.push(["All systems operating normally",        "green", "OK"])
 
