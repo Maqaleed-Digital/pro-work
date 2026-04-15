@@ -10,6 +10,8 @@ import governance  from "./pages/governance.js"
 import tenants     from "./pages/tenants.js"
 import analytics   from "./pages/analytics.js"
 import system      from "./pages/system.js"
+import compliance  from "./pages/compliance.js"
+import ai_control  from "./pages/ai_control.js"
 
 const ROUTES = {
   "dashboard":   dashboard,
@@ -22,6 +24,8 @@ const ROUTES = {
   "tenants":     tenants,
   "analytics":   analytics,
   "system":      system,
+  "compliance":  compliance,
+  "ai_control":  ai_control,
 }
 
 const DEFAULT = "dashboard"

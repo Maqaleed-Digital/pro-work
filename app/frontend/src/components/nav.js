@@ -1,6 +1,5 @@
 import { getToken, setToken, getTenant, setTenant } from "../api.js"
 
-// S30: live tenant list (null = use hardcoded fallback)
 let _tenantOptions = null
 
 export function setTenantOptions(options) {
@@ -12,16 +11,17 @@ export function clearTenantOptions() {
 }
 
 const TABS = [
-  { key: "dashboard",   label: "Dashboard"   },
-  { key: "workers",     label: "Workers"      },
-  { key: "pods",        label: "Pods"         },
-  { key: "assignments", label: "Assignments"  },
-  { key: "evidence",    label: "Evidence"     },
-  { key: "scheduler",   label: "Scheduler"    },
-  { key: "governance",  label: "Governance"   },
-  { key: "tenants",     label: "Tenants"      },
-  { key: "analytics",   label: "Analytics"    },
-  { key: "system",      label: "System"       },
+  { key: "dashboard",   label: "⌂ Command Center" },
+  { key: "workers",     label: "👥 Workforce"      },
+  { key: "pods",        label: "🔷 Pods"           },
+  { key: "assignments", label: "📋 Execution"      },
+  { key: "ai_control",  label: "🤖 AI Control"     },
+  { key: "compliance",  label: "⚖️ Compliance"     },
+  { key: "evidence",    label: "🧾 Evidence"       },
+  { key: "governance",  label: "🏛 Governance"     },
+  { key: "analytics",   label: "📊 Analytics"      },
+  { key: "tenants",     label: "🏢 Tenants"        },
+  { key: "system",      label: "⚙️ System"         },
 ]
 
 let _signOutCb = null
@@ -35,13 +35,11 @@ export function renderNav(activeKey, onSignOut, onTenantChange) {
   if (!nav) return
   nav.innerHTML = ""
 
-  // brand
   const brand = document.createElement("div")
   brand.className = "brand"
-  brand.textContent = "ProWork Admin"
+  brand.innerHTML = "Work<span>Captain</span>"
   nav.appendChild(brand)
 
-  // tabs
   const tabs = document.createElement("div")
   tabs.className = "tabs"
   TABS.forEach(({ key, label }) => {
@@ -53,27 +51,21 @@ export function renderNav(activeKey, onSignOut, onTenantChange) {
   })
   nav.appendChild(tabs)
 
-  // token + sign-out
   const right = document.createElement("div")
-  right.style.display = "flex"
-  right.style.gap = "8px"
-  right.style.alignItems = "center"
+  right.style.cssText = "display:flex;gap:8px;align-items:center;flex-shrink:0"
 
-  // tenant selector
   const tenantWrap = document.createElement("div")
-  tenantWrap.style.cssText = "display:flex;align-items:center;gap:4px;font-size:12px;color:#888"
+  tenantWrap.className = "tenant-wrap"
   const tenantLabel = document.createElement("span")
   tenantLabel.textContent = "Tenant:"
   const tenantSel = document.createElement("select")
-  tenantSel.style.cssText = "font-size:12px;padding:2px 4px;border-radius:4px;border:1px solid #ccc;cursor:pointer"
   const currentTenant = getTenant()
   const base = _tenantOptions || ["default", "t1", "t2", "t3"]
   const tenantOptions = [...base]
   if (!tenantOptions.includes(currentTenant)) tenantOptions.unshift(currentTenant)
   tenantOptions.forEach(tid => {
     const opt = document.createElement("option")
-    opt.value = tid
-    opt.textContent = tid
+    opt.value = tid; opt.textContent = tid
     if (tid === currentTenant) opt.selected = true
     tenantSel.appendChild(opt)
   })
@@ -89,9 +81,7 @@ export function renderNav(activeKey, onSignOut, onTenantChange) {
   if (token) {
     const badge = document.createElement("div")
     badge.className = "token-badge"
-    badge.textContent = token.length > 12
-      ? token.slice(0, 6) + "…" + token.slice(-4)
-      : token
+    badge.textContent = token.length > 12 ? token.slice(0, 6) + "…" + token.slice(-4) : token
     right.appendChild(badge)
   }
 
