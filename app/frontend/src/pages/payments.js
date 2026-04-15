@@ -1,4 +1,4 @@
-import { apiGet } from "../api.js"
+import { apiGet, getTenant } from "../api.js"
 import { toast } from "../components/toast.js"
 
 function kpi(label, val, sub, cls) {
@@ -99,7 +99,7 @@ export default {
   render(container) {
     container.innerHTML = `
       <div class="page-title">Payments &amp; Escrow</div>
-      <div class="page-sub">WPS salary records · Escrow state · Fee disclosure · Payout visibility</div>`
+      <div class="page-sub">Tenant: ${getTenant()} — WPS salary records · Escrow state · Fee disclosure · Payout visibility</div>`
 
     const strip = document.createElement("div")
     strip.className = "kpi-strip"
@@ -145,6 +145,44 @@ export default {
           </div>`).join("")}
       </div>`
     container.appendChild(pipeCard)
+
+    // PSP Readiness Matrix card (full width)
+    const pspCard = document.createElement("div")
+    pspCard.className = "card"
+    pspCard.style.marginTop = "16px"
+    pspCard.innerHTML = '<div class="card-title">💳 PSP Readiness</div><div class="page-load">Loading PSP matrix…</div>'
+    container.appendChild(pspCard)
+    apiGet("/api/admin/commercial/config")
+      .then(cfg => {
+        pspCard.innerHTML = '<div class="card-title">💳 PSP Readiness Matrix</div>'
+        const tbl = document.createElement("table")
+        tbl.style.cssText = "width:100%;border-collapse:collapse;font-size:13px"
+        tbl.innerHTML = `<thead><tr style="border-bottom:1px solid var(--border)">
+          <th style="text-align:left;padding:6px 4px;color:var(--muted)">Provider</th>
+          <th style="text-align:left;padding:6px 4px;color:var(--muted)">Region</th>
+          <th style="text-align:left;padding:6px 4px;color:var(--muted)">Features</th>
+          <th style="text-align:left;padding:6px 4px;color:var(--muted)">State</th>
+        </tr></thead>`
+        const tbody = document.createElement("tbody")
+        const CLS = { STAGED: "gold", READY_FOR_INTEGRATION: "pass", LIVE: "pass", PLANNED: "pending" }
+        cfg.psp_matrix.forEach(p => {
+          const tr = document.createElement("tr")
+          tr.style.borderBottom = "1px solid var(--border)"
+          tr.innerHTML = `
+            <td style="padding:7px 4px;font-weight:600">${p.provider}</td>
+            <td style="padding:7px 4px;color:var(--muted)">${p.region}</td>
+            <td style="padding:7px 4px;color:var(--muted)">${p.features.join(", ")}</td>
+            <td style="padding:7px 4px"><span class="ep-status ${CLS[p.state] || "pending"}">${p.state}</span></td>`
+          tbody.appendChild(tr)
+        })
+        tbl.appendChild(tbody)
+        pspCard.appendChild(tbl)
+        const note = document.createElement("div")
+        note.style.cssText = "margin-top:12px;font-size:12px;color:var(--muted)"
+        note.textContent = "SAMA licensing PENDING — no provider transitions to LIVE without regulatory proof."
+        pspCard.appendChild(note)
+      })
+      .catch(() => { pspCard.innerHTML = '<div class="card-title">💳 PSP Readiness Matrix</div><div style="font-size:13px;color:var(--muted)">Unavailable</div>' })
 
     apiGet("/api/admin/wps/salary-pack")
       .then(data => {

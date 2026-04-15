@@ -604,6 +604,7 @@ function saveTenantStore(tenantId) {
   fs.writeFileSync(path.join(dir, "wps_salaries.json"),   JSON.stringify(t.wpsSalaries     || [], null, 2))
   fs.writeFileSync(path.join(dir, "identity_tokens.json"),JSON.stringify(t.identityTokens  || [], null, 2))
   fs.writeFileSync(path.join(dir, "identity_graph.json"), JSON.stringify(t.identityGraph   || [], null, 2))
+  fs.writeFileSync(path.join(dir, "commercial_onboarding.json"), JSON.stringify(t.commercialOnboarding || {}, null, 2))
 }
 
 function loadAllTenants() {
@@ -648,6 +649,8 @@ function loadAllTenants() {
     if (Array.isArray(identityTokens)) t.identityTokens = identityTokens
     const identityGraph = tryLoad("identity_graph.json")
     if (Array.isArray(identityGraph)) t.identityGraph = identityGraph
+    const commercialOnboarding = tryLoad("commercial_onboarding.json")
+    if (commercialOnboarding && typeof commercialOnboarding === "object") t.commercialOnboarding = commercialOnboarding
     console.log(`[persist] loaded tenant "${tid}": ${t.wosWorkers.size} workers, ${t.wosAssignments.size} assignments, ${t.wosEvidenceEvents.length} events`)
   }
 }
@@ -1424,6 +1427,14 @@ function matchRoute(method, pathname) {
   if (m === "DELETE" && consentDelMatch)                                  return { name: "admin.consents.withdraw", params: { id: consentDelMatch[1] } }
   if (m === "GET"  && pathname === "/api/admin/wps/salary-pack")         return { name: "admin.wps.list",         params: {} }
   if (m === "POST" && pathname === "/api/admin/wps/salary-pack")         return { name: "admin.wps.create",       params: {} }
+
+  // Sprint S30: Commercial Activation Layer
+  if (m === "GET"  && pathname === "/api/admin/commercial/config")                      return { name: "commercial.config",                params: {} }
+  if (m === "GET"  && pathname === "/api/admin/commercial/onboarding/employer")         return { name: "commercial.onboarding.employer.get", params: {} }
+  if (m === "POST" && pathname === "/api/admin/commercial/onboarding/employer/advance") return { name: "commercial.onboarding.employer.advance", params: {} }
+  if (m === "GET"  && pathname === "/api/admin/commercial/onboarding/summary")          return { name: "commercial.onboarding.summary",    params: {} }
+  const workerOnboardMatch = pathname.match(/^\/api\/admin\/commercial\/onboarding\/worker\/([^/]+)$/)
+  if (m === "GET"  && workerOnboardMatch)                                               return { name: "commercial.onboarding.worker.get",  params: { workerId: workerOnboardMatch[1] } }
 
   // Sprint S29: Work Identity Layer
   if (m === "GET"  && pathname === "/api/identity/summary")              return { name: "identity.summary",      params: {} }
@@ -4834,6 +4845,117 @@ if (route.name === "admin.scheduler.preview") {
         identity_health: tokens.length >= 2 ? "STRONG"
           : tokens.length === 1 ? "BUILDING"
           : "UNVERIFIED",
+      })
+    }
+
+    // ── S30: Commercial Activation Layer ─────────────────────────────────────────
+    if (route.name === "commercial.config") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      return ok(res, {
+        packages: [
+          { id: "starter",    name: "Starter",    price_sar: 2500,  workers_cap: 25,  description: "Up to 25 workers, WPS + PDPL, basic reporting" },
+          { id: "growth",     name: "Growth",     price_sar: 7500,  workers_cap: 100, description: "Up to 100 workers, all compliance modules, AI control" },
+          { id: "enterprise", name: "Enterprise", price_sar: null,  workers_cap: null, description: "Unlimited workers, custom integrations, SLA, dedicated support" },
+        ],
+        psp_matrix: [
+          { provider: "Stripe",     region: "Global",   state: "STAGED",              features: ["card", "ACH", "SEPA"] },
+          { provider: "Tap",        region: "GCC",      state: "STAGED",              features: ["card", "MADA", "STC Pay"] },
+          { provider: "HyperPay",   region: "MENA",     state: "STAGED",              features: ["card", "MADA", "Apple Pay"] },
+          { provider: "PayTabs",    region: "MENA",     state: "PLANNED",             features: ["card", "Fawry"] },
+          { provider: "Payoneer",   region: "Global",   state: "PLANNED",             features: ["payout", "B2B"] },
+          { provider: "Wise",       region: "Global",   state: "PLANNED",             features: ["FX payout", "multi-currency"] },
+        ],
+        sama_licensing_state: "PENDING",
+        wps_integration_state: "READY_FOR_INTEGRATION",
+        commercial_readiness: "STAGED",
+      })
+    }
+
+    if (route.name === "commercial.onboarding.employer.get") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      const tenant = getTenantStore(tenantId)
+      const ob = tenant.commercialOnboarding || {}
+      return ok(res, {
+        employer_step: ob.employer_step || 1,
+        employer_data: ob.employer_data || {},
+        steps: [
+          { step: 1, label: "Company Profile",       status: ob.employer_step > 1 ? "DONE" : ob.employer_step === 1 ? "ACTIVE" : "PENDING" },
+          { step: 2, label: "CR & Trade License",    status: ob.employer_step > 2 ? "DONE" : ob.employer_step === 2 ? "ACTIVE" : "PENDING" },
+          { step: 3, label: "Bank & IBAN Linkage",   status: ob.employer_step > 3 ? "DONE" : ob.employer_step === 3 ? "ACTIVE" : "PENDING" },
+          { step: 4, label: "GOSI Enrollment",       status: ob.employer_step > 4 ? "DONE" : ob.employer_step === 4 ? "ACTIVE" : "PENDING" },
+          { step: 5, label: "Package Activation",    status: ob.employer_step > 5 ? "DONE" : ob.employer_step === 5 ? "ACTIVE" : "PENDING" },
+        ],
+        completed: (ob.employer_step || 1) > 5,
+      })
+    }
+
+    if (route.name === "commercial.onboarding.employer.advance") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      const body = await readJson(req, res).catch(() => null)
+      const { step_data } = body || {}
+      const tenant = getTenantStore(tenantId)
+      if (!tenant.commercialOnboarding) tenant.commercialOnboarding = {}
+      const ob = tenant.commercialOnboarding
+      const currentStep = ob.employer_step || 1
+      if (currentStep > 5) return fail(res, "CONFLICT", "Employer onboarding already completed")
+      if (!ob.employer_data) ob.employer_data = {}
+      if (step_data) Object.assign(ob.employer_data, step_data)
+      ob.employer_step = currentStep + 1
+      ob.employer_updated_at = new Date().toISOString()
+      schedulePersist(tenantId)
+      emitWosEvidenceEvent(tenantId, { action: "commercial.employer.onboarding.step.advanced", actor: ap.token || "admin", entity_type: "onboarding", entity_id: tenantId, step: currentStep })
+      return ok(res, { employer_step: ob.employer_step, completed: ob.employer_step > 5 })
+    }
+
+    if (route.name === "commercial.onboarding.summary") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      const tenant = getTenantStore(tenantId)
+      const ob = tenant.commercialOnboarding || {}
+      const workers = Array.from(tenant.wosWorkers.values())
+      const wpsReady = (tenant.wpsSalaries || []).filter(s => s.wps_status === "READY").length
+      const consented = (tenant.consents || []).filter(c => !c.withdrawn_at).length
+      const wid = ob.worker_onboarding || {}
+      const workersOnboarded = Object.values(wid).filter(w => w.step >= 4).length
+      return ok(res, {
+        employer_onboarding: { step: ob.employer_step || 1, completed: (ob.employer_step || 1) > 5 },
+        worker_summary:      { total: workers.length, wps_ready: wpsReady, pdpl_consented: consented, fully_onboarded: workersOnboarded },
+        readiness: {
+          employer_ready:  (ob.employer_step || 1) > 5,
+          wps_ready_pct:   workers.length ? Math.round(wpsReady / workers.length * 100) : 0,
+          pdpl_ready_pct:  workers.length ? Math.round(consented / workers.length * 100) : 0,
+        },
+      })
+    }
+
+    if (route.name === "commercial.onboarding.worker.get") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      const wid = route.params.workerId
+      const tenant = getTenantStore(tenantId)
+      const worker = tenant.wosWorkers.get(wid)
+      if (!worker) return fail(res, "NOT_FOUND", "Worker not found", 404)
+      const ob = (tenant.commercialOnboarding?.worker_onboarding || {})[wid] || { step: 1 }
+      const wps = (tenant.wpsSalaries || []).find(s => s.worker_id === wid)
+      const consent = (tenant.consents || []).find(c => c.worker_id === wid && !c.withdrawn_at)
+      const tokens = (tenant.identityTokens || []).filter(t => t.owner_worker_id === wid)
+      return ok(res, {
+        worker_id: wid,
+        name: worker.name,
+        step: ob.step || 1,
+        steps: [
+          { step: 1, label: "Identity Verification",  status: ob.step > 1 ? "DONE" : ob.step === 1 ? "ACTIVE" : "PENDING" },
+          { step: 2, label: "PDPL Consent",           status: consent ? "DONE" : ob.step === 2 ? "ACTIVE" : "PENDING" },
+          { step: 3, label: "WPS Enrollment",         status: wps ? "DONE" : ob.step === 3 ? "ACTIVE" : "PENDING" },
+          { step: 4, label: "Identity Token Issued",  status: tokens.length > 0 ? "DONE" : ob.step === 4 ? "ACTIVE" : "PENDING" },
+        ],
+        pdpl_consented: !!consent,
+        wps_ready:      wps?.wps_status === "READY",
+        token_count:    tokens.length,
+        completed:      (ob.step || 1) > 4 || (!!consent && wps?.wps_status === "READY" && tokens.length > 0),
       })
     }
 

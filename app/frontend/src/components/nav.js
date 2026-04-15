@@ -24,6 +24,8 @@ const TABS = [
   { key: "wps",          label: "💳 WPS"            },
   { key: "payments",     label: "💰 Payments"       },
   { key: "identity",     label: "🪪 Identity"       },
+  { key: "revenue",      label: "💹 Revenue"        },
+  { key: "onboarding",   label: "🚀 Onboarding"     },
   { key: "governance",   label: "🏛 Governance"     },
   { key: "analytics",    label: "📊 Analytics"      },
   { key: "tenants",      label: "🏢 Tenants"        },

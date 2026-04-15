@@ -18,6 +18,8 @@ import pdpl         from "./pages/pdpl.js"
 import wps          from "./pages/wps.js"
 import payments     from "./pages/payments.js"
 import identity     from "./pages/identity.js"
+import revenue      from "./pages/revenue.js"
+import onboarding   from "./pages/onboarding.js"
 
 const ROUTES = {
   "dashboard":    dashboard,
@@ -38,6 +40,8 @@ const ROUTES = {
   "wps":          wps,
   "payments":     payments,
   "identity":     identity,
+  "revenue":      revenue,
+  "onboarding":   onboarding,
 }
 
 const DEFAULT = "dashboard"
