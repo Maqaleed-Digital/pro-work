@@ -600,6 +600,8 @@ function saveTenantStore(tenantId) {
   fs.writeFileSync(path.join(dir, "assignments.json"),    JSON.stringify(Array.from(t.wosAssignments.entries()), null, 2))
   fs.writeFileSync(path.join(dir, "evidence.json"),       JSON.stringify(t.wosEvidenceEvents,                   null, 2))
   fs.writeFileSync(path.join(dir, "evidence_packs.json"), JSON.stringify(t.evidencePacks || [],                 null, 2))
+  fs.writeFileSync(path.join(dir, "consents.json"),       JSON.stringify(t.consents      || [],                 null, 2))
+  fs.writeFileSync(path.join(dir, "wps_salaries.json"),   JSON.stringify(t.wpsSalaries   || [],                 null, 2))
 }
 
 function loadAllTenants() {
@@ -636,6 +638,10 @@ function loadAllTenants() {
     if (Array.isArray(evidence)) t.wosEvidenceEvents.push(...evidence)
     const evidencePacks = tryLoad("evidence_packs.json")
     if (Array.isArray(evidencePacks)) t.evidencePacks = evidencePacks
+    const consents = tryLoad("consents.json")
+    if (Array.isArray(consents)) t.consents = consents
+    const wpsSalaries = tryLoad("wps_salaries.json")
+    if (Array.isArray(wpsSalaries)) t.wpsSalaries = wpsSalaries
     console.log(`[persist] loaded tenant "${tid}": ${t.wosWorkers.size} workers, ${t.wosAssignments.size} assignments, ${t.wosEvidenceEvents.length} events`)
   }
 }
@@ -1404,6 +1410,14 @@ function matchRoute(method, pathname) {
   if (m === "GET"  && pathname === "/api/admin/governance/recommendations") return { name: "admin.governance.recommendations",    params: {} }
   if (m === "GET"  && pathname === "/api/admin/evidence-packs")           return { name: "admin.evidence_packs.list",           params: {} }
   if (m === "POST" && pathname === "/api/admin/evidence-packs")           return { name: "admin.evidence_packs.create",         params: {} }
+
+  // Sprint S27: PDPL consent + WPS salary pack
+  if (m === "POST" && pathname === "/api/admin/consents")                 return { name: "admin.consents.create",  params: {} }
+  if (m === "GET"  && pathname === "/api/admin/consents")                 return { name: "admin.consents.list",    params: {} }
+  const consentDelMatch = pathname.match(/^\/api\/admin\/consents\/([^/]+)$/)
+  if (m === "DELETE" && consentDelMatch)                                  return { name: "admin.consents.withdraw", params: { id: consentDelMatch[1] } }
+  if (m === "GET"  && pathname === "/api/admin/wps/salary-pack")         return { name: "admin.wps.list",         params: {} }
+  if (m === "POST" && pathname === "/api/admin/wps/salary-pack")         return { name: "admin.wps.create",       params: {} }
 
   // Sprint D: trust ledger, export, ERI
   if (m === "GET"  && pathname === "/api/admin/trust-ledger")             return { name: "admin.trust_ledger.list",             params: {} }
@@ -4306,7 +4320,114 @@ if (route.name === "admin.scheduler.preview") {
     }
 
     // ── Sprint B+C: sovereign status ──────────────────────────────────────────
-    if (route.name === "sovereign.status") {
+    // ── PDPL redact ───────────────────────────────────────────────────────────
+    function pdplRedact(events, consentMap) {
+      const PII = ["name","email","iban","national_id","phone","dob","address","salary","bank_ref"]
+      return events.map(function(ev) {
+        const wid = ev.entity_id || (ev.data && ev.data.worker_id)
+        const c   = wid && consentMap[wid]
+        const has = c && !c.withdrawn_at && (c.scope.includes("export") || c.scope.includes("all"))
+        if (has) return ev
+        const r = Object.assign({}, ev, { _pdpl_redacted: true })
+        if (r.data) { r.data = Object.assign({}, r.data); PII.forEach(function(f){ if (r.data[f] !== undefined) r.data[f] = "[REDACTED]" }) }
+        return r
+      })
+    }
+
+    if (route.name === "admin.consents.create") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      const body = await readJson(req, res).catch(() => null)
+      if (!body || !body.worker_id) return fail(res, "INVALID_BODY", "worker_id required", 400)
+      const tenant = getTenantStore(tenantId)
+      if (!tenant.consents) tenant.consents = []
+      const existing = tenant.consents.find(function(c){ return c.worker_id === body.worker_id && !c.withdrawn_at })
+      if (existing) return fail(res, "CONFLICT", "Active consent already exists", 409)
+      const consent = { id: "consent-" + Date.now(), worker_id: body.worker_id,
+        scope: body.scope || ["export"], consented_at: nowIso(),
+        withdrawn_at: null, recorded_by: ap.principal.id, pdpl_version: "1.0" }
+      tenant.consents.push(consent)
+      emitWosEvidenceEvent(tenantId, { actor: ap.principal.id, action: "pdpl.consent.granted",
+        entity_type: "consent", entity_id: consent.id,
+        data: { worker_id: consent.worker_id, scope: consent.scope } })
+      schedulePersist(tenantId)
+      return ok(res, consent, 201)
+    }
+
+    if (route.name === "admin.consents.list") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      const tenant = getTenantStore(tenantId)
+      const url    = new URL("http://x" + req.url)
+      const wid    = url.searchParams.get("worker_id")
+      const active = url.searchParams.get("active")
+      let items    = tenant.consents || []
+      if (wid) items = items.filter(function(c){ return c.worker_id === wid })
+      if (active === "true") items = items.filter(function(c){ return !c.withdrawn_at })
+      return ok(res, { items: items, total: items.length })
+    }
+
+    if (route.name === "admin.consents.withdraw") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      const tenant  = getTenantStore(tenantId)
+      const consent = (tenant.consents || []).find(function(c){ return c.id === route.params.id })
+      if (!consent) return fail(res, "NOT_FOUND", "Consent not found", 404)
+      if (consent.withdrawn_at) return fail(res, "ALREADY_WITHDRAWN", "Already withdrawn", 409)
+      consent.withdrawn_at = nowIso()
+      consent.withdrawn_by = ap.principal.id
+      emitWosEvidenceEvent(tenantId, { actor: ap.principal.id, action: "pdpl.consent.withdrawn",
+        entity_type: "consent", entity_id: consent.id, data: { worker_id: consent.worker_id } })
+      schedulePersist(tenantId)
+      return ok(res, consent)
+    }
+
+    if (route.name === "admin.wps.list") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      const tenant = getTenantStore(tenantId)
+      const url    = new URL("http://x" + req.url)
+      const wid    = url.searchParams.get("worker_id")
+      let items    = tenant.wpsSalaries || []
+      if (wid) items = items.filter(function(s){ return s.worker_id === wid })
+      return ok(res, { items: items, total: items.length })
+    }
+
+    if (route.name === "admin.wps.create") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      const body = await readJson(req, res).catch(() => null)
+      if (!body || !body.worker_id) return fail(res, "INVALID_BODY", "worker_id required", 400)
+      const tenant     = getTenantStore(tenantId)
+      if (!tenant.wpsSalaries) tenant.wpsSalaries = []
+      const idx        = tenant.wpsSalaries.findIndex(function(s){ return s.worker_id === body.worker_id })
+      const allowances = body.allowances || []
+      const deductions = body.deductions || []
+      const basic      = body.basic_salary || 0
+      const net        = basic + allowances.reduce(function(s,a){ return s+(a.amount||0) },0) - deductions.reduce(function(s,d){ return s+(d.amount||0) },0)
+      const record = { id: idx>=0 ? tenant.wpsSalaries[idx].id : "wps-"+Date.now(),
+        worker_id: body.worker_id, iban: body.iban || null, basic_salary: basic,
+        allowances: allowances, deductions: deductions, net_salary: net,
+        payment_period: body.payment_period || new Date().toISOString().slice(0,7),
+        bank_ref: body.bank_ref || null, currency: body.currency || "SAR",
+        updated_at: nowIso(), recorded_by: ap.principal.id,
+        wps_status: body.iban ? "ready" : "pending_iban" }
+      if (idx>=0) tenant.wpsSalaries[idx] = record
+      else tenant.wpsSalaries.push(record)
+      const worker = tenant.wosWorkers.get(body.worker_id)
+      if (worker && body.iban) {
+        worker.iban_verified = true
+        worker.iban = body.iban
+        tenant.wosWorkers.set(body.worker_id, worker)
+      }
+      emitWosEvidenceEvent(tenantId, { actor: ap.principal.id, action: "wps.salary_pack.created",
+        entity_type: "wps_salary", entity_id: record.id,
+        data: { worker_id: record.worker_id, net_salary: net, wps_status: record.wps_status } })
+      schedulePersist(tenantId)
+      return ok(res, record, 201)
+    }
+
+        if (route.name === "sovereign.status") {
       const ap = Admin.authenticate(req)
       if (!ap.ok) return failFromAdmin(res, ap)
       const tenant  = getTenantStore(tenantId)

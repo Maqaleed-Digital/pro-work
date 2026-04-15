@@ -14,6 +14,8 @@ import compliance   from "./pages/compliance.js"
 import ai_control   from "./pages/ai_control.js"
 import trust_ledger from "./pages/trust_ledger.js"
 import eri          from "./pages/eri.js"
+import pdpl         from "./pages/pdpl.js"
+import wps          from "./pages/wps.js"
 
 const ROUTES = {
   "dashboard":    dashboard,
@@ -30,6 +32,8 @@ const ROUTES = {
   "ai_control":   ai_control,
   "trust_ledger": trust_ledger,
   "eri":          eri,
+  "pdpl":         pdpl,
+  "wps":          wps,
 }
 
 const DEFAULT = "dashboard"

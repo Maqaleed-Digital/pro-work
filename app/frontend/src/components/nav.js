@@ -20,6 +20,8 @@ const TABS = [
   { key: "evidence",     label: "🧾 Evidence"       },
   { key: "trust_ledger", label: "📒 Trust Ledger"   },
   { key: "eri",          label: "⚠ ERI"             },
+  { key: "pdpl",         label: "🔒 PDPL"           },
+  { key: "wps",          label: "💳 WPS"            },
   { key: "governance",   label: "🏛 Governance"     },
   { key: "analytics",    label: "📊 Analytics"      },
   { key: "tenants",      label: "🏢 Tenants"        },
