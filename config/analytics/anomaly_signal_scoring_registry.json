@@ -1,0 +1,14 @@
+{
+  "version": "1.0",
+  "signal_inputs": [
+    "daily_active_users",
+    "api_request_volume",
+    "funnel_activity_presence",
+    "recent_data_coverage"
+  ],
+  "score_bands": [
+    "stable",
+    "watch",
+    "elevated"
+  ]
+}

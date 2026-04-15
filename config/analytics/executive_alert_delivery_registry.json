@@ -1,0 +1,14 @@
+{
+  "version": "1.0",
+  "required_outputs": [
+    "current_alert_state",
+    "severity",
+    "impacted_kpi_family",
+    "delivery_readiness_marker"
+  ],
+  "severity_bands": [
+    "info",
+    "warning",
+    "critical"
+  ]
+}

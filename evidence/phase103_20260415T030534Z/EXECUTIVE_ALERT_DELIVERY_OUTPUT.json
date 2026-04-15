@@ -1,0 +1,9 @@
+[
+  {
+    "current_alert_state": "ok", 
+    "delivery_readiness_marker": "1", 
+    "impacted_kpi_family": "activity", 
+    "severity": "info", 
+    "snapshot_date": "2026-04-15"
+  }
+]

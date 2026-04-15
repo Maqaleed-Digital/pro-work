@@ -1,0 +1,4 @@
+45:## 4. PASS Condition
+9:  "severity_bands": [
+9:  "score_bands": [
+3:  "required_sections": [

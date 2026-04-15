@@ -1,0 +1,10 @@
+{
+  "version": "1.0",
+  "required_sections": [
+    "executive_summary_metrics",
+    "current_alert_state",
+    "anomaly_signal_score",
+    "funnel_snapshot",
+    "kpi_health_snapshot"
+  ]
+}

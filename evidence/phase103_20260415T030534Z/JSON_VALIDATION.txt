@@ -1,0 +1,3 @@
+JSON_OK /Users/waheebmahmoud/dev/pro-work/config/analytics/executive_alert_delivery_registry.json
+JSON_OK /Users/waheebmahmoud/dev/pro-work/config/analytics/anomaly_signal_scoring_registry.json
+JSON_OK /Users/waheebmahmoud/dev/pro-work/config/analytics/board_intelligence_pack_registry.json
