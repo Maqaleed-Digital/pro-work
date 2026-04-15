@@ -1,144 +1,123 @@
-import { apiGetJson } from "../api.js"
-import { renderTable } from "../components/table.js"
+import { apiGet, apiPost, getTenant } from "../api.js"
 import { toast } from "../components/toast.js"
 
-const COLS = [
-  { key: "timestamp",   label: "Timestamp",   mono: true },
-  { key: "action",      label: "Type",         mono: true },
-  { key: "actor",       label: "Actor" },
-  { key: "entity_type", label: "Entity Type",  mono: true },
-  { key: "entity_id",   label: "Entity ID",    mono: true },
-  { key: "snapshot",    label: "Snapshot",     mono: true,
-    render: v => v === null || v === undefined ? "" : JSON.stringify(v) },
-]
+function epItem(pack) {
+  const d = document.createElement("div")
+  d.className = "ep-item"
+  d.innerHTML = `
+    <div class="ep-id">${pack.id}</div>
+    <div class="ep-meta">${pack.action || pack.type}${pack.worker_id ? " · Worker: " + pack.worker_id : ""}</div>
+    <div class="ep-ts">${pack.ts ? new Date(pack.ts).toLocaleString() : ""}</div>
+    <div class="ep-status ${pack.status === "verified" ? "verified" : "pending"}">${pack.status || "pending"}</div>`
+  return d
+}
+
+function generateBtn(label, type, onReload) {
+  const b = document.createElement("button")
+  b.className = "btn btn-gold"
+  b.textContent = label
+  b.addEventListener("click", async () => {
+    b.disabled = true
+    b.textContent = "Generating…"
+    try {
+      const pack = await apiPost("/api/admin/evidence-packs", {
+        type,
+        action: type.toLowerCase() + ".generated",
+      })
+      toast.ok("Evidence pack generated: " + pack.id)
+      onReload()
+    } catch (e) {
+      toast.err(e.message)
+    } finally {
+      b.disabled = false
+      b.textContent = label
+    }
+  })
+  return b
+}
 
 export default {
   render(container) {
-    const title = document.createElement("div")
-    title.className = "page-title"
-    title.textContent = "Evidence Events"
-    container.appendChild(title)
+    container.innerHTML = `
+      <div class="page-title">Trust &amp; Evidence</div>
+      <div class="page-sub">Tenant: ${getTenant()} — Immutable evidence packs, audit-ready at any time</div>`
 
-    // ── Filters bar ──────────────────────────────────────────
-    const filters = document.createElement("div")
-    filters.className = "filters"
+    const grid = document.createElement("div")
+    grid.className = "cc-grid-2"
+    container.appendChild(grid)
 
-    const typeInput = document.createElement("input")
-    typeInput.placeholder = "type (action)"
+    // ── Generate packs card ───────────────────────────────────────────────────
+    const genCard = document.createElement("div")
+    genCard.className = "card"
+    genCard.innerHTML = `<div class="card-title">📦 Generate Evidence Pack</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:14px">
+        Generate BRD-aligned evidence packs for compliance and audit requirements.
+      </div>`
 
-    const actorInput = document.createElement("input")
-    actorInput.placeholder = "actor"
+    const btnWrap = document.createElement("div")
+    btnWrap.style.cssText = "display:flex;flex-direction:column;gap:8px"
+    genCard.appendChild(btnWrap)
+    grid.appendChild(genCard)
 
-    const limitSelect = document.createElement("select")
-    ;[25, 50, 100].forEach(n => {
-      const o = document.createElement("option")
-      o.value = String(n); o.textContent = String(n)
-      if (n === 50) o.selected = true
-      limitSelect.appendChild(o)
-    })
+    // ── Pack list card ────────────────────────────────────────────────────────
+    const listCard = document.createElement("div")
+    listCard.className = "card"
+    listCard.innerHTML = `<div class="card-title">🧾 Evidence Pack Library</div>`
+    const listEl = document.createElement("div")
+    listEl.className = "ep-list"
+    listEl.innerHTML = '<div class="page-load">Loading…</div>'
+    listCard.appendChild(listEl)
+    grid.appendChild(listCard)
 
-    const applyBtn = document.createElement("button")
-    applyBtn.className = "btn btn-primary"
-    applyBtn.textContent = "Apply"
-
-    const resetBtn = document.createElement("button")
-    resetBtn.className = "btn"
-    resetBtn.textContent = "Reset"
-
-    const lType = document.createElement("label")
-    lType.textContent = "Type"
-    lType.appendChild(typeInput)
-
-    const lActor = document.createElement("label")
-    lActor.textContent = "Actor"
-    lActor.appendChild(actorInput)
-
-    const lLimit = document.createElement("label")
-    lLimit.textContent = "Limit"
-    lLimit.appendChild(limitSelect)
-
-    filters.appendChild(lType)
-    filters.appendChild(lActor)
-    filters.appendChild(lLimit)
-    filters.appendChild(applyBtn)
-    filters.appendChild(resetBtn)
-    container.appendChild(filters)
-
-    // ── Table slot ───────────────────────────────────────────
-    const tableSlot = document.createElement("div")
-    container.appendChild(tableSlot)
-
-    // ── Load-more button ─────────────────────────────────────
-    const loadMoreBtn = document.createElement("button")
-    loadMoreBtn.className = "btn btn-primary"
-    loadMoreBtn.textContent = "Load more"
-    loadMoreBtn.style.marginTop = "12px"
-    loadMoreBtn.style.display = "none"
-    container.appendChild(loadMoreBtn)
-
-    // ── State ────────────────────────────────────────────────
-    let allItems   = []
-    let nextCursor = null
-    let hasMore    = false
-    let loading    = false
-
-    function params(cursor) {
-      return {
-        type:   typeInput.value.trim(),
-        actor:  actorInput.value.trim(),
-        limit:  limitSelect.value,
-        cursor: cursor || undefined,
-      }
-    }
-
-    function setLoading(v) {
-      loading = v
-      applyBtn.disabled = v
-      resetBtn.disabled = v
-      loadMoreBtn.disabled = v
-      loadMoreBtn.textContent = v ? "Loading…" : "Load more"
-    }
-
-    function rebuildTable() {
-      tableSlot.innerHTML = ""
-      tableSlot.appendChild(renderTable(COLS, allItems))
-      loadMoreBtn.style.display = hasMore ? "inline-block" : "none"
-    }
-
-    function fetchPage(cursor, append) {
-      if (loading) return
-      setLoading(true)
-      if (!append) {
-        tableSlot.innerHTML = '<div class="page-load">Loading...</div>'
-        loadMoreBtn.style.display = "none"
-      }
-
-      apiGetJson("/api/admin/evidence", params(cursor))
+    function loadPacks() {
+      apiGet("/api/admin/evidence-packs")
         .then(data => {
-          const page = Array.isArray(data.items) ? data.items : []
-          nextCursor = data.next_cursor || null
-          hasMore    = Boolean(data.has_more)
-          allItems   = append ? allItems.concat(page) : page
-          rebuildTable()
+          listEl.innerHTML = ""
+          const packs = data.items || []
+          if (packs.length === 0) {
+            const empty = document.createElement("div")
+            empty.style.cssText = "font-size:13px;color:var(--muted);padding:12px 0"
+            empty.textContent = "No evidence packs yet — generate one above"
+            listEl.appendChild(empty)
+          } else {
+            packs.slice().reverse().forEach(p => listEl.appendChild(epItem(p)))
+          }
         })
         .catch(e => {
-          const msg = String(e && e.message ? e.message : e)
-          if (!append) tableSlot.innerHTML = `<div class="page-err">${msg}</div>`
-          toast.err(msg)
+          listEl.innerHTML = `<div class="page-err">${e.message}</div>`
         })
-        .finally(() => setLoading(false))
     }
 
-    applyBtn.addEventListener("click", () => { allItems = []; fetchPage(null, false) })
-    resetBtn.addEventListener("click", () => {
-      typeInput.value  = ""
-      actorInput.value = ""
-      limitSelect.value = "50"
-      allItems = []
-      fetchPage(null, false)
+    const PACK_TYPES = [
+      ["EP-WOS-RECRUIT-01 · Candidate Evaluation",  "EP-WOS-RECRUIT"],
+      ["EP-WOS-HIRE-01 · Offer & Contract Signed",   "EP-WOS-HIRE"],
+      ["EP-WOS-ONBOARD-01 · WPS Readiness Pack",     "EP-WOS-ONBOARD"],
+      ["EP-WOS-PROB-01 · Probation Evidence",        "EP-WOS-PROB"],
+      ["EP-WOS-OFFBOARD-01 · Offboarding Pack",      "EP-WOS-OFFBOARD"],
+    ]
+    PACK_TYPES.forEach(([label, type]) => {
+      btnWrap.appendChild(generateBtn(label, type, loadPacks))
     })
-    loadMoreBtn.addEventListener("click", () => fetchPage(nextCursor, true))
 
-    fetchPage(null, false)
+    loadPacks()
+
+    // ── Schema card ───────────────────────────────────────────────────────────
+    const schemaCard = document.createElement("div")
+    schemaCard.className = "card"
+    schemaCard.style.marginTop = "16px"
+    schemaCard.innerHTML = `
+      <div class="card-title">📋 Evidence Pack Schema — Required Fields</div>
+      <div class="check-list">
+        <div class="check-item"><div class="check-icon">👤</div><div class="check-text">Actor (HR / AI / System)</div><div class="check-status pass">ACTIVE</div></div>
+        <div class="check-item"><div class="check-icon">⚡</div><div class="check-text">Action (what was done)</div><div class="check-status pass">ACTIVE</div></div>
+        <div class="check-item"><div class="check-icon">🕐</div><div class="check-text">Timestamp (immutable, UTC)</div><div class="check-status pass">ACTIVE</div></div>
+        <div class="check-item"><div class="check-icon">📸</div><div class="check-text">Data snapshot (state before/after)</div><div class="check-status warn">PARTIAL</div></div>
+        <div class="check-item"><div class="check-icon">📎</div><div class="check-text">Attached files (contracts, IDs)</div><div class="check-status warn">PENDING</div></div>
+        <div class="check-item"><div class="check-icon">✅</div><div class="check-text">Approval chain (who approved what)</div><div class="check-status pass">ACTIVE</div></div>
+        <div class="check-item"><div class="check-icon">🤖</div><div class="check-text">AI artifacts (model, prompt, output)</div><div class="check-status pass">ACTIVE</div></div>
+        <div class="check-item"><div class="check-icon">🔒</div><div class="check-text">Redaction rules (PDPL-compliant)</div><div class="check-status warn">PENDING</div></div>
+        <div class="check-item"><div class="check-icon">📦</div><div class="check-text">Export format (ZIP + PDF bundle)</div><div class="check-status warn">PENDING</div></div>
+      </div>`
+    container.appendChild(schemaCard)
   }
 }

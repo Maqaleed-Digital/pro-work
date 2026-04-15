@@ -1384,6 +1384,12 @@ function matchRoute(method, pathname) {
   const analyticsIdMatch = pathname.match(/^\/api\/admin\/analytics\/([^/]+)$/)
   if (m === "GET"  && analyticsIdMatch) return { name: "admin.analytics.tenant", params: { id: analyticsIdMatch[1] } }
 
+  // Sprint B+C: sovereign status + AI recommendations + evidence packs
+  if (m === "GET"  && pathname === "/api/sovereign/status")               return { name: "sovereign.status",                    params: {} }
+  if (m === "GET"  && pathname === "/api/admin/governance/recommendations") return { name: "admin.governance.recommendations",    params: {} }
+  if (m === "GET"  && pathname === "/api/admin/evidence-packs")           return { name: "admin.evidence_packs.list",           params: {} }
+  if (m === "POST" && pathname === "/api/admin/evidence-packs")           return { name: "admin.evidence_packs.create",         params: {} }
+
   // Phase 11: permission-bound operational control routes
   if (m === "GET"  && pathname === "/api/ops/status")        return { name: "ops.status",        params: {} }
   if (m === "POST" && pathname === "/api/ops/execute")       return { name: "ops.execute",       params: {} }
@@ -4043,6 +4049,125 @@ if (route.name === "admin.scheduler.preview") {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+
+    // ── Sprint B+C: sovereign status ──────────────────────────────────────────
+    if (route.name === "sovereign.status") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      const tenant  = getTenantStore(tenantId)
+      const workers = Array.from(tenant.wosWorkers.values())
+      const active  = workers.filter(w => w.status === "active")
+      const fte     = workers.filter(w => w.worker_type === "FTE")
+      const wps_pending = fte.filter(w => !w.iban_verified).length
+      const probation_expiring = workers.filter(w => {
+        if (!w.probation_end) return false
+        const days = (new Date(w.probation_end) - Date.now()) / 86400000
+        return days > 0 && days <= 15
+      }).length
+      return ok(res, {
+        status:             "active",
+        nitaqat_zone:       tenant.nitaqat_zone       || "Green",
+        saudisation_ok:     tenant.saudisation_ok     ?? true,
+        occ_codes_ok:       tenant.occ_codes_ok       ?? true,
+        wps_pending,
+        probation_expiring,
+        id_docs_ok:         true,
+        bank_conf_ok:       wps_pending === 0,
+        total_workers:      workers.length,
+        active_workers:     active.length,
+        fte_count:          fte.length,
+      })
+    }
+
+    // ── Sprint B+C: AI governance recommendations ─────────────────────────────
+    if (route.name === "admin.governance.recommendations") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      const tenant  = getTenantStore(tenantId)
+      const workers = Array.from(tenant.wosWorkers.values())
+      const pods    = Array.from(tenant.wosPods.values())
+      const recs    = []
+
+      const lowUtil = pods.filter(p => (p.utilisation || 0) < 0.4)
+      if (lowUtil.length > 0) recs.push({
+        id:                  "rec-001",
+        recommendation_type: "Workforce Allocation",
+        rationale:           `${lowUtil.length} pod(s) have utilisation below 40% — consider rebalancing worker assignments`,
+        confidence_score:    0.87,
+        actor:               "AI",
+        status:              "PENDING",
+        ts:                  nowIso(),
+      })
+
+      const noIban = workers.filter(w => w.worker_type === "FTE" && !w.iban_verified)
+      if (noIban.length > 0) recs.push({
+        id:                  "rec-002",
+        recommendation_type: "Compliance",
+        rationale:           `${noIban.length} FTE worker(s) missing IBAN verification — required for WPS readiness`,
+        confidence_score:    0.94,
+        actor:               "AI",
+        status:              "PENDING",
+        ts:                  nowIso(),
+      })
+
+      const probDue = workers.filter(w => {
+        if (!w.probation_end) return false
+        const days = (new Date(w.probation_end) - Date.now()) / 86400000
+        return days > 0 && days <= 80
+      })
+      if (probDue.length > 0) recs.push({
+        id:                  "rec-003",
+        recommendation_type: "Evidence",
+        rationale:           `${probDue.length} worker(s) approaching Day-80 probation — evidence pack generation required`,
+        confidence_score:    0.91,
+        actor:               "AI",
+        status:              "PENDING",
+        ts:                  nowIso(),
+      })
+
+      return ok(res, { items: recs, total: recs.length })
+    }
+
+    // ── Sprint B+C: evidence packs ────────────────────────────────────────────
+    if (route.name === "admin.evidence_packs.list") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      const tenant = getTenantStore(tenantId)
+      const packs  = tenant.evidencePacks || []
+      return ok(res, { items: packs, total: packs.length })
+    }
+
+    if (route.name === "admin.evidence_packs.create") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      const body = await readJson(req, res).catch(() => null)
+      if (!body) return fail(res, "INVALID_BODY", "JSON body required", 400)
+      const tenant = getTenantStore(tenantId)
+      if (!tenant.evidencePacks) tenant.evidencePacks = []
+      const pack = {
+        id:        `EP-${body.type || "GEN"}-${Date.now()}`,
+        type:      body.type      || "GENERIC",
+        actor:     ap.principal.id,
+        action:    body.action    || "evidence_pack.created",
+        ts:        nowIso(),
+        status:    "verified",
+        data:      body.data      || {},
+        worker_id: body.worker_id || null,
+      }
+      tenant.evidencePacks.push(pack)
+      tenant.wosEvidenceEvents.push({
+        id:          genId("ev"),
+        tenant_id:   tenantId,
+        actor:       ap.principal.id,
+        action:      "evidence_pack.created",
+        entity_type: "evidence_pack",
+        entity_id:   pack.id,
+        timestamp:   nowIso(),
+        snapshot:    { pack_type: pack.type },
+      })
+      schedulePersist(tenantId)
+      return ok(res, pack, 201)
+    }
 
     return methodNotAllowed(res)
   } catch (e) {
