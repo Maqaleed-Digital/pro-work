@@ -283,6 +283,15 @@ resource "google_secret_manager_secret_iam_member" "api_service_db_password" {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
+# CLOUD SQL IAM — api-service SA needs Cloud SQL Client to use Unix socket
+# ─────────────────────────────────────────────────────────────────────────────
+resource "google_project_iam_member" "api_cloudsql_client" {
+  project = var.project_id
+  role    = "roles/cloudsql.client"
+  member  = "serviceAccount:${google_service_account.services["api_service"].email}"
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
 # CLOUD RUN — api-service
 # ─────────────────────────────────────────────────────────────────────────────
 resource "google_cloud_run_v2_service" "api_service" {
@@ -291,6 +300,10 @@ resource "google_cloud_run_v2_service" "api_service" {
 
   template {
     service_account = google_service_account.services["api_service"].email
+
+    annotations = {
+      "run.googleapis.com/cloudsql-instances" = "${var.project_id}:${var.region}:workcaptain-pg"
+    }
 
     vpc_access {
       connector = google_vpc_access_connector.serverless_connector.id
@@ -312,8 +325,15 @@ resource "google_cloud_run_v2_service" "api_service" {
         value = var.env
       }
 
-      # DB_PASSWORD secret env omitted in nonprod placeholder — no secret version exists yet.
-      # Re-enable in Phase 3 once real secrets are provisioned.
+      env {
+        name = "DATABASE_URL"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.db_password.secret_id
+            version = "latest"
+          }
+        }
+      }
 
       env {
         name  = "REDIS_HOST"
