@@ -35,6 +35,15 @@ const { InMemoryDocumentStore }                                              = r
 // S37-G6: Compliance Risk Screen
 const { createComplianceRiskService } = require("./modules/compliance/compliance_risk_service")
 const { createComplianceRiskRouter }  = require("./api/compliance_risk_router")
+// S38-G3: Evidence Pack
+const { createEvidencePackRouter } = require("./api/evidence_pack_router")
+// S38-G6: PDPL / DSR
+const { createPdplRouter }         = require("./api/pdpl_router")
+
+// S38-G3: evidence pack router — shared store across all requests
+const _evidencePackRouter = createEvidencePackRouter()
+// S38-G6: PDPL / DSR router — shared store across all requests
+const _pdplRouter = createPdplRouter()
 
 validateProductionConfig()
 
@@ -1401,6 +1410,28 @@ const server = http.createServer(async (req, res) => {
       } catch (e) {
         return fail(res, "BAD_REQUEST", e.message, 400)
       }
+    }
+
+    // S38-G3: evidence pack routes — early exit
+    if (pathname.startsWith("/api/evidence/")) {
+      const tenantId = resolveTenantId(req)
+      let body = null
+      if (req.method === "POST") {
+        body = await readJson(req, res)
+        if (body === null) return  // readJson already sent error response
+      }
+      return _evidencePackRouter.handle(req, res, pathname, req.method, tenantId, body)
+    }
+
+    // S38-G6: PDPL / DSR routes — early exit
+    if (pathname.startsWith("/api/compliance/pdpl/")) {
+      const tenantId = resolveTenantId(req)
+      let body = null
+      if (req.method === "POST") {
+        body = await readJson(req, res)
+        if (body === null) return  // readJson already sent error response
+      }
+      return _pdplRouter.handle(req, res, pathname, req.method, tenantId, body)
     }
 
     const route = matchRoute(req.method || "GET", pathname)

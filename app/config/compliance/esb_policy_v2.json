@@ -1,0 +1,50 @@
+{
+  "version": "v2",
+  "effectiveDate": "2024-01-01",
+  "description": "KSA Labor Law ESB — Enhanced Policy (2024 update)",
+  "legalReference": "KSA Labor Law Article 84 + Vision 2030 workforce guidelines",
+  "disclaimer": "This is a policy-driven estimate based on KSA Labor Law Article 84 and 2024 workforce guidelines. Actual entitlement may vary based on employee contract, collective agreements, and applicable regulations. Confirm all calculations with qualified legal counsel before making any payment.",
+  "salaryBasis": ["basic", "housing"],
+  "maximumCapMonths": 24,
+  "tenureBrackets": [
+    {
+      "fromYearsInclusive": 0,
+      "toYearsExclusive": 5,
+      "monthsPerYear": 0.5,
+      "label": "First 5 years — ½ month per year"
+    },
+    {
+      "fromYearsInclusive": 5,
+      "toYearsExclusive": null,
+      "monthsPerYear": 1.0,
+      "label": "After 5 years — 1 month per year"
+    }
+  ],
+  "terminationReasonRules": {
+    "EMPLOYER_TERMINATION": {
+      "modifier": 1.0,
+      "label": "Termination by employer — full entitlement"
+    },
+    "RETIREMENT": {
+      "modifier": 1.0,
+      "label": "Retirement — full entitlement"
+    },
+    "DEATH": {
+      "modifier": 1.0,
+      "label": "Death — full entitlement paid to estate"
+    },
+    "MUTUAL_AGREEMENT": {
+      "modifier": 1.0,
+      "label": "Mutual agreement — full entitlement"
+    },
+    "RESIGNATION": {
+      "tenureModifiers": [
+        { "fromYearsInclusive": 0,  "toYearsExclusive": 1,    "modifier": 0.0,    "label": "Resignation < 1 year — no entitlement" },
+        { "fromYearsInclusive": 1,  "toYearsExclusive": 2,    "modifier": 0.25,   "label": "Resignation 1-2 years — 1/4 entitlement (v2 enhancement)" },
+        { "fromYearsInclusive": 2,  "toYearsExclusive": 5,    "modifier": 0.3333, "label": "Resignation 2-5 years — 1/3 entitlement" },
+        { "fromYearsInclusive": 5,  "toYearsExclusive": 10,   "modifier": 0.6667, "label": "Resignation 5-10 years — 2/3 entitlement" },
+        { "fromYearsInclusive": 10, "toYearsExclusive": null,  "modifier": 1.0,    "label": "Resignation ≥10 years — full entitlement" }
+      ]
+    }
+  }
+}

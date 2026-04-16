@@ -9,21 +9,23 @@ import scheduler   from "./pages/scheduler.js"
 import governance  from "./pages/governance.js"
 import tenants     from "./pages/tenants.js"
 import analytics   from "./pages/analytics.js"
-import system      from "./pages/system.js"
-import ai          from "./pages/ai.js"
+import system       from "./pages/system.js"
+import ai           from "./pages/ai.js"
+import dataPrivacy  from "./pages/data_privacy.js"
 
 const ROUTES = {
-  "dashboard":   dashboard,
-  "workers":     workers,
-  "pods":        pods,
-  "assignments": assignments,
-  "evidence":    evidence,
-  "scheduler":   scheduler,
-  "governance":  governance,
-  "tenants":     tenants,
-  "analytics":   analytics,
-  "system":      system,
-  "ai":          ai,
+  "dashboard":    dashboard,
+  "workers":      workers,
+  "pods":         pods,
+  "assignments":  assignments,
+  "evidence":     evidence,
+  "scheduler":    scheduler,
+  "governance":   governance,
+  "tenants":      tenants,
+  "analytics":    analytics,
+  "system":       system,
+  "ai":           ai,
+  "data-privacy": dataPrivacy,
 }
 
 const DEFAULT = "dashboard"

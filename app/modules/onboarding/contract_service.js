@@ -42,9 +42,10 @@ const ALLOWED = new Map([
   ['ACTIVATED', []],
 ]);
 
-function createContractService({ store, hooks }) {
+function createContractService({ store, hooks, evidencePackService }) {
   assert(store, 'store is required');
   assert(hooks && typeof hooks.publish === 'function', 'hooks.publish is required');
+  // evidencePackService is optional — absent means no central EP registration (backward compatible)
 
   return {
     async draftContract(input) {
@@ -145,6 +146,26 @@ function createContractService({ store, hooks }) {
           },
           metadata: input.metadata || {},
         });
+
+        // S38-G2: register EP_WOS_HIRE_01 with central evidence pack service on CONTRACT_SIGNED
+        if (input.next_status === 'SIGNED' && evidencePackService && input.evidence_pack_id) {
+          await evidencePackService.create({
+            pack_id:        input.evidence_pack_id,
+            pack_type:      'EP_WOS_HIRE_01',
+            tenant_id:      updated.tenant_id,
+            actor: {
+              actor_id:   input.actor?.actor_id   || 'system',
+              actor_name: input.actor?.actor_name || 'System',
+              actor_role: input.actor?.actor_type || 'SYSTEM',
+            },
+            action:          `Contract signed for worker ${updated.worker_id}`,
+            data_snapshot:   { contract_id: updated.contract_id, onboarding_case_id: updated.onboarding_case_id, status: 'SIGNED' },
+            attached_files:  [],
+            approval_chain:  input.approval_chain || [],
+            ai_artifacts:    [],
+            redaction_rules: [],
+          });
+        }
       }
 
       return updated;
