@@ -18,6 +18,8 @@ const { createAiRouter }                               = require("./api/ai_route
 const { createAuditLogService, InMemoryAuditLogStore } = require("./modules/ai/audit_log_service")
 const { createNitaqatRouter }                            = require("./api/nitaqat_router")
 const { createNitaqatPolicyEngine, InMemoryOverrideStore } = require("./modules/compliance/nitaqat_service")
+const { createOccupationCodeRouter }     = require("./api/occupation_code_router")
+const { createOccupationCodeService }    = require("./modules/compliance/occupation_code_service")
 
 validateProductionConfig()
 
@@ -34,6 +36,15 @@ const _nitaqatRouter        = createNitaqatRouter({
   nitaqatEngine: _nitaqatPolicy,
   overrideStore: _nitaqatOverrideStore,
   authenticate:  (req) => Admin.authenticate(req),
+})
+
+const _occupationCodeService = createOccupationCodeService({
+  config:          require("./config/compliance/occupation-codes-ksav1.json"),
+  auditLogService: _aiAuditService,
+})
+const _occupationCodeRouter = createOccupationCodeRouter({
+  occupationCodeService: _occupationCodeService,
+  authenticate:          (req) => Admin.authenticate(req),
 })
 
 const UI_DIST = path.join(__dirname, "frontend", "dist")
@@ -1293,6 +1304,15 @@ const server = http.createServer(async (req, res) => {
         : {}
       if (body === null) return
       return _nitaqatRouter.handle(req, res, url, body)
+    }
+
+    // S36-G4: Occupation code compliance routes — delegated before inline dispatch
+    if (pathname.startsWith("/api/admin/compliance/occupation-code/")) {
+      const body = req.method === "POST"
+        ? await readJson(req, res)
+        : {}
+      if (body === null) return
+      return _occupationCodeRouter.handle(req, res, url, body)
     }
 
     // S28: Admin UI static serve
