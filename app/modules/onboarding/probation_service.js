@@ -35,9 +35,10 @@ class InMemoryProbationStore {
   }
 }
 
-function createProbationService({ store, hooks }) {
+function createProbationService({ store, hooks, evidencePackService }) {
   assert(store, 'store is required');
   assert(hooks && typeof hooks.publish === 'function', 'hooks.publish is required');
+  // evidencePackService is optional — absent means no central EP registration (backward compatible)
 
   return {
     async openProbationCase(input) {
@@ -144,6 +145,26 @@ function createProbationService({ store, hooks }) {
         },
         metadata: input.metadata || {},
       });
+
+      // S38-G2: register EP_WOS_PROB_01 with central evidence pack service on PROBATION_DECISION_RECORDED
+      if (evidencePackService && input.evidence_pack_id) {
+        await evidencePackService.create({
+          pack_id:         input.evidence_pack_id,
+          pack_type:       'EP_WOS_PROB_01',
+          tenant_id:       updated.tenant_id,
+          actor: {
+            actor_id:   input.actor?.actor_id   || 'system',
+            actor_name: input.actor?.actor_name || 'System',
+            actor_role: input.actor?.actor_type || 'SYSTEM',
+          },
+          action:          `Probation decision recorded: ${input.decision} for worker ${updated.worker_id}`,
+          data_snapshot:   { probation_case_id: updated.probation_case_id, decision: input.decision, reason_code: input.reason_code },
+          attached_files:  [],
+          approval_chain:  input.approval_chain || [],
+          ai_artifacts:    [],
+          redaction_rules: [],
+        });
+      }
 
       return updated;
     },

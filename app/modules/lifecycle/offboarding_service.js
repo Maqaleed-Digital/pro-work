@@ -57,9 +57,10 @@ function autoEventFields(input) {
   };
 }
 
-function createOffboardingService({ store, hooks }) {
+function createOffboardingService({ store, hooks, evidencePackService }) {
   assert(store, 'store is required');
   assert(hooks && typeof hooks.publish === 'function', 'hooks.publish is required');
+  // evidencePackService is optional — absent means no central EP registration (backward compatible)
 
   return {
     async initiateCase(input) {
@@ -223,6 +224,26 @@ function createOffboardingService({ store, hooks }) {
         },
         metadata: input.metadata || {}
       });
+
+      // S38-G2: register EP_WOS_OFFBOARD_01 with central evidence pack service on generateEvidencePack
+      if (evidencePackService && input.evidence_pack_id) {
+        await evidencePackService.create({
+          pack_id:         input.evidence_pack_id,
+          pack_type:       'EP_WOS_OFFBOARD_01',
+          tenant_id:       input.tenant_id,
+          actor: {
+            actor_id:   auto.actor?.actor_id   || 'system',
+            actor_name: auto.actor?.actor_name || 'System',
+            actor_role: auto.actor?.actor_type || 'SYSTEM',
+          },
+          action:          `Evidence pack generated for offboarding case ${input.offboarding_case_id}`,
+          data_snapshot:   { offboarding_case_id: input.offboarding_case_id, handover_count: input.handover_count || 0 },
+          attached_files:  [],
+          approval_chain:  input.approval_chain || [],
+          ai_artifacts:    [],
+          redaction_rules: [],
+        });
+      }
 
       return {
         offboarding_case_id: input.offboarding_case_id,
