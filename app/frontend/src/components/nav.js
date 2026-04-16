@@ -34,22 +34,32 @@ export function renderNav(activeKey, onSignOut, onTenantChange) {
   const nav = document.getElementById("nav")
   if (!nav) return
   nav.innerHTML = ""
+  // WCAG 4.1.2: navigation landmark with accessible name
+  nav.setAttribute("role", "navigation")
+  nav.setAttribute("aria-label", "Main navigation")
 
   // brand
   const brand = document.createElement("div")
   brand.className = "brand"
+  brand.setAttribute("aria-hidden", "true")  // decorative duplicate of page title
   brand.textContent = "ProWork Admin"
   nav.appendChild(brand)
 
   // tabs
   const tabs = document.createElement("div")
   tabs.className = "tabs"
+  tabs.setAttribute("role", "list")
   TABS.forEach(({ key, label }) => {
+    const li = document.createElement("div")
+    li.setAttribute("role", "listitem")
     const a = document.createElement("a")
     a.className = "tab" + (key === activeKey ? " active" : "")
     a.href = "#" + key
     a.textContent = label
-    tabs.appendChild(a)
+    // WCAG 1.3.1 / 4.1.2: active page state communicated to assistive technology
+    if (key === activeKey) a.setAttribute("aria-current", "page")
+    li.appendChild(a)
+    tabs.appendChild(li)
   })
   nav.appendChild(tabs)
 

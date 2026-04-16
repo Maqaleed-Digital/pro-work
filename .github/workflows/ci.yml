@@ -74,3 +74,70 @@ jobs:
         env:
           NODE_ENV: test
           APP_PORT: "3010"
+
+  # ── WCAG 2.2 AA Accessibility Gate ────────────────────────────────────────
+  # BRD A6 + Maqaleed Eval required
+  # Runs AFTER build, BEFORE deploy.
+  # Exit code 1 on ANY critical violation — blocks deploy pipeline.
+  # Checks WCAG 2.2 criteria: 2.4.11 Focus Appearance, 2.5.8 Target Size.
+  wcag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Runs after app job succeeds — ensures code quality gate is met first
+    needs: app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      - name: Install root deps (puppeteer + axe)
+        run: npm ci
+        # puppeteer auto-downloads Chromium on install
+
+      - name: Build frontend
+        # WCAG audit runs against the BUILT frontend, not source — catches
+        # any build-time transformation issues that affect accessibility
+        run: npm run build:ui
+
+      - name: Setup frontend preview deps
+        run: cd app/frontend && npm ci
+
+      - name: Start vite preview server
+        run: |
+          cd app/frontend
+          npx vite preview --port 4173 &
+          echo "PREVIEW_PID=$!" >> $GITHUB_ENV
+          # Wait for preview server to be ready
+          for i in $(seq 1 15); do
+            sleep 1
+            curl -sf http://localhost:4173 >/dev/null 2>&1 && break
+          done
+          echo "Preview server ready"
+
+      - name: Run WCAG 2.2 AA audit — EXIT 1 on critical violation
+        # BRD A6 + Maqaleed Eval required
+        # This step BLOCKS deploy if any critical/serious violation is found.
+        # Routes audited: / /ai /workforce /compliance /evidence
+        #                 /payments /admin /programs /identity (9 total)
+        run: node scripts/wcag_audit.js
+        env:
+          AUDIT_URL: "http://localhost:4173"
+          AUDIT_CI_TOKEN: "ci-wcag-token"
+
+      - name: Upload accessibility report
+        if: always()   # upload even on failure — needed for violation review
+        uses: actions/upload-artifact@v4
+        with:
+          name: wcag-accessibility-report
+          path: reports/accessibility/
+          retention-days: 30
+
+      - name: Stop preview server
+        if: always()
+        run: kill $PREVIEW_PID 2>/dev/null || true

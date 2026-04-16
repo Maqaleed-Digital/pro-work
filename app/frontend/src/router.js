@@ -52,6 +52,9 @@ export function initRouter(appEl, onSignOut) {
 
   _pageEl = document.createElement("div")
   _pageEl.id = "page"
+  // WCAG 2.4.1: skip-link target — "Skip to main content" in index.html jumps here
+  _pageEl.setAttribute("id", "main-content")
+  _pageEl.setAttribute("tabindex", "-1")
   appEl.appendChild(_pageEl)
 
   renderNav(currentRoute(), onSignOut)
