@@ -15,11 +15,14 @@ const { buildZip }   = require("./lib/zip")
 const { validateProductionConfig } = require("./config/validate")
 const { getDataDir, getAppDataDir } = require("./lib/data_paths")
 const { createFeeTransparencyRouter } = require("./api/fee_transparency_router")
+const { createIdentityEriRouter }     = require("./api/identity_eri_router")
 
 validateProductionConfig()
 
 // S39-G4: fee transparency router — wired once at boot
 const _feeRouter = createFeeTransparencyRouter()
+// S39-G5: work identity / ERI router — wired once at boot
+const _identityEriRouter = createIdentityEriRouter()
 
 const UI_DIST = path.join(__dirname, "frontend", "dist")
 
@@ -1272,6 +1275,11 @@ const server = http.createServer(async (req, res) => {
       const ext = path.extname(assetPath)
       const types = { ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png" }
       return serveStatic(res, assetPath, types[ext] || "application/octet-stream")
+    }
+
+    // S39-G5: work identity / ERI — public read endpoints ───────────────────────
+    if (pathname.startsWith("/api/identity/")) {
+      return _identityEriRouter.handle(req, res, pathname, req.method)
     }
 
     // S39-G4: fee transparency — public read + calculate endpoints ──────────────

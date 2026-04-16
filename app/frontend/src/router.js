@@ -11,6 +11,7 @@ import tenants          from "./pages/tenants.js"
 import analytics        from "./pages/analytics.js"
 import system           from "./pages/system.js"
 import feeTransparency  from "./pages/fee_transparency.js"
+import identity         from "./pages/identity.js"
 
 const ROUTES = {
   "dashboard":        dashboard,
@@ -24,6 +25,7 @@ const ROUTES = {
   "analytics":        analytics,
   "system":           system,
   "fee-transparency": feeTransparency,
+  "identity":         identity,
 }
 
 const DEFAULT = "dashboard"

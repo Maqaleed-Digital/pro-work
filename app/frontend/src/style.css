@@ -410,3 +410,239 @@ td.mono { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospac
 .ft-kv__val--total    { font-size: 15px; }
 .ft-kv__val--highlight { color: #1a7f37; font-weight: 700; }
 .ft-placeholder { color: #888; font-size: 13px; font-style: italic; padding: 12px 0; }
+
+/* ── S39-G5: Work Identity / ERI — logical CSS for RTL ───── */
+
+/* Arabic label utility */
+.eri-ar { font-size: 11px; color: #888; margin-inline-start: 4px; }
+
+/* Worker selector */
+.eri-selector-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-block-end: 20px;
+  flex-wrap: wrap;
+}
+.eri-selector-label { font-size: 12px; color: #555; font-weight: 600; }
+.eri-selector {
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  font-size: 13px;
+  min-width: 200px;
+}
+
+/* Hero row: gauge + interpretation side by side */
+.eri-hero {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  margin-block-end: 24px;
+  flex-wrap: wrap;
+}
+.eri-gauge-wrap { flex-shrink: 0; }
+.eri-interp {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding-block-start: 20px;
+}
+.eri-interp__label    { font-size: 28px; font-weight: 800; line-height: 1; }
+.eri-interp__label-ar { font-size: 16px; font-weight: 600; }
+.eri-interp__worker   { font-size: 15px; color: #444; margin-block-start: 4px; }
+
+/* Share row */
+.eri-share { margin-block-start: 12px; }
+
+/* Sections */
+.eri-content { max-width: 640px; }
+.eri-section {
+  margin-block-end: 24px;
+  padding-block-end: 20px;
+  border-block-end: 1px solid #f0f0f0;
+}
+.eri-section:last-child { border-block-end: none; }
+.eri-section-heading {
+  font-size: 13px;
+  font-weight: 700;
+  color: #111;
+  margin-block-end: 12px;
+}
+
+/* Component bars — logical CSS for RTL */
+.eri-bar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-block: 6px;
+}
+.eri-bar-labels {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 130px;
+}
+.eri-bar-en { font-size: 13px; color: #333; }
+.eri-bar-right {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.eri-bar-track {
+  flex: 1;
+  height: 8px;
+  background: #f0f0f0;
+  border-radius: 99px;
+  overflow: hidden;
+}
+.eri-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.4s ease;
+}
+.eri-bar-val {
+  font-size: 12px;
+  font-weight: 700;
+  min-width: 60px;
+  text-align: end;
+}
+
+/* Badges */
+.eri-badge-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.eri-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 12px;
+  max-width: 200px;
+}
+.eri-badge--compact {
+  padding: 4px 8px;
+  font-size: 11px;
+  border-radius: 6px;
+  max-width: none;
+}
+.eri-badge__icon  { font-size: 20px; flex-shrink: 0; }
+.eri-badge__text  { display: flex; flex-direction: column; gap: 2px; }
+.eri-badge__label { font-size: 12px; font-weight: 700; color: #111; }
+
+/* Verified project history */
+.eri-project-list { display: flex; flex-direction: column; gap: 10px; }
+.eri-project-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  background: #fff;
+}
+.eri-project-info { display: flex; flex-direction: column; gap: 3px; }
+.eri-project-title {
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.eri-project-meta { font-size: 12px; color: #888; }
+.eri-verified-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #1a7f37;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 6px;
+  padding: 2px 7px;
+}
+
+/* Star ratings */
+.eri-project-stars { display: flex; gap: 2px; flex-shrink: 0; }
+.eri-star { font-size: 14px; color: #e0e0e0; }
+.eri-star--filled { color: #d97706; }
+
+/* Employer summary card */
+.eri-employer-card {
+  border: 1.5px solid #ddd;
+  border-radius: 14px;
+  padding: 18px;
+  background: #fafafa;
+  margin-block-start: 8px;
+}
+.eri-employer-card__heading {
+  font-size: 12px;
+  font-weight: 700;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-block-end: 12px;
+}
+.eri-employer-card__score-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  margin-block-end: 14px;
+}
+.eri-employer-card__score {
+  font-size: 44px;
+  font-weight: 900;
+  line-height: 1;
+}
+.eri-employer-card__label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-block-end: 4px;
+  font-size: 15px;
+  font-weight: 700;
+}
+.eri-employer-card__signals-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-block-end: 8px;
+}
+.eri-employer-card__signals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-block-end: 12px;
+}
+.eri-employer-card__signal-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 10px;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  font-size: 12px;
+}
+.eri-employer-card__signal-val {
+  font-size: 11px;
+  font-weight: 700;
+  color: #0969da;
+  margin-block-start: 2px;
+}
+.eri-employer-card__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}

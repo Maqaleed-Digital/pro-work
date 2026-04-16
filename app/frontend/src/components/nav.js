@@ -23,6 +23,7 @@ const TABS = [
   { key: "analytics",        label: "Analytics"        },
   { key: "system",           label: "System"           },
   { key: "fee-transparency", label: "Fee Transparency" },
+  { key: "identity",         label: "Work Identity"   },
 ]
 
 let _signOutCb = null
