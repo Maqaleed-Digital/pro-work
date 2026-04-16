@@ -1,0 +1,42 @@
+{
+  "version": "v1",
+  "probationPeriods": [90, 180],
+  "defaultPeriodDays": 90,
+  "maxTotalDays": 180,
+  "day80TriggerDayNumber": 80,
+  "milestones": [
+    { "day": 30,  "type": "FIRST_REVIEW",              "label": "First Review",                   "labelAr": "المراجعة الأولى" },
+    { "day": 60,  "type": "MID_REVIEW",                "label": "Mid Review",                     "labelAr": "المراجعة المتوسطة" },
+    { "day": 80,  "type": "EVIDENCE_PACK",             "label": "Evidence Pack Auto-Compiled",    "labelAr": "تجميع حزمة الأدلة تلقائيًا" },
+    { "day": 90,  "type": "DECISION_REQUIRED",         "label": "Decision Required",              "labelAr": "يتطلب قرارًا" },
+    { "day": 180, "type": "EXTENDED_DECISION_REQUIRED","label": "Extended Decision Required",     "labelAr": "يتطلب قرارًا ممتدًا" }
+  ],
+  "terminationReasonCodes": [
+    "PERFORMANCE_INSUFFICIENT",
+    "CONDUCT_VIOLATION",
+    "ATTENDANCE_FAILURE",
+    "ROLE_ELIMINATED",
+    "MUTUAL_AGREEMENT",
+    "OTHER"
+  ],
+  "extensionReasonCodes": [
+    "PERFORMANCE_IMPROVEMENT_NEEDED",
+    "ABSENCE_DURING_PERIOD",
+    "ROLE_SCOPE_CHANGED",
+    "MANAGER_REQUEST",
+    "OTHER"
+  ],
+  "confirmReasonCodes": [
+    "MEETS_REQUIREMENTS",
+    "EXCEEDS_REQUIREMENTS",
+    "STRONG_PERFORMER"
+  ],
+  "settlementChecklistItems": [
+    "final_salary_calculated",
+    "eos_gratuity_calculated",
+    "leave_balance_settled",
+    "notice_period_served_or_paid",
+    "company_assets_returned",
+    "access_revoked"
+  ]
+}

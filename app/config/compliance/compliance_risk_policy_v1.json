@@ -1,0 +1,39 @@
+{
+  "version": "v1",
+  "scoring": {
+    "weights": {
+      "nitaqat":       0.30,
+      "wps":           0.30,
+      "probation":     0.25,
+      "documentation": 0.15
+    },
+    "colorBands": {
+      "green": 80,
+      "amber": 50
+    },
+    "insufficientDataScore": 0
+  },
+  "nitaqat": {
+    "zoneScores": {
+      "PLATINUM": 100,
+      "GREEN":     80,
+      "YELLOW":    50,
+      "RED":       20,
+      "UNKNOWN":    0
+    }
+  },
+  "probation": {
+    "redDaysThreshold":    7,
+    "amberDaysThreshold": 30,
+    "penaltyPerRedCase":  25,
+    "penaltyPerAmberCase": 8,
+    "minimumScore":        0
+  },
+  "documentation": {
+    "expiryAlertWindowDays": 30
+  },
+  "wps": {
+    "requiredSteps": ["IBAN_VERIFIED", "IDENTITY_VERIFIED", "BANK_CONFIRMED", "WPS_PACKAGE_GENERATED"],
+    "pendingAgeDaysAmber": 7
+  }
+}
