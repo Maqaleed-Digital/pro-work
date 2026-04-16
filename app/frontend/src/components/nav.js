@@ -1,7 +1,15 @@
-import { getToken, setToken, getTenant, setTenant } from "../api.js"
+import { getToken, setToken, getTenant, setTenant, apiGetJson } from "../api.js"
 
 // S30: live tenant list (null = use hardcoded fallback)
 let _tenantOptions = null
+
+// S36-G2: pending AI approval count for nav badge (refreshed on renderNav)
+let _aiPendingCount = 0
+function refreshAiPendingCount() {
+  apiGetJson("/api/admin/ai/audit-log/pending/count", {})
+    .then(data => { _aiPendingCount = (data && data.count) || 0 })
+    .catch(() => { _aiPendingCount = 0 })
+}
 
 export function setTenantOptions(options) {
   _tenantOptions = Array.isArray(options) ? options : null
@@ -22,6 +30,7 @@ const TABS = [
   { key: "tenants",     label: "Tenants"      },
   { key: "analytics",   label: "Analytics"    },
   { key: "system",      label: "System"       },
+  { key: "ai",          label: "AI Control", badge: () => _aiPendingCount },
 ]
 
 let _signOutCb = null
@@ -30,6 +39,9 @@ let _tenantChangeCb = null
 export function renderNav(activeKey, onSignOut, onTenantChange) {
   if (onSignOut) _signOutCb = onSignOut
   if (onTenantChange) _tenantChangeCb = onTenantChange
+
+  // S36-G2: refresh pending count on every nav render (polling on navigation)
+  refreshAiPendingCount()
 
   const nav = document.getElementById("nav")
   if (!nav) return
@@ -44,11 +56,42 @@ export function renderNav(activeKey, onSignOut, onTenantChange) {
   // tabs
   const tabs = document.createElement("div")
   tabs.className = "tabs"
-  TABS.forEach(({ key, label }) => {
+  TABS.forEach(({ key, label, badge }) => {
     const a = document.createElement("a")
     a.className = "tab" + (key === activeKey ? " active" : "")
     a.href = "#" + key
-    a.textContent = label
+
+    const labelSpan = document.createElement("span")
+    labelSpan.textContent = label
+    a.appendChild(labelSpan)
+
+    // Pending badge — red dot with count, shown when count > 0
+    if (badge) {
+      const count = badge()
+      if (count > 0) {
+        const dot = document.createElement("span")
+        dot.style.cssText = [
+          "display:inline-flex",
+          "align-items:center",
+          "justify-content:center",
+          "background:#ef4444",
+          "color:#fff",
+          "font-size:10px",
+          "font-weight:700",
+          "border-radius:999px",
+          "min-width:16px",
+          "height:16px",
+          "padding:0 4px",
+          "margin-inline-start:4px",
+          "vertical-align:middle",
+          "line-height:1",
+        ].join(";")
+        dot.setAttribute("aria-label", `${count} pending`)
+        dot.textContent = count > 99 ? "99+" : String(count)
+        a.appendChild(dot)
+      }
+    }
+
     tabs.appendChild(a)
   })
   nav.appendChild(tabs)

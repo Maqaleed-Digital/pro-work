@@ -14,8 +14,17 @@ const ProductionConfig = require("./config/production")
 const { buildZip }   = require("./lib/zip")
 const { validateProductionConfig } = require("./config/validate")
 const { getDataDir, getAppDataDir } = require("./lib/data_paths")
+const { createAiRouter }                               = require("./api/ai_router")
+const { createAuditLogService, InMemoryAuditLogStore } = require("./modules/ai/audit_log_service")
 
 validateProductionConfig()
+
+const _aiAuditStore   = new InMemoryAuditLogStore()
+const _aiAuditService = createAuditLogService({ store: _aiAuditStore })
+const _aiRouter = createAiRouter({
+  auditLogService: _aiAuditService,
+  authenticate:    (req) => Admin.authenticate(req),
+})
 
 const UI_DIST = path.join(__dirname, "frontend", "dist")
 
@@ -1257,6 +1266,15 @@ const server = http.createServer(async (req, res) => {
     setSecureHeaders(res)
     if (!applyCors(req, res)) return
     if (req.method === "OPTIONS") { res.writeHead(204); return res.end() }
+
+    // S36-G2: AI governance routes — delegated to aiRouter before inline dispatch
+    if (pathname.startsWith("/api/admin/ai/")) {
+      const body = (req.method === "PATCH" || req.method === "POST")
+        ? await readJson(req, res)
+        : {}
+      if (body === null) return
+      return _aiRouter.handle(req, res, url, body)
+    }
 
     // S28: Admin UI static serve
     if (req.method === "GET" && pathname === "/admin") {
