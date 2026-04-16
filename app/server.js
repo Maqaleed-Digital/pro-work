@@ -14,8 +14,44 @@ const ProductionConfig = require("./config/production")
 const { buildZip }   = require("./lib/zip")
 const { validateProductionConfig } = require("./config/validate")
 const { getDataDir, getAppDataDir } = require("./lib/data_paths")
+const { createAiRouter }                               = require("./api/ai_router")
+const { createAuditLogService, InMemoryAuditLogStore } = require("./modules/ai/audit_log_service")
+const { createNitaqatRouter }                            = require("./api/nitaqat_router")
+const { createNitaqatPolicyEngine, InMemoryOverrideStore } = require("./modules/compliance/nitaqat_service")
+const { createOccupationCodeRouter }     = require("./api/occupation_code_router")
+const { createOccupationCodeService }    = require("./modules/compliance/occupation_code_service")
+const { createDashboardRouter }          = require("./api/dashboard_router")
 
 validateProductionConfig()
+
+const _aiAuditStore   = new InMemoryAuditLogStore()
+const _aiAuditService = createAuditLogService({ store: _aiAuditStore })
+const _aiRouter = createAiRouter({
+  auditLogService: _aiAuditService,
+  authenticate:    (req) => Admin.authenticate(req),
+})
+
+const _nitaqatOverrideStore = new InMemoryOverrideStore()
+const _nitaqatPolicy        = createNitaqatPolicyEngine(require("./config/compliance/nitaqat_policy_v1.json"))
+const _nitaqatRouter        = createNitaqatRouter({
+  nitaqatEngine: _nitaqatPolicy,
+  overrideStore: _nitaqatOverrideStore,
+  authenticate:  (req) => Admin.authenticate(req),
+})
+
+const _occupationCodeService = createOccupationCodeService({
+  config:          require("./config/compliance/occupation-codes-ksav1.json"),
+  auditLogService: _aiAuditService,
+})
+const _occupationCodeRouter = createOccupationCodeRouter({
+  occupationCodeService: _occupationCodeService,
+  authenticate:          (req) => Admin.authenticate(req),
+})
+
+const _dashboardRouter = createDashboardRouter({
+  getTenantStore: (tenantId) => getTenantStore(tenantId),
+  authenticate:   (req) => Admin.authenticate(req),
+})
 
 const UI_DIST = path.join(__dirname, "frontend", "dist")
 
@@ -1257,6 +1293,38 @@ const server = http.createServer(async (req, res) => {
     setSecureHeaders(res)
     if (!applyCors(req, res)) return
     if (req.method === "OPTIONS") { res.writeHead(204); return res.end() }
+
+    // S36-G2: AI governance routes — delegated to aiRouter before inline dispatch
+    if (pathname.startsWith("/api/admin/ai/")) {
+      const body = (req.method === "PATCH" || req.method === "POST")
+        ? await readJson(req, res)
+        : {}
+      if (body === null) return
+      return _aiRouter.handle(req, res, url, body)
+    }
+
+    // S36-G3: Nitaqat compliance routes — delegated before inline dispatch
+    if (pathname.startsWith("/api/admin/compliance/nitaqat/")) {
+      const body = req.method === "POST"
+        ? await readJson(req, res)
+        : {}
+      if (body === null) return
+      return _nitaqatRouter.handle(req, res, url, body)
+    }
+
+    // S36-G4: Occupation code compliance routes — delegated before inline dispatch
+    if (pathname.startsWith("/api/admin/compliance/occupation-code/")) {
+      const body = req.method === "POST"
+        ? await readJson(req, res)
+        : {}
+      if (body === null) return
+      return _occupationCodeRouter.handle(req, res, url, body)
+    }
+
+    // S36-G6: Command Center KPI route — delegated before inline dispatch
+    if (pathname.startsWith("/api/admin/dashboard/")) {
+      return _dashboardRouter.handle(req, res, url, {})
+    }
 
     // S28: Admin UI static serve
     if (req.method === "GET" && pathname === "/admin") {
