@@ -17,6 +17,13 @@ const { getDataDir, getAppDataDir } = require("./lib/data_paths")
 // S37-G1: WPS Readiness Pack
 const { createWpsReadinessRouter }                                       = require("./api/wps_readiness_router")
 const { createWpsReadinessService, InMemoryWpsReadinessStore }           = require("./modules/onboarding/wps_readiness_service")
+// S37-G2: Probation Governance
+const { createProbationGovernanceService, InMemoryProbationGovernanceStore } = require("./modules/onboarding/probation_governance_service")
+// S37-G4: Document store (for compliance risk screen)
+const { InMemoryDocumentStore }                                          = require("./modules/onboarding/document_service")
+// S37-G6: Compliance Risk Screen
+const { createComplianceRiskService }                                    = require("./modules/compliance/compliance_risk_service")
+const { createComplianceRiskRouter }                                     = require("./api/compliance_risk_router")
 
 validateProductionConfig()
 
@@ -213,11 +220,28 @@ const store = {
 
 // S37-G1: WPS Readiness Pack router (shared in-memory store; one per server process)
 const _wpsReadinessHooks  = { publish: async () => {} }
+const _wpsReadinessStore  = new InMemoryWpsReadinessStore()
 const _wpsReadinessSvc    = createWpsReadinessService({
-  store: new InMemoryWpsReadinessStore(),
+  store: _wpsReadinessStore,
   hooks: _wpsReadinessHooks,
 })
 const _wpsReadinessRouter = createWpsReadinessRouter({ wpsReadinessService: _wpsReadinessSvc })
+
+// S37-G2: Probation Governance (store shared for compliance risk aggregation)
+const _probationHooks   = { publish: async () => {} }
+const _probationStore   = new InMemoryProbationGovernanceStore()
+// eslint-disable-next-line no-unused-vars
+const _probationGovSvc  = createProbationGovernanceService({ store: _probationStore, hooks: _probationHooks })
+
+// S37-G6: Compliance Risk Screen
+const _documentStore          = new InMemoryDocumentStore()
+const _complianceRiskSvc      = createComplianceRiskService({
+  wpsStore:       _wpsReadinessStore,
+  probationStore: _probationStore,
+  documentStore:  _documentStore,
+  // nitaqatStore omitted until S36-G3 merges; shows insufficient_data for Nitaqat component
+})
+const _complianceRiskRouter   = createComplianceRiskRouter({ complianceRiskService: _complianceRiskSvc })
 
 /* S29: tenant-scoped WOS store */
 function getTenantStore(tenantId) {
@@ -1291,6 +1315,20 @@ const server = http.createServer(async (req, res) => {
         method: req.method, path: pathname.replace("/api", ""), body
       })
       return ok(res, result.body, result.status)
+    }
+
+    // S37-G6: Compliance Risk Screen — early-exit before matchRoute
+    if (pathname.startsWith("/api/compliance/risk/")) {
+      const url    = new URL(req.url, "http://localhost")
+      const query  = Object.fromEntries(url.searchParams.entries())
+      try {
+        const result = await _complianceRiskRouter.handle({
+          method: req.method, path: pathname.replace("/api", ""), query
+        })
+        return ok(res, result.body, result.status)
+      } catch (e) {
+        return fail(res, "BAD_REQUEST", e.message, 400)
+      }
     }
 
     const route = matchRoute(req.method || "GET", pathname)
