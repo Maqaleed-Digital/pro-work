@@ -209,5 +209,152 @@ export default {
         wpsBody.innerHTML = `<div class="page-err">${e.message}</div>`
         toast.err(e.message)
       })
+
+    // ── S33: Payment Execution + Reconciliation ──────────────────────────────────
+    const execCard = document.createElement("div")
+    execCard.className = "card"
+    execCard.style.marginTop = "16px"
+    execCard.innerHTML = '<div class="card-title">🚀 Payment Execution Path</div><div class="page-load">Loading execution state…</div>'
+    container.appendChild(execCard)
+
+    const reconCard = document.createElement("div")
+    reconCard.className = "card"
+    reconCard.style.marginTop = "16px"
+    reconCard.innerHTML = '<div class="card-title">🔁 Reconciliation &amp; Failure Handling</div><div class="page-load">Loading reconciliation…</div>'
+    container.appendChild(reconCard)
+
+    apiGet("/api/admin/payments/execution")
+      .then(exec => {
+        execCard.innerHTML = '<div class="card-title">🚀 Payment Execution Path</div>'
+
+        // Execution path steps
+        const steps = document.createElement("div")
+        steps.style.cssText = "display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px"
+        exec.execution_path.forEach(s => {
+          const cell = document.createElement("div")
+          const cls = s.state === "LIVE" ? "pass" : s.state === "STAGED" ? "gold" : "pending"
+          cell.style.cssText = "background:var(--bg);border-radius:8px;padding:10px;text-align:center"
+          cell.innerHTML = `
+            <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Step ${s.step}</div>
+            <div style="font-size:12px;font-weight:600;margin-bottom:6px">${s.label}</div>
+            <span class="ep-status ${cls}">${s.state}</span>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">${s.detail}</div>`
+          steps.appendChild(cell)
+        })
+        execCard.appendChild(steps)
+
+        // Webhook path
+        const wh = exec.webhook_path
+        const whCard = document.createElement("div")
+        whCard.style.cssText = "background:var(--bg);border-radius:8px;padding:12px 14px;font-size:13px"
+        whCard.innerHTML = `
+          <div style="font-weight:600;margin-bottom:8px">🔗 Webhook / Event Path <span class="ep-status gold">STAGED</span></div>
+          <div style="color:var(--muted);font-size:12px;line-height:1.6">
+            <div>Endpoint: <code>${wh.endpoint}</code></div>
+            <div>Idempotency: <code>${wh.idempotency_key}</code></div>
+            <div>Retry: ${wh.retry_policy}</div>
+            <div>Events: ${wh.event_types.join(" · ")}</div>
+          </div>`
+        execCard.appendChild(whCard)
+
+        // Simulate webhook
+        const simWrap = document.createElement("div")
+        simWrap.style.cssText = "margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"
+        const eventSel = document.createElement("select")
+        eventSel.style.cssText = "background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text);font-size:12px"
+        wh.event_types.forEach(ev => {
+          const opt = document.createElement("option"); opt.value = ev; opt.textContent = ev
+          eventSel.appendChild(opt)
+        })
+        const simBtn = document.createElement("button")
+        simBtn.className = "btn btn-gold"
+        simBtn.style.cssText = "font-size:12px;padding:6px 12px"
+        simBtn.textContent = "⚡ Simulate Webhook (Dev Only)"
+        simBtn.addEventListener("click", async () => {
+          simBtn.disabled = true; simBtn.textContent = "Simulating…"
+          try {
+            const resp = await fetch("/api/admin/payments/webhook/simulate", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + (localStorage.getItem("pw_token") || ""),
+                "x-tenant-id": localStorage.getItem("pw_tenant") || "default",
+              },
+              body: JSON.stringify({ event_type: eventSel.value, worker_id: "w-sim-001", amount: 5000 }),
+            })
+            const result = await resp.json()
+            if (result.ok) toast.ok("Webhook simulated: " + result.data?.entry?.id)
+            else toast.err(result.error?.message || "Simulation failed")
+          } catch (err) { toast.err(err.message) }
+          finally { simBtn.disabled = false; simBtn.textContent = "⚡ Simulate Webhook (Dev Only)" }
+        })
+        simWrap.appendChild(eventSel)
+        simWrap.appendChild(simBtn)
+        execCard.appendChild(simWrap)
+      })
+      .catch(() => { execCard.innerHTML = '<div class="card-title">🚀 Payment Execution Path</div><div style="font-size:13px;color:var(--muted)">Unavailable</div>' })
+
+    apiGet("/api/admin/payments/reconciliation")
+      .then(recon => {
+        reconCard.innerHTML = '<div class="card-title">🔁 Reconciliation &amp; Failure Handling</div>'
+        const ls = recon.ledger_summary
+        const reconStrip = document.createElement("div")
+        reconStrip.style.cssText = "display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px"
+        ;[
+          ["Ledger Entries", ls.total_entries],
+          ["Total Payable",  `SAR ${(ls.total_payable || 0).toLocaleString()}`],
+          ["Total Settled",  `SAR ${(ls.total_settled || 0).toLocaleString()}`],
+          ["Outstanding",    `SAR ${(ls.outstanding || 0).toLocaleString()}`],
+        ].forEach(([label, val]) => {
+          const cell = document.createElement("div")
+          cell.style.cssText = "background:var(--bg);border-radius:8px;padding:10px;text-align:center"
+          cell.innerHTML = `<div style="font-size:11px;color:var(--muted)">${label}</div><div style="font-weight:600;font-size:14px;margin-top:4px">${val}</div>`
+          reconStrip.appendChild(cell)
+        })
+        reconCard.appendChild(reconStrip)
+
+        // Dispute + failure posture
+        const dh = recon.dispute_handling
+        const posture = document.createElement("div")
+        posture.style.cssText = "font-size:13px;display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px"
+        ;[
+          ["Dispute Handling", dh.state],
+          ["Resolution SLA",   dh.resolution_sla],
+          ["Audit Trail",      dh.audit_trail],
+          ["Failure Retry",    recon.failure_handling.state],
+        ].forEach(([label, val]) => {
+          const chip = document.createElement("div")
+          chip.style.cssText = "background:var(--bg);border-radius:6px;padding:4px 10px;font-size:12px"
+          chip.innerHTML = `<span style="color:var(--muted)">${label}: </span><span class="ep-status ${val === "LIVE" ? "pass" : val === "STAGED" ? "gold" : "pending"}">${val}</span>`
+          posture.appendChild(chip)
+        })
+        reconCard.appendChild(posture)
+
+        // Recent ledger
+        if (recon.recent_ledger && recon.recent_ledger.length > 0) {
+          const heading = document.createElement("div")
+          heading.style.cssText = "font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px"
+          heading.textContent = "Recent Payment Ledger"
+          reconCard.appendChild(heading)
+          recon.recent_ledger.forEach(entry => {
+            const row = document.createElement("div")
+            row.style.cssText = "display:flex;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;align-items:center"
+            const SC = { settled: "pass", failed: "fail", disputed: "warn", refunded: "pending" }
+            row.innerHTML = `
+              <span class="ep-status ${SC[entry.status] || "pending"}" style="min-width:60px;text-align:center">${entry.status}</span>
+              <span style="font-family:monospace;color:var(--muted)">${entry.id}</span>
+              <span style="flex:1;color:var(--muted)">${entry.event_type}</span>
+              <span style="color:var(--text)">SAR ${(entry.amount || 0).toLocaleString()}</span>
+              <span style="color:var(--muted)">${entry.ts ? new Date(entry.ts).toLocaleTimeString() : ""}</span>`
+            reconCard.appendChild(row)
+          })
+        } else {
+          const empty = document.createElement("div")
+          empty.style.cssText = "font-size:13px;color:var(--muted)"
+          empty.textContent = "No ledger entries yet — use Simulate Webhook above to create test entries"
+          reconCard.appendChild(empty)
+        }
+      })
+      .catch(() => { reconCard.innerHTML = '<div class="card-title">🔁 Reconciliation</div><div style="font-size:13px;color:var(--muted)">Unavailable</div>' })
   }
 }

@@ -20,7 +20,10 @@ import payments     from "./pages/payments.js"
 import identity     from "./pages/identity.js"
 import revenue      from "./pages/revenue.js"
 import onboarding   from "./pages/onboarding.js"
-import enterprise   from "./pages/enterprise.js"
+import enterprise    from "./pages/enterprise.js"
+import trust         from "./pages/trust.js"
+import reliability   from "./pages/reliability.js"
+import ops_readiness from "./pages/ops_readiness.js"
 
 const ROUTES = {
   "dashboard":    dashboard,
@@ -43,7 +46,10 @@ const ROUTES = {
   "identity":     identity,
   "revenue":      revenue,
   "onboarding":   onboarding,
-  "enterprise":   enterprise,
+  "enterprise":    enterprise,
+  "trust":         trust,
+  "reliability":   reliability,
+  "ops_readiness": ops_readiness,
 }
 
 const DEFAULT = "dashboard"

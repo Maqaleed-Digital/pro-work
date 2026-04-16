@@ -606,6 +606,7 @@ function saveTenantStore(tenantId) {
   fs.writeFileSync(path.join(dir, "identity_graph.json"), JSON.stringify(t.identityGraph   || [], null, 2))
   fs.writeFileSync(path.join(dir, "commercial_onboarding.json"), JSON.stringify(t.commercialOnboarding || {}, null, 2))
   fs.writeFileSync(path.join(dir, "enterprise_sso.json"),        JSON.stringify(t.enterpriseSso        || {}, null, 2))
+  fs.writeFileSync(path.join(dir, "payment_ledger.json"),        JSON.stringify(t.paymentLedger        || [], null, 2))
 }
 
 function loadAllTenants() {
@@ -654,6 +655,8 @@ function loadAllTenants() {
     if (commercialOnboarding && typeof commercialOnboarding === "object") t.commercialOnboarding = commercialOnboarding
     const enterpriseSso = tryLoad("enterprise_sso.json")
     if (enterpriseSso && typeof enterpriseSso === "object") t.enterpriseSso = enterpriseSso
+    const paymentLedger = tryLoad("payment_ledger.json")
+    if (Array.isArray(paymentLedger)) t.paymentLedger = paymentLedger
     console.log(`[persist] loaded tenant "${tid}": ${t.wosWorkers.size} workers, ${t.wosAssignments.size} assignments, ${t.wosEvidenceEvents.length} events`)
   }
 }
@@ -1430,6 +1433,16 @@ function matchRoute(method, pathname) {
   if (m === "DELETE" && consentDelMatch)                                  return { name: "admin.consents.withdraw", params: { id: consentDelMatch[1] } }
   if (m === "GET"  && pathname === "/api/admin/wps/salary-pack")         return { name: "admin.wps.list",         params: {} }
   if (m === "POST" && pathname === "/api/admin/wps/salary-pack")         return { name: "admin.wps.create",       params: {} }
+
+  // Sprint S32-S35: Final Hardening Runway
+  if (m === "GET"  && pathname === "/api/admin/trust/config")                    return { name: "trust.config",                params: {} }
+  if (m === "GET"  && pathname === "/api/admin/payments/execution")              return { name: "payments.execution",          params: {} }
+  if (m === "GET"  && pathname === "/api/admin/payments/reconciliation")         return { name: "payments.reconciliation",     params: {} }
+  if (m === "POST" && pathname === "/api/admin/payments/webhook/simulate")       return { name: "payments.webhook.simulate",   params: {} }
+  if (m === "GET"  && pathname === "/api/admin/reliability/config")              return { name: "reliability.config",          params: {} }
+  if (m === "GET"  && pathname === "/api/admin/ops-readiness")                   return { name: "ops.readiness",               params: {} }
+  const paymentIdMatch = pathname.match(/^\/api\/admin\/payments\/([^/]+)$/)
+  if (m === "GET"  && paymentIdMatch)                                            return { name: "payments.get",                params: { id: paymentIdMatch[1] } }
 
   // Sprint S31: Enterprise Readiness Layer
   if (m === "GET"  && pathname === "/api/admin/enterprise/config")          return { name: "enterprise.config",        params: {} }
@@ -4855,6 +4868,286 @@ if (route.name === "admin.scheduler.preview") {
         identity_health: tokens.length >= 2 ? "STRONG"
           : tokens.length === 1 ? "BUILDING"
           : "UNVERIFIED",
+      })
+    }
+
+    // ── S32: Production Trust Hardening ──────────────────────────────────────────
+    if (route.name === "trust.config") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      const env = process.env.NODE_ENV || "development"
+      const isProduction = env === "production"
+      return ok(res, {
+        environment: env,
+        trust_summary: {
+          runtime_env:        env,
+          tls_enabled:        process.env.TLS_ENABLED === "true" ? "LIVE" : "STAGED",
+          secrets_discipline: process.env.SECRET_STORE_TYPE || "env-vars",
+          secret_store_state: process.env.SECRET_STORE_PROVIDER ? "LIVE" : "STAGED",
+          config_validation:  "LIVE",
+          auth_gate:          "LIVE",
+          tenant_isolation:   "LIVE",
+          audit_trail:        "LIVE",
+          cors_policy:        (process.env.CORS_ALLOWED_ORIGINS || "").length > 0 ? "LIVE" : "STAGED",
+          rate_limiting:      "STAGED",
+          ddos_protection:    "PLANNED",
+        },
+        release_integrity: {
+          git_commit:         process.env.GIT_COMMIT || "unknown",
+          build_verified:     !!process.env.GIT_COMMIT,
+          deployment_mode:    isProduction ? "production" : "development",
+          immutable_artifact: isProduction ? "LIVE" : "STAGED",
+          rollback_path:      "STAGED",
+          blue_green:         "PLANNED",
+          canary_deploy:      "PLANNED",
+        },
+        policy_enforcement: {
+          rbac_enforced:        "LIVE",
+          perm_deny_logged:     "LIVE",
+          fail_closed_default:  "LIVE",
+          input_validation:     "LIVE",
+          output_sanitisation:  "STAGED",
+          injection_guards:     "STAGED",
+        },
+        secrets: [
+          { name: "DATABASE_URL",         required: false, present: !!process.env.DATABASE_URL,     state: process.env.DATABASE_URL ? "LIVE" : "STAGED" },
+          { name: "PROWORK_DATA_DIR",      required: false, present: !!process.env.PROWORK_DATA_DIR, state: process.env.PROWORK_DATA_DIR ? "LIVE" : "STAGED" },
+          { name: "GIT_COMMIT",           required: false, present: !!process.env.GIT_COMMIT,       state: process.env.GIT_COMMIT ? "LIVE" : "STAGED" },
+          { name: "TLS_ENABLED",          required: false, present: !!process.env.TLS_ENABLED,      state: process.env.TLS_ENABLED === "true" ? "LIVE" : "STAGED" },
+          { name: "CORS_ALLOWED_ORIGINS", required: false, present: !!(process.env.CORS_ALLOWED_ORIGINS||process.env.CORS_ORIGINS), state: (process.env.CORS_ALLOWED_ORIGINS||process.env.CORS_ORIGINS) ? "LIVE" : "STAGED" },
+        ],
+        next_actions: [
+          "Set TLS_ENABLED=true and configure TLS certificate for production",
+          "Configure SECRET_STORE_PROVIDER (e.g. GCP Secret Manager) to move off env-var secrets",
+          "Set GIT_COMMIT from CI pipeline for release traceability",
+          "Configure CORS_ALLOWED_ORIGINS to restrict origin policy",
+          "Add rate-limiting layer (API Gateway or reverse proxy)",
+        ],
+      })
+    }
+
+    // ── S33: Payment Execution ────────────────────────────────────────────────────
+    if (route.name === "payments.execution") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      const tenant = getTenantStore(tenantId)
+      const ledger  = tenant.paymentLedger || []
+      const wps     = tenant.wpsSalaries   || []
+      const readyCount   = wps.filter(s => s.wps_status === "ready" || s.wps_status === "READY").length
+      const pendingCount = wps.length - readyCount
+      const totalPayable = wps.reduce((s, r) => s + (r.net_salary || 0), 0)
+      const lastRun = ledger.length ? ledger[ledger.length - 1] : null
+      return ok(res, {
+        psp_execution_state: "STAGED",
+        sama_approval_state: "PENDING",
+        execution_path: [
+          { step: 1, label: "WPS Salary Pack Ready",       state: readyCount > 0 ? "LIVE" : "STAGED", detail: `${readyCount}/${wps.length} workers` },
+          { step: 2, label: "IBAN Verification",           state: readyCount > 0 ? "LIVE" : "STAGED", detail: `${readyCount} IBANs verified` },
+          { step: 3, label: "Escrow Funding",              state: "STAGED",   detail: "PSP escrow gateway staged" },
+          { step: 4, label: "PSP Execution (Tap/Stripe)",  state: "STAGED",   detail: "Awaiting SAMA pre-approval" },
+          { step: 5, label: "WPS Salary Disbursement",     state: "STAGED",   detail: "Live after PSP + SAMA approval" },
+          { step: 6, label: "Settlement Confirmation",     state: "STAGED",   detail: "72h release window post sign-off" },
+        ],
+        payment_summary: {
+          total_workers:    wps.length,
+          ready_for_payout: readyCount,
+          pending_iban:     pendingCount,
+          total_payable_sar: totalPayable,
+          currency:         "SAR",
+        },
+        ledger_count:     ledger.length,
+        last_execution:   lastRun ? { id: lastRun.id, status: lastRun.status, ts: lastRun.ts } : null,
+        webhook_path: {
+          state:           "STAGED",
+          endpoint:        "/api/admin/payments/webhook/simulate",
+          live_endpoint:   "PLANNED — configure PSP webhook post-SAMA",
+          idempotency_key: "payment_id + event_type",
+          retry_policy:    "exponential backoff, max 5 attempts",
+          event_types:     ["payment.success","payment.failed","payment.disputed","payment.refunded"],
+        },
+      })
+    }
+
+    if (route.name === "payments.get") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      const tenant  = getTenantStore(tenantId)
+      const ledger  = tenant.paymentLedger || []
+      const payment = ledger.find(p => p.id === route.params.id)
+      if (!payment) return fail(res, "NOT_FOUND", "Payment not found", 404)
+      return ok(res, payment)
+    }
+
+    if (route.name === "payments.reconciliation") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      const tenant  = getTenantStore(tenantId)
+      const ledger  = tenant.paymentLedger || []
+      const byStatus = {}
+      ledger.forEach(p => { byStatus[p.status] = (byStatus[p.status] || 0) + 1 })
+      const wps = tenant.wpsSalaries || []
+      const totalPayable = wps.reduce((s, r) => s + (r.net_salary || 0), 0)
+      const totalSettled = ledger.filter(p => p.status === "settled").reduce((s, p) => s + (p.amount || 0), 0)
+      return ok(res, {
+        reconciliation_state: "STAGED",
+        ledger_summary: {
+          total_entries:  ledger.length,
+          by_status:      byStatus,
+          total_payable:  totalPayable,
+          total_settled:  totalSettled,
+          outstanding:    totalPayable - totalSettled,
+          currency:       "SAR",
+        },
+        dispute_handling: {
+          state:          "STAGED",
+          dispute_types:  ["payment_failed","iban_mismatch","duplicate_payment","worker_dispute"],
+          resolution_sla: "72h",
+          escalation_path:"Compliance Officer → Finance Approver → Owner",
+          audit_trail:    "LIVE",
+        },
+        failure_handling: {
+          state:          "STAGED",
+          retry_policy:   "max 3 auto-retries, then manual review",
+          hold_on_dispute:"LIVE",
+          notification:   "STAGED",
+        },
+        recent_ledger: ledger.slice(-10).reverse(),
+      })
+    }
+
+    if (route.name === "payments.webhook.simulate") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      const body = await readJson(req, res).catch(() => null)
+      const event_type = (body && body.event_type) || "payment.success"
+      const worker_id  = (body && body.worker_id)  || "unknown"
+      const amount     = (body && body.amount)      || 0
+      const VALID_EVENTS = ["payment.success","payment.failed","payment.disputed","payment.refunded"]
+      if (!VALID_EVENTS.includes(event_type)) return fail(res, "BAD_REQUEST", `event_type must be one of: ${VALID_EVENTS.join(", ")}`, 400)
+      const entry = {
+        id:         `pmt_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,
+        event_type,
+        worker_id,
+        amount,
+        currency:   "SAR",
+        status:     event_type === "payment.success" ? "settled" : event_type === "payment.failed" ? "failed" : event_type === "payment.disputed" ? "disputed" : "refunded",
+        psp:        "simulated",
+        ts:         new Date().toISOString(),
+        idempotency_key: `${worker_id}:${event_type}:${Date.now()}`,
+      }
+      const tenant = getTenantStore(tenantId)
+      if (!tenant.paymentLedger) tenant.paymentLedger = []
+      tenant.paymentLedger.push(entry)
+      schedulePersist(tenantId)
+      emitWosEvidenceEvent(tenantId, { action: `payment.webhook.${event_type}`, actor: ap.principal.id, entity_type: "payment", entity_id: entry.id, amount, worker_id })
+      return ok(res, { simulated: true, entry }, 201)
+    }
+
+    // ── S34: Scale & Reliability ──────────────────────────────────────────────────
+    if (route.name === "reliability.config") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      const uptimeSec = Math.floor(process.uptime())
+      const tenants   = Array.from(store.tenants.keys())
+      return ok(res, {
+        runtime: {
+          node_version:    process.version,
+          uptime_s:        uptimeSec,
+          uptime_human:    uptimeSec >= 86400 ? `${Math.floor(uptimeSec/86400)}d ${Math.floor((uptimeSec%86400)/3600)}h` : uptimeSec >= 3600 ? `${Math.floor(uptimeSec/3600)}h ${Math.floor((uptimeSec%3600)/60)}m` : `${Math.floor(uptimeSec/60)}m ${uptimeSec%60}s`,
+          memory_used_mb:  Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+          memory_total_mb: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
+          pid:             process.pid,
+          env:             process.env.NODE_ENV || "development",
+        },
+        tenant_state: {
+          total_tenants:   tenants.length,
+          active_tenants:  tenants.filter(t => { const s = store.tenants.get(t); return s && s.wosWorkers && s.wosWorkers.size > 0 }).length,
+        },
+        workload_separation: {
+          scheduler:       "LIVE — 30s interval, tenant-scoped",
+          background_jobs: "STAGED — in-process workers, queue separation planned",
+          job_queue:       "PLANNED — Redis/BullMQ or Cloud Tasks",
+          worker_pool:     "PLANNED — separate worker processes",
+        },
+        retry_idempotency: {
+          evidence_events:  "LIVE — append-only, idempotent source_key dedup on identity tokens",
+          payment_events:   "STAGED — idempotency_key field on webhook entries",
+          api_idempotency:  "STAGED — Idempotency-Key header support planned",
+          scheduler_jobs:   "LIVE — deduplicated by assignment ID",
+        },
+        reliability_targets: {
+          uptime_sla:      "99.5% (Enterprise tier)",
+          rpo:             "1 hour (file persistence, 30s debounce)",
+          rto:             "< 5 minutes (process restart + hydration)",
+          max_tenants:     50,
+          max_workers_per_tenant: 1000,
+          max_events_per_tenant:  10000,
+        },
+        limits: {
+          max_export_tenants:   50,
+          analytics_snapshot_max: 100,
+          scheduler_interval_ms: Number(process.env.SCHEDULER_INTERVAL_MS || 30000),
+        },
+        failure_posture: {
+          unhandled_errors:    "LIVE — caught at route handler, 500 returned with INTERNAL_ERROR code",
+          persist_failures:    "LIVE — logged, non-fatal, runtime state preserved",
+          auth_failures:       "LIVE — logged, 401/403 returned, no stack leakage",
+          unknown_routes:      "LIVE — 404/405 returned",
+          circuit_breaker:     "PLANNED",
+          health_check_probe:  "LIVE — GET /api/health + GET /api/admin/health",
+        },
+      })
+    }
+
+    // ── S35: Enterprise Operations ────────────────────────────────────────────────
+    if (route.name === "ops.readiness") {
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
+      const uptimeSec = Math.floor(process.uptime())
+      return ok(res, {
+        sla_slo: {
+          uptime_sla:    { target: "99.5%", state: "STAGED", note: "Target defined; formal SLA contract available on Enterprise tier" },
+          latency_p99:   { target: "< 500ms", state: "STAGED", note: "No active p99 tracking — APM integration planned" },
+          error_rate:    { target: "< 0.1%", state: "STAGED", note: "Error rate visible in audit logs; dashboard integration planned" },
+          rto:           { target: "< 5 min", state: "STAGED", note: "Recovery time estimated from file hydration; untested at scale" },
+          rpo:           { target: "1 hour",  state: "STAGED", note: "File persistence debounced at 30s; daily backup planned" },
+        },
+        monitoring_alerting: {
+          health_endpoint:  { state: "LIVE",    detail: "GET /api/health + GET /api/admin/health" },
+          structured_logs:  { state: "LIVE",    detail: "JSON structured logging on all API routes" },
+          audit_trail:      { state: "LIVE",    detail: "Immutable evidence events on all critical actions" },
+          apm_integration:  { state: "STAGED",  detail: "Google Cloud Monitoring / Datadog integration staged" },
+          uptime_monitor:   { state: "STAGED",  detail: "External uptime check (e.g. Better Uptime) staged" },
+          alerting_rules:   { state: "STAGED",  detail: "PagerDuty / OpsGenie routing staged" },
+          dashboard:        { state: "STAGED",  detail: "Grafana / Cloud Monitoring dashboard staged" },
+          error_tracking:   { state: "PLANNED", detail: "Sentry / Cloud Error Reporting integration planned" },
+        },
+        backup_recovery: {
+          file_persistence:   { state: "LIVE",    detail: "JSON file per tenant, debounced 30s writes, data/tenants/<tid>/" },
+          daily_backup:       { state: "STAGED",  detail: "GCS bucket backup scheduled — cron job staged" },
+          point_in_time:      { state: "PLANNED", detail: "PITR requires Postgres or object store versioning" },
+          restore_tested:     { state: "STAGED",  detail: "Restore procedure documented; untested under load" },
+          disaster_recovery:  { state: "STAGED",  detail: "Multi-region GCP failover path staged" },
+        },
+        incident_operations: {
+          runbook:            { state: "STAGED",  detail: "Incident runbook drafted; review with ops team pending" },
+          on_call_rotation:   { state: "STAGED",  detail: "PagerDuty schedule staged; escalation policy pending" },
+          severity_model:     { state: "STAGED",  detail: "P0-P3 severity levels defined; process not yet drilled" },
+          post_mortem:        { state: "STAGED",  detail: "Post-mortem template ready; first incident TBD" },
+          war_room:           { state: "PLANNED", detail: "Dedicated Slack war-room channel planned" },
+          comms_template:     { state: "STAGED",  detail: "Customer comms template ready for P0/P1" },
+        },
+        current_runtime: {
+          uptime_s:         uptimeSec,
+          pid:              process.pid,
+          env:              process.env.NODE_ENV || "development",
+          git_commit:       process.env.GIT_COMMIT || "unknown",
+        },
+        buyer_readiness: {
+          enterprise_deployable: true,
+          production_trust:      "STAGED",
+          note: "WorkCaptain is enterprise-deployable in its current form. Production trust hardening (TLS, secret store, APM, alerting) should be completed before SLA commitment to first enterprise customer.",
+        },
       })
     }
 
