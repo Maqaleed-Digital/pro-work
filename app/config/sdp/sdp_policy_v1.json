@@ -1,0 +1,47 @@
+{
+  "version": "v1",
+  "effectiveDate": "2026-01-01",
+  "description": "Skill Development Programme policy — categories, outcomes, duration limits",
+  "programmeCategories": [
+    "TECHNICAL",
+    "LEADERSHIP",
+    "COMPLIANCE",
+    "SAFETY",
+    "LANGUAGE",
+    "VOCATIONAL",
+    "DIGITAL",
+    "SOFT_SKILLS"
+  ],
+  "outcomeTypes": [
+    "PASSED",
+    "FAILED",
+    "WITHDRAWN",
+    "INCOMPLETE"
+  ],
+  "programmeStatuses": ["DRAFT", "OPEN", "CLOSED", "CANCELLED", "COMPLETED"],
+  "enrolmentStatuses": ["ENROLLED", "COMPLETED", "WITHDRAWN"],
+  "maxDurationDays": 365,
+  "minDurationDays": 1,
+  "constraints": {
+    "start_date_required":   true,
+    "end_date_required":     true,
+    "end_after_start":       true,
+    "max_capacity_default":  50,
+    "note": "SDP programmes are time-boxed skill development only. Shift scheduling, attendance tracking, and worker exclusivity are structurally forbidden."
+  },
+  "forbiddenFields": [
+    "shift_id",
+    "shift_schedule",
+    "shift_start",
+    "shift_end",
+    "attendance",
+    "attendance_required",
+    "attendance_tracking",
+    "exclusive",
+    "exclusivity",
+    "lock_worker",
+    "exclusive_worker",
+    "schedule_lock",
+    "scheduling_block"
+  ]
+}
