@@ -45,6 +45,12 @@ const PERMS = Object.freeze({
   OPS_EXECUTE:       "ops:execute",        // semantic: ops.execute
   OPS_RETRY:         "ops:retry",          // semantic: ops.retry
   OPS_OVERRIDE:      "ops:override",       // semantic: ops.override (superadmin only)
+
+  // S31 — enterprise readiness permissions
+  ENTERPRISE_READ:          "enterprise:read",          // view enterprise config/RBAC/SSO/procurement
+  ENTERPRISE_EXPORT:        "enterprise:export",        // perform audit/evidence exports
+  ENTERPRISE_SSO_CONFIG:    "enterprise:sso:config",    // configure SSO/SAML (superadmin/owner only)
+  ENTERPRISE_PROCUREMENT:   "enterprise:procurement",   // view procurement controls
 });
 
 // ---------------------------------------------------------------------------
@@ -62,16 +68,44 @@ const SEMANTIC_MAP = Object.freeze({
 });
 
 // ---------------------------------------------------------------------------
+// S31 Enterprise Role Catalog — mapped to canonical identifiers
+// These enterprise roles extend the existing 3-role model.
+// Existing tokens with role=superadmin/ops/auditor continue to work unchanged.
+// ---------------------------------------------------------------------------
+const ENTERPRISE_ROLES = Object.freeze({
+  OWNER:              "owner",              // ≡ superadmin (sovereign)
+  ADMIN:              "admin",              // ≡ ops (platform administration)
+  HIRING_MANAGER:     "hiring_manager",     // workforce + assignment ops
+  FINANCE_APPROVER:   "finance_approver",   // payments/export/financial approval
+  COMPLIANCE_OFFICER: "compliance_officer", // compliance review + evidence visibility
+  AUDITOR_VIEWER:     "auditor_viewer",     // read-only audit/procurement/export
+});
+
+// Enterprise role → capability summary (used by RBAC surface)
+const ENTERPRISE_ROLE_DESCRIPTIONS = Object.freeze({
+  owner:              { label: "Owner",              description: "Full tenant ownership and sovereign governance authority",           capabilities: ["All permissions, including SSO config and override"] },
+  admin:              { label: "Admin",              description: "Platform administration and tenant operations",                     capabilities: ["Workers, pods, assignments, payments, tenants, evidence, identity"] },
+  hiring_manager:     { label: "Hiring Manager",     description: "Workforce recruiting and assignment operations",                   capabilities: ["Workers read/write, pods read/write, assignments write"] },
+  finance_approver:   { label: "Finance Approver",   description: "Payments and financial approval boundary",                        capabilities: ["Payments read, WPS read, export (financial), PDPL read"] },
+  compliance_officer: { label: "Compliance Officer", description: "Compliance review and evidence visibility",                       capabilities: ["Compliance read, PDPL read/write, evidence read, ERI read, identity read"] },
+  auditor_viewer:     { label: "Auditor / Viewer",   description: "Read-only audit, procurement, and export visibility",             capabilities: ["All reads, evidence export, no writes or overrides"] },
+  // Legacy roles (preserved)
+  superadmin:         { label: "Super Admin",        description: "Sovereign access (legacy — use owner for new principals)",        capabilities: ["All permissions"] },
+  ops:                { label: "Ops",                description: "Operational admin (legacy — use admin for new principals)",       capabilities: ["All except override"] },
+  auditor:            { label: "Auditor",            description: "Read-only (legacy — use auditor_viewer for new principals)",      capabilities: ["All reads"] },
+});
+
+// ---------------------------------------------------------------------------
 // Role-to-permission grants
 // ---------------------------------------------------------------------------
 function rolePerms(role) {
   const r = String(role || "").trim().toLowerCase();
 
-  // superadmin = sovereign (all permissions)
-  if (r === "superadmin") return { all: true, set: new Set() };
+  // superadmin / owner = sovereign (all permissions)
+  if (r === "superadmin" || r === "owner") return { all: true, set: new Set() };
 
-  // ops = operational admin (read + execute + retry; NO override)
-  if (r === "ops") {
+  // ops / admin = operational admin (read + execute + retry; NO override)
+  if (r === "ops" || r === "admin") {
     return {
       all: false,
       set: new Set([
@@ -93,13 +127,68 @@ function rolePerms(role) {
         PERMS.OPS_STATUS_READ,
         PERMS.OPS_EXECUTE,
         PERMS.OPS_RETRY,
-        // PERMS.OPS_OVERRIDE is intentionally excluded — superadmin only
+        // S31 enterprise grants
+        PERMS.ENTERPRISE_READ,
+        PERMS.ENTERPRISE_EXPORT,
+        PERMS.ENTERPRISE_PROCUREMENT,
+        // PERMS.OPS_OVERRIDE and PERMS.ENTERPRISE_SSO_CONFIG intentionally excluded
       ])
     };
   }
 
-  // auditor = read-only (no mutations, no operational control)
-  if (r === "auditor") {
+  // hiring_manager — workforce operations
+  if (r === "hiring_manager") {
+    return {
+      all: false,
+      set: new Set([
+        PERMS.ADMIN_STATS_READ,
+        PERMS.ADMIN_WORKERS_READ,
+        PERMS.ADMIN_WORKERS_WRITE,
+        PERMS.ADMIN_PODS_READ,
+        PERMS.ADMIN_PODS_WRITE,
+        PERMS.ADMIN_WOS_ASSIGNMENTS_WRITE,
+        PERMS.OPS_IDENTITY_READ,
+        PERMS.ENTERPRISE_READ,
+      ])
+    };
+  }
+
+  // finance_approver — payments/export boundary
+  if (r === "finance_approver") {
+    return {
+      all: false,
+      set: new Set([
+        PERMS.ADMIN_STATS_READ,
+        PERMS.ADMIN_WORKERS_READ,
+        PERMS.OPS_IDENTITY_READ,
+        PERMS.ENTERPRISE_READ,
+        PERMS.ENTERPRISE_EXPORT,
+        PERMS.ENTERPRISE_PROCUREMENT,
+      ])
+    };
+  }
+
+  // compliance_officer — compliance + evidence visibility
+  if (r === "compliance_officer") {
+    return {
+      all: false,
+      set: new Set([
+        PERMS.ADMIN_STATS_READ,
+        PERMS.ADMIN_GOVERNANCE_READ,
+        PERMS.ADMIN_WORKERS_READ,
+        PERMS.ADMIN_PODS_READ,
+        PERMS.OPS_SYSTEM_READ,
+        PERMS.OPS_IDENTITY_READ,
+        PERMS.OPS_STATUS_READ,
+        PERMS.ENTERPRISE_READ,
+        PERMS.ENTERPRISE_EXPORT,
+        PERMS.ENTERPRISE_PROCUREMENT,
+      ])
+    };
+  }
+
+  // auditor / auditor_viewer = read-only (no mutations, no operational control)
+  if (r === "auditor" || r === "auditor_viewer") {
     return {
       all: false,
       set: new Set([
@@ -113,6 +202,10 @@ function rolePerms(role) {
         // Phase 11 read grants only
         PERMS.OPS_SYSTEM_READ,
         PERMS.OPS_IDENTITY_READ,
+        // S31 enterprise read + export
+        PERMS.ENTERPRISE_READ,
+        PERMS.ENTERPRISE_EXPORT,
+        PERMS.ENTERPRISE_PROCUREMENT,
         // OPS_STATUS_READ, OPS_EXECUTE, OPS_RETRY, OPS_OVERRIDE all denied
       ])
     };
@@ -169,4 +262,4 @@ function deny(perm) {
   };
 }
 
-module.exports = { PERMS, SEMANTIC_MAP, rolePerms, hasPerm, checkPerm, deny };
+module.exports = { PERMS, SEMANTIC_MAP, ENTERPRISE_ROLES, ENTERPRISE_ROLE_DESCRIPTIONS, rolePerms, hasPerm, checkPerm, deny };

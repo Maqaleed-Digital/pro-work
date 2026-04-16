@@ -26,6 +26,7 @@ const TABS = [
   { key: "identity",     label: "🪪 Identity"       },
   { key: "revenue",      label: "💹 Revenue"        },
   { key: "onboarding",   label: "🚀 Onboarding"     },
+  { key: "enterprise",   label: "🏢 Enterprise"     },
   { key: "governance",   label: "🏛 Governance"     },
   { key: "analytics",    label: "📊 Analytics"      },
   { key: "tenants",      label: "🏢 Tenants"        },
