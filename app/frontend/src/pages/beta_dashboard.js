@@ -294,7 +294,28 @@ function createBetaDashboard(opts) {
   return { mount, unmount, refresh }
 }
 
-/* ── Exports ─────────────────────────────────────────────────────────────── */
+/* ── Router page export (render pattern) ─────────────────────────────────── */
+
+export default {
+  render(container) {
+    container.innerHTML = ''
+
+    const title = document.createElement('div')
+    title.className = 'page-title'
+    title.innerHTML = '<span>Beta / GTM</span> <span dir="rtl" lang="ar" style="font-size:13px;font-weight:400;color:#666">/ بيتا و نشر المنتج</span>'
+    container.appendChild(title)
+
+    const inner = document.createElement('div')
+    inner.className = 'page-content'
+    inner.style.cssText = 'max-width:860px; padding:1.5rem;'
+    container.appendChild(inner)
+
+    const dashboard = createBetaDashboard({ container: inner })
+    dashboard.mount()
+  }
+}
+
+/* ── CommonJS compat (for Node.js test runner) ───────────────────────────── */
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { createBetaDashboard, buildKpiRow, buildExitButton, fmtValue, fmtTarget }

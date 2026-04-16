@@ -24,6 +24,7 @@ const TABS = [
   { key: "system",           label: "System"           },
   { key: "fee-transparency", label: "Fee Transparency" },
   { key: "identity",         label: "Work Identity"   },
+  { key: "beta-dashboard",   label: "Beta / GTM"      },
 ]
 
 let _signOutCb = null

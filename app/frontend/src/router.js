@@ -12,6 +12,7 @@ import analytics        from "./pages/analytics.js"
 import system           from "./pages/system.js"
 import feeTransparency  from "./pages/fee_transparency.js"
 import identity         from "./pages/identity.js"
+import betaDashboard    from "./pages/beta_dashboard.js"
 
 const ROUTES = {
   "dashboard":        dashboard,
@@ -26,6 +27,7 @@ const ROUTES = {
   "system":           system,
   "fee-transparency": feeTransparency,
   "identity":         identity,
+  "beta-dashboard":   betaDashboard,
 }
 
 const DEFAULT = "dashboard"
