@@ -20,6 +20,7 @@ const { createNitaqatRouter }                            = require("./api/nitaqa
 const { createNitaqatPolicyEngine, InMemoryOverrideStore } = require("./modules/compliance/nitaqat_service")
 const { createOccupationCodeRouter }     = require("./api/occupation_code_router")
 const { createOccupationCodeService }    = require("./modules/compliance/occupation_code_service")
+const { createDashboardRouter }          = require("./api/dashboard_router")
 
 validateProductionConfig()
 
@@ -45,6 +46,11 @@ const _occupationCodeService = createOccupationCodeService({
 const _occupationCodeRouter = createOccupationCodeRouter({
   occupationCodeService: _occupationCodeService,
   authenticate:          (req) => Admin.authenticate(req),
+})
+
+const _dashboardRouter = createDashboardRouter({
+  getTenantStore: (tenantId) => getTenantStore(tenantId),
+  authenticate:   (req) => Admin.authenticate(req),
 })
 
 const UI_DIST = path.join(__dirname, "frontend", "dist")
@@ -1313,6 +1319,11 @@ const server = http.createServer(async (req, res) => {
         : {}
       if (body === null) return
       return _occupationCodeRouter.handle(req, res, url, body)
+    }
+
+    // S36-G6: Command Center KPI route — delegated before inline dispatch
+    if (pathname.startsWith("/api/admin/dashboard/")) {
+      return _dashboardRouter.handle(req, res, url, {})
     }
 
     // S28: Admin UI static serve
