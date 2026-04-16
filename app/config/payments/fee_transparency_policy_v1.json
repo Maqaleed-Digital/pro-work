@@ -1,0 +1,125 @@
+{
+  "version": "v1",
+  "generated": "2026-04-16",
+  "policy": {
+    "freelancer_commission_pct": 0,
+    "description": "WorkCaptain charges EMPLOYERS only. Freelancers receive 100% of agreed contract value. This policy is structural — not a discount or promotion.",
+    "employer_platform_fee_pct": 5,
+    "employer_platform_fee_label": "Platform fee (employer-side only)",
+    "employer_platform_fee_label_ar": "رسوم المنصة (جانب صاحب العمل فقط)"
+  },
+  "competitor_comparison": {
+    "_comment": "What changes, when — competitor fee volatility positioning",
+    "upwork": {
+      "name": "Upwork",
+      "freelancer_fee_pct_range": [10, 20],
+      "freelancer_fee_note": "10–20% sliding scale on earnings. Drops only after $10k with same client.",
+      "fee_volatility": "HIGH — changed 3× in 5 years, most recently May 2023"
+    },
+    "fiverr": {
+      "name": "Fiverr",
+      "freelancer_fee_pct": 20,
+      "freelancer_fee_note": "20% flat on all orders, no exceptions.",
+      "fee_volatility": "MEDIUM — stable 20% but introduced additional processing fees 2024"
+    },
+    "malt": {
+      "name": "Malt",
+      "freelancer_fee_pct_range": [0, 5],
+      "freelancer_fee_note": "0–5% depending on region and contract type.",
+      "fee_volatility": "LOW"
+    },
+    "workcaptain": {
+      "name": "WorkCaptain",
+      "freelancer_fee_pct": 0,
+      "freelancer_fee_note": "0% always. Structural policy, not a promotion.",
+      "fee_volatility": "ZERO — policy is hardcoded, not configurable"
+    }
+  },
+  "payment_methods": [
+    {
+      "id": "bank_transfer_local",
+      "label": "Bank Transfer (Local / SARIE)",
+      "label_ar": "تحويل بنكي محلي (سارية)",
+      "psp_fee_pct": 0.5,
+      "psp_fee_label": "Transfer fee (paid by employer)",
+      "psp_fee_label_ar": "رسوم التحويل (يدفعها صاحب العمل)",
+      "freelancer_deduction_pct": 0,
+      "payout_eta_days_min": 1,
+      "payout_eta_days_max": 2,
+      "payout_eta_label": "1–2 business days",
+      "payout_eta_label_ar": "١–٢ يوم عمل",
+      "instant": false,
+      "supported_currencies": ["SAR", "AED"],
+      "notes": "Saudi SARIE real-time gross settlement network. Available: SAR and AED accounts.",
+      "notes_ar": "شبكة ساريه السعودية للتسوية الفورية. متاح لحسابات: ريال سعودي ودرهم إماراتي."
+    },
+    {
+      "id": "sadad",
+      "label": "SADAD",
+      "label_ar": "سداد",
+      "psp_fee_pct": 0.3,
+      "psp_fee_label": "SADAD processing fee (paid by employer)",
+      "psp_fee_label_ar": "رسوم معالجة سداد (يدفعها صاحب العمل)",
+      "freelancer_deduction_pct": 0,
+      "payout_eta_days_min": 0,
+      "payout_eta_days_max": 0,
+      "payout_eta_label": "Same business day",
+      "payout_eta_label_ar": "نفس يوم العمل",
+      "instant": true,
+      "supported_currencies": ["SAR"],
+      "notes": "Saudi bill payment network. Instant settlement within SADAD network.",
+      "notes_ar": "شبكة مدفوعات سداد السعودية. تسوية فورية داخل شبكة سداد."
+    },
+    {
+      "id": "stc_pay",
+      "label": "STC Pay",
+      "label_ar": "اس تي سي باي",
+      "psp_fee_pct": 0.8,
+      "psp_fee_label": "STC Pay fee (paid by employer)",
+      "psp_fee_label_ar": "رسوم اس تي سي باي (يدفعها صاحب العمل)",
+      "freelancer_deduction_pct": 0,
+      "payout_eta_days_min": 0,
+      "payout_eta_days_max": 0,
+      "payout_eta_label": "Instant",
+      "payout_eta_label_ar": "فوري",
+      "instant": true,
+      "supported_currencies": ["SAR"],
+      "notes": "STC Pay digital wallet. Instant transfer to STC Pay wallet.",
+      "notes_ar": "محفظة STC Pay الرقمية. تحويل فوري إلى محفظة STC Pay."
+    },
+    {
+      "id": "bank_transfer_swift",
+      "label": "International Wire (SWIFT)",
+      "label_ar": "تحويل دولي (سويفت)",
+      "psp_fee_pct": 1.5,
+      "psp_fee_label": "SWIFT wire fee (paid by employer)",
+      "psp_fee_label_ar": "رسوم سويفت (يدفعها صاحب العمل)",
+      "freelancer_deduction_pct": 0,
+      "payout_eta_days_min": 3,
+      "payout_eta_days_max": 5,
+      "payout_eta_label": "3–5 business days",
+      "payout_eta_label_ar": "٣–٥ أيام عمل",
+      "instant": false,
+      "supported_currencies": ["SAR", "AED", "USD", "EUR", "GBP"],
+      "notes": "SWIFT international wire. Additional correspondent bank fees may apply.",
+      "notes_ar": "تحويل دولي عبر سويفت. قد تطبق رسوم إضافية من البنوك الوسيطة."
+    },
+    {
+      "id": "card_visa_mc",
+      "label": "Credit / Debit Card (Visa / Mastercard)",
+      "label_ar": "بطاقة ائتمانية / خصم (فيزا / ماستركارد)",
+      "psp_fee_pct": 2.5,
+      "psp_fee_label": "Card processing fee (paid by employer)",
+      "psp_fee_label_ar": "رسوم معالجة البطاقة (يدفعها صاحب العمل)",
+      "freelancer_deduction_pct": 0,
+      "payout_eta_days_min": 2,
+      "payout_eta_days_max": 3,
+      "payout_eta_label": "2–3 business days",
+      "payout_eta_label_ar": "٢–٣ أيام عمل",
+      "instant": false,
+      "supported_currencies": ["SAR", "AED", "USD", "EUR", "GBP"],
+      "notes": "Card-funded payments. Settlement to your registered bank account.",
+      "notes_ar": "مدفوعات بالبطاقة. التسوية إلى حسابك البنكي المسجل."
+    }
+  ]
+}

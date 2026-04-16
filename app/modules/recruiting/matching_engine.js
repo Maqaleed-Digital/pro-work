@@ -26,9 +26,12 @@ class InMemoryMatchStore {
   }
 }
 
-function createMatchingEngine({ matchStore, hooks }) {
+function createMatchingEngine({ matchStore, hooks, auditLog }) {
   assert(matchStore, 'matchStore is required');
   assert(hooks && typeof hooks.publish === 'function', 'hooks.publish is required');
+  // auditLog is optional — when present (S39-G6 wiring), RECOMMENDATION entries
+  // are appended for FTE→FREELANCER ranking decisions (S36-G1 audit integration)
+  const _audit = auditLog && typeof auditLog.log === 'function' ? auditLog : null;
 
   return {
     async rankCandidates(input) {
@@ -82,6 +85,22 @@ function createMatchingEngine({ matchStore, hooks }) {
 
         ranked.push(result);
         await matchStore.insert(result);
+
+        // S39-G6: wiring 1 — log RECOMMENDATION to audit log when present
+        if (_audit) {
+          _audit.log(
+            'RECOMMENDATION',
+            'CANDIDATE_MATCH',
+            `${input.requisition.requisition_id}::${candidate.candidate_id}`,
+            input.actor && input.actor.actor_id || 'system',
+            {
+              candidate_type:  candidate.candidate_type,
+              final_score:     result.final_score,
+              fte_boost_applied: candidate.candidate_type === 'FTE',
+              nitaqat_band:    result.nitaqat_preview && result.nitaqat_preview.movement_band,
+            },
+          )
+        }
 
         await hooks.publish({
           event_id:       input.event_ids.candidate_matched[candidate.candidate_id],

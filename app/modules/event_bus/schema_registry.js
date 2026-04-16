@@ -463,6 +463,32 @@ const CORE_EVENT_SCHEMAS = {
     trust_sensitive: false,
     required: ['escrow_id', 'project_id', 'released_amount', 'currency_code', 'released_by'],
   },
+
+  // ── S39-G6 Wiring 4: PDPL / DSR events ──────────────────────────────────────
+  DSR_SUBMITTED: {
+    event_version:    '1.0',
+    aggregate_type:   'DSR',
+    producer_service: 'compliance',
+    consumer_services: ['analytics', 'notification_processor'],
+    trust_sensitive:  true,
+    required: ['dsr_id', 'dsr_type', 'subject_id', 'tenant_id'],
+  },
+  DSR_PROCESSED: {
+    event_version:    '1.0',
+    aggregate_type:   'DSR',
+    producer_service: 'compliance',
+    consumer_services: ['analytics'],
+    trust_sensitive:  true,
+    required: ['dsr_id', 'status', 'processed_by'],
+  },
+  DSR_SLA_ALERT: {
+    event_version:    '1.0',
+    aggregate_type:   'DSR',
+    producer_service: 'compliance',
+    consumer_services: ['analytics', 'notification_processor'],
+    trust_sensitive:  false,
+    required: ['dsr_id', 'days_since_submission', 'alert_type'],
+  },
 };
 
 function getSchema(eventType) {

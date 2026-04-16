@@ -6,9 +6,13 @@
     "dev": "node app/server.js",
     "build:ui": "cd app/frontend && npm run build",
     "start:prod": "node app/server.js",
-    "dev:all": "concurrently \"node app/server.js\" \"cd app/frontend && npm run dev\""
+    "dev:all": "concurrently \"node app/server.js\" \"cd app/frontend && npm run dev\"",
+    "wcag:audit": "node scripts/wcag_audit.js",
+    "wcag:audit:preview": "cd app/frontend && npx vite preview --port 4173 & sleep 3 && node ../scripts/wcag_audit.js; kill %1"
   },
   "devDependencies": {
-    "concurrently": "^9.2.1"
+    "concurrently": "^9.2.1",
+    "puppeteer": "^22.15.0",
+    "@axe-core/puppeteer": "^4.10.1"
   }
 }

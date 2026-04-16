@@ -1,31 +1,37 @@
 import { renderNav, setTenantOptions } from "./components/nav.js"
 import { apiGet } from "./api.js"
-import dashboard   from "./pages/dashboard.js"
-import workers     from "./pages/workers.js"
-import pods        from "./pages/pods.js"
-import assignments from "./pages/assignments.js"
-import evidence    from "./pages/evidence.js"
-import scheduler   from "./pages/scheduler.js"
-import governance  from "./pages/governance.js"
-import tenants     from "./pages/tenants.js"
-import analytics   from "./pages/analytics.js"
-import system       from "./pages/system.js"
-import ai           from "./pages/ai.js"
-import dataPrivacy  from "./pages/data_privacy.js"
+import dashboard        from "./pages/dashboard.js"
+import workers          from "./pages/workers.js"
+import pods             from "./pages/pods.js"
+import assignments      from "./pages/assignments.js"
+import evidence         from "./pages/evidence.js"
+import scheduler        from "./pages/scheduler.js"
+import governance       from "./pages/governance.js"
+import tenants          from "./pages/tenants.js"
+import analytics        from "./pages/analytics.js"
+import system           from "./pages/system.js"
+import ai               from "./pages/ai.js"
+import dataPrivacy      from "./pages/data_privacy.js"
+import feeTransparency  from "./pages/fee_transparency.js"
+import identity         from "./pages/identity.js"
+import betaDashboard    from "./pages/beta_dashboard.js"
 
 const ROUTES = {
-  "dashboard":    dashboard,
-  "workers":      workers,
-  "pods":         pods,
-  "assignments":  assignments,
-  "evidence":     evidence,
-  "scheduler":    scheduler,
-  "governance":   governance,
-  "tenants":      tenants,
-  "analytics":    analytics,
-  "system":       system,
-  "ai":           ai,
-  "data-privacy": dataPrivacy,
+  "dashboard":        dashboard,
+  "workers":          workers,
+  "pods":             pods,
+  "assignments":      assignments,
+  "evidence":         evidence,
+  "scheduler":        scheduler,
+  "governance":       governance,
+  "tenants":          tenants,
+  "analytics":        analytics,
+  "system":           system,
+  "ai":               ai,
+  "data-privacy":     dataPrivacy,
+  "fee-transparency": feeTransparency,
+  "identity":         identity,
+  "beta-dashboard":   betaDashboard,
 }
 
 const DEFAULT = "dashboard"
@@ -56,6 +62,9 @@ export function initRouter(appEl, onSignOut) {
 
   _pageEl = document.createElement("div")
   _pageEl.id = "page"
+  // WCAG 2.4.1: skip-link target — "Skip to main content" in index.html jumps here
+  _pageEl.setAttribute("id", "main-content")
+  _pageEl.setAttribute("tabindex", "-1")
   appEl.appendChild(_pageEl)
 
   renderNav(currentRoute(), onSignOut)

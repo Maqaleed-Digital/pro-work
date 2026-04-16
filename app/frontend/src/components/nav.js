@@ -20,18 +20,21 @@ export function clearTenantOptions() {
 }
 
 const TABS = [
-  { key: "dashboard",   label: "Dashboard"   },
-  { key: "workers",     label: "Workers"      },
-  { key: "pods",        label: "Pods"         },
-  { key: "assignments", label: "Assignments"  },
-  { key: "evidence",    label: "Evidence"     },
-  { key: "scheduler",   label: "Scheduler"    },
-  { key: "governance",  label: "Governance"   },
-  { key: "tenants",     label: "Tenants"      },
-  { key: "analytics",   label: "Analytics"    },
-  { key: "system",       label: "System"       },
-  { key: "ai",           label: "AI Control", badge: () => _aiPendingCount },
-  { key: "data-privacy", label: "Data Privacy" },
+  { key: "dashboard",        label: "Dashboard"   },
+  { key: "workers",          label: "Workers"      },
+  { key: "pods",             label: "Pods"         },
+  { key: "assignments",      label: "Assignments"  },
+  { key: "evidence",         label: "Evidence"     },
+  { key: "scheduler",        label: "Scheduler"    },
+  { key: "governance",       label: "Governance"   },
+  { key: "tenants",          label: "Tenants"      },
+  { key: "analytics",        label: "Analytics"    },
+  { key: "system",           label: "System"       },
+  { key: "ai",               label: "AI Control", badge: () => _aiPendingCount },
+  { key: "data-privacy",     label: "Data Privacy" },
+  { key: "fee-transparency", label: "Fee Transparency" },
+  { key: "identity",         label: "Work Identity" },
+  { key: "beta-dashboard",   label: "Beta / GTM" },
 ]
 
 let _signOutCb = null
@@ -47,20 +50,29 @@ export function renderNav(activeKey, onSignOut, onTenantChange) {
   const nav = document.getElementById("nav")
   if (!nav) return
   nav.innerHTML = ""
+  // WCAG 4.1.2: navigation landmark with accessible name
+  nav.setAttribute("role", "navigation")
+  nav.setAttribute("aria-label", "Main navigation")
 
   // brand
   const brand = document.createElement("div")
   brand.className = "brand"
+  brand.setAttribute("aria-hidden", "true")  // decorative duplicate of page title
   brand.textContent = "ProWork Admin"
   nav.appendChild(brand)
 
   // tabs
   const tabs = document.createElement("div")
   tabs.className = "tabs"
+  tabs.setAttribute("role", "list")
   TABS.forEach(({ key, label, badge }) => {
+    const li = document.createElement("div")
+    li.setAttribute("role", "listitem")
     const a = document.createElement("a")
     a.className = "tab" + (key === activeKey ? " active" : "")
     a.href = "#" + key
+    // WCAG 1.3.1 / 4.1.2: active page state communicated to assistive technology
+    if (key === activeKey) a.setAttribute("aria-current", "page")
 
     const labelSpan = document.createElement("span")
     labelSpan.textContent = label
@@ -93,7 +105,8 @@ export function renderNav(activeKey, onSignOut, onTenantChange) {
       }
     }
 
-    tabs.appendChild(a)
+    li.appendChild(a)
+    tabs.appendChild(li)
   })
   nav.appendChild(tabs)
 

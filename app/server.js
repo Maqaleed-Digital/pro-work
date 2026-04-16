@@ -37,13 +37,28 @@ const { createComplianceRiskService } = require("./modules/compliance/compliance
 const { createComplianceRiskRouter }  = require("./api/compliance_risk_router")
 // S38-G3: Evidence Pack
 const { createEvidencePackRouter } = require("./api/evidence_pack_router")
-// S38-G6: PDPL / DSR
+// S38-G6 / S39-G6 wiring 4: PDPL — single require, S39 implementation (real event bus)
 const { createPdplRouter }         = require("./api/pdpl_router")
+// S39-G4: Fee Transparency
+const { createFeeTransparencyRouter }       = require("./api/fee_transparency_router")
+// S39-G5: Work Identity / ERI
+const { createIdentityEriRouter }           = require("./api/identity_eri_router")
+// S39-G6 wiring 1: audit log (S39 module — distinct from S36 AI audit log)
+const { createAuditLogService: createS39AuditLogService,
+        InMemoryAuditStore }                = require("./modules/audit/audit_log_service")
+// S39-G6 wiring 3: Evidence Pack Service
+const { createEvidencePackService,
+        InMemoryEvidencePackStore }         = require("./modules/lifecycle/evidence_pack_service")
+// S39-G6 wiring 2: Compliance Dashboard
+const { createComplianceDashboardService }  = require("./modules/compliance/compliance_dashboard_service")
+// S39-G6 Part 2: Beta access + KPI
+const { createBetaAccessService,
+        InMemoryBetaStore }                 = require("./modules/beta/beta_access_service")
+const { createKpiTracker }                  = require("./modules/beta/kpi_tracker")
+const { createBetaRouter }                  = require("./api/beta_router")
 
 // S38-G3: evidence pack router — shared store across all requests
 const _evidencePackRouter = createEvidencePackRouter()
-// S38-G6: PDPL / DSR router — shared store across all requests
-const _pdplRouter = createPdplRouter()
 
 validateProductionConfig()
 
@@ -75,6 +90,23 @@ const _dashboardRouter = createDashboardRouter({
   getTenantStore: (tenantId) => getTenantStore(tenantId),
   authenticate:   (req) => Admin.authenticate(req),
 })
+
+// S38-G6 / S39-G6 wiring 4: PDPL router — real event bus (S39 supersedes S38 stub)
+const _pdplRouter         = createPdplRouter()
+// S39-G4: fee transparency router
+const _feeRouter          = createFeeTransparencyRouter()
+// S39-G5: work identity / ERI router
+const _identityEriRouter  = createIdentityEriRouter()
+// S39-G6 wiring 1: audit log service (S39)
+const _auditLog           = createS39AuditLogService({ store: new InMemoryAuditStore() })
+// S39-G6 wiring 2: compliance dashboard
+const _complianceDashboard = createComplianceDashboardService()
+// S39-G6 wiring 3: evidence pack service
+const _evidencePackSvc    = createEvidencePackService({ store: new InMemoryEvidencePackStore() })
+// S39-G6 Part 2: beta
+const _betaAccessSvc      = createBetaAccessService({ store: new InMemoryBetaStore() })
+const _kpiTracker         = createKpiTracker()
+const _betaRouter         = createBetaRouter({ betaAccessService: _betaAccessSvc, kpiTracker: _kpiTracker })
 
 const UI_DIST = path.join(__dirname, "frontend", "dist")
 
@@ -1423,7 +1455,12 @@ const server = http.createServer(async (req, res) => {
       return _evidencePackRouter.handle(req, res, pathname, req.method, tenantId, body)
     }
 
-    // S38-G6: PDPL / DSR routes — early exit
+    // S39-G5: work identity / ERI — public read endpoints
+    if (pathname.startsWith("/api/identity/")) {
+      return _identityEriRouter.handle(req, res, pathname, req.method)
+    }
+
+    // S38-G6 / S39-G6 wiring 4: PDPL DSR routes — real event bus
     if (pathname.startsWith("/api/compliance/pdpl/")) {
       const tenantId = resolveTenantId(req)
       let body = null
@@ -1433,6 +1470,57 @@ const server = http.createServer(async (req, res) => {
       }
       return _pdplRouter.handle(req, res, pathname, req.method, tenantId, body)
     }
+
+    // S39-G6 wiring 2: compliance dashboard (Nitaqat) endpoints
+    if (pathname.startsWith("/api/compliance/dashboard/")) {
+      if (req.method === "GET") {
+        if (pathname === "/api/compliance/dashboard/summary") {
+          return ok(res, _complianceDashboard.getDashboardSummary())
+        }
+        if (pathname === "/api/compliance/dashboard/nitaqat") {
+          return ok(res, _complianceDashboard.listNitaqatScores())
+        }
+        const nitaqatCandMatch = pathname.match(/^\/api\/compliance\/dashboard\/nitaqat\/([^/]+)$/)
+        if (nitaqatCandMatch) {
+          try {
+            return ok(res, _complianceDashboard.getNitaqatScore(decodeURIComponent(nitaqatCandMatch[1])))
+          } catch (e) {
+            return fail(res, e.code || "NITAQAT_ERROR", e.message, e.code === "NITAQAT_NOT_FOUND" ? 404 : 400)
+          }
+        }
+      }
+      if (req.method === "POST" && pathname === "/api/compliance/dashboard/nitaqat/compute") {
+        const body = await readJson(req, res)
+        if (body === null) return
+        try {
+          return ok(res, _complianceDashboard.computeNitaqatScore(body))
+        } catch (e) {
+          return fail(res, e.code || "NITAQAT_ERROR", e.message, 422)
+        }
+      }
+      return fail(res, "NOT_FOUND", "Compliance dashboard route not found", 404)
+    }
+
+    // S39-G4: fee transparency — public read + calculate endpoints
+    if (pathname.startsWith("/api/payments/fee-transparency/")) {
+      let body = null
+      if (req.method === "POST") {
+        body = await readJson(req, res)
+        if (body === null) return
+      }
+      return _feeRouter.handle(req, res, pathname, req.method, body)
+    }
+
+    // S39-G6 Part 2: beta admin routes
+    if (pathname.startsWith("/admin/beta")) {
+      let body = null
+      if (req.method === "POST" || req.method === "PUT" || req.method === "PATCH") {
+        body = await readJson(req, res)
+        if (body === null) return
+      }
+      return _betaRouter.handle(req, res, pathname, req.method, body)
+    }
+
 
     const route = matchRoute(req.method || "GET", pathname)
     if (!route) return fail(res, "NOT_FOUND", "Route not found", 404)
