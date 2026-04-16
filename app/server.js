@@ -14,6 +14,9 @@ const ProductionConfig = require("./config/production")
 const { buildZip }   = require("./lib/zip")
 const { validateProductionConfig } = require("./config/validate")
 const { getDataDir, getAppDataDir } = require("./lib/data_paths")
+// S37-G1: WPS Readiness Pack
+const { createWpsReadinessRouter }                                       = require("./api/wps_readiness_router")
+const { createWpsReadinessService, InMemoryWpsReadinessStore }           = require("./modules/onboarding/wps_readiness_service")
 
 validateProductionConfig()
 
@@ -207,6 +210,14 @@ const store = {
   contractIntents: new Map(),
   tenants: new Map()
 }
+
+// S37-G1: WPS Readiness Pack router (shared in-memory store; one per server process)
+const _wpsReadinessHooks  = { publish: async () => {} }
+const _wpsReadinessSvc    = createWpsReadinessService({
+  store: new InMemoryWpsReadinessStore(),
+  hooks: _wpsReadinessHooks,
+})
+const _wpsReadinessRouter = createWpsReadinessRouter({ wpsReadinessService: _wpsReadinessSvc })
 
 /* S29: tenant-scoped WOS store */
 function getTenantStore(tenantId) {
@@ -1268,6 +1279,18 @@ const server = http.createServer(async (req, res) => {
       const ext = path.extname(assetPath)
       const types = { ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png" }
       return serveStatic(res, assetPath, types[ext] || "application/octet-stream")
+    }
+
+    // S37-G1: WPS Readiness Pack — early-exit before matchRoute
+    if (pathname.startsWith("/api/onboarding/wps/")) {
+      const body = ["POST", "PATCH", "PUT"].includes(req.method)
+        ? await readJson(req, res)
+        : {}
+      if (body === null) return  // readJson already sent error response
+      const result = await _wpsReadinessRouter.handle({
+        method: req.method, path: pathname.replace("/api", ""), body
+      })
+      return ok(res, result.body, result.status)
     }
 
     const route = matchRoute(req.method || "GET", pathname)
