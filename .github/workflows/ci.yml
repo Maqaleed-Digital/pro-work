@@ -37,6 +37,11 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      # BRD A6: builds fail if translation keys missing — S36-G5 HARD BUILD GATE
+      - name: Verify translations
+        working-directory: .
+        run: node scripts/i18n/check-translations.js
+
       - name: Test
         run: npm test
 
