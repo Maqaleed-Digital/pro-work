@@ -15,9 +15,12 @@ const { buildZip }   = require("./lib/zip")
 const { validateProductionConfig } = require("./config/validate")
 const { getDataDir, getAppDataDir } = require("./lib/data_paths")
 const { createEvidencePackRouter } = require("./api/evidence_pack_router")
+const { createPdplRouter }         = require("./api/pdpl_router")
 
 // S38-G3: evidence pack router — shared store across all requests
 const _evidencePackRouter = createEvidencePackRouter()
+// S38-G6: PDPL / DSR router — shared store across all requests
+const _pdplRouter = createPdplRouter()
 
 validateProductionConfig()
 
@@ -1283,6 +1286,17 @@ const server = http.createServer(async (req, res) => {
         if (body === null) return  // readJson already sent error response
       }
       return _evidencePackRouter.handle(req, res, pathname, req.method, tenantId, body)
+    }
+
+    // S38-G6: PDPL / DSR routes — early exit
+    if (pathname.startsWith("/api/compliance/pdpl/")) {
+      const tenantId = resolveTenantId(req)
+      let body = null
+      if (req.method === "POST") {
+        body = await readJson(req, res)
+        if (body === null) return  // readJson already sent error response
+      }
+      return _pdplRouter.handle(req, res, pathname, req.method, tenantId, body)
     }
 
     const route = matchRoute(req.method || "GET", pathname)
