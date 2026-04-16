@@ -14,8 +14,12 @@ const ProductionConfig = require("./config/production")
 const { buildZip }   = require("./lib/zip")
 const { validateProductionConfig } = require("./config/validate")
 const { getDataDir, getAppDataDir } = require("./lib/data_paths")
+const { createFeeTransparencyRouter } = require("./api/fee_transparency_router")
 
 validateProductionConfig()
+
+// S39-G4: fee transparency router — wired once at boot
+const _feeRouter = createFeeTransparencyRouter()
 
 const UI_DIST = path.join(__dirname, "frontend", "dist")
 
@@ -1268,6 +1272,16 @@ const server = http.createServer(async (req, res) => {
       const ext = path.extname(assetPath)
       const types = { ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png" }
       return serveStatic(res, assetPath, types[ext] || "application/octet-stream")
+    }
+
+    // S39-G4: fee transparency — public read + calculate endpoints ──────────────
+    if (pathname.startsWith("/api/payments/fee-transparency/")) {
+      let body = null
+      if (req.method === "POST") {
+        body = await readJson(req, res)
+        if (body === null) return
+      }
+      return _feeRouter.handle(req, res, pathname, req.method, body)
     }
 
     const route = matchRoute(req.method || "GET", pathname)

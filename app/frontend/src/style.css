@@ -180,3 +180,233 @@ td.mono { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospac
 /* ── Error / loading ────────────────────────────────────── */
 .page-err  { color: #b00020; font-size: 13px; margin-top: 8px; }
 .page-load { color: #666; font-size: 13px; }
+
+/* ── S39-G4: Fee Transparency — uses logical CSS for RTL ─ */
+
+/* 0% commission badge — MANDATORY on all offer/contract screens */
+.fee-zero-badge {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 16px;
+  background: #f0fdf4;
+  border: 1.5px solid #1a7f37;
+  border-radius: 12px;
+  margin-block-end: 16px;
+}
+.fee-zero-badge--compact {
+  padding: 8px 12px;
+  font-size: 13px;
+}
+.fee-zero-badge__icon {
+  font-size: 18px;
+  color: #1a7f37;
+  flex-shrink: 0;
+  margin-block-start: 1px;
+}
+.fee-zero-badge__en  { font-size: 13px; font-weight: 600; color: #1a7f37; }
+.fee-zero-badge__ar  { font-size: 11px; color: #2a8f47; margin-block-start: 2px; }
+.fee-zero-value      { color: #1a7f37; font-weight: 700; }
+
+/* Fee calculator wrapper */
+.fee-calculator {
+  border: 1px solid #eee;
+  border-radius: 14px;
+  padding: 20px;
+  background: #fafafa;
+  max-width: 640px;
+  margin-block-end: 20px;
+}
+
+/* Input row */
+.fee-calculator__inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-block-end: 18px;
+}
+@media (max-width: 520px) {
+  .fee-calculator__inputs { grid-template-columns: 1fr; }
+}
+.fee-calculator__input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.fee-calculator__label {
+  font-size: 12px;
+  color: #555;
+  font-weight: 600;
+}
+.fee-calculator__input,
+.fee-calculator__select {
+  padding: 9px 11px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  font-size: 13px;
+  background: #fff;
+}
+.fee-calculator__hint {
+  font-size: 11px;
+  color: #888;
+}
+.fee-calculator__error { color: #b00020; font-size: 13px; padding: 8px 0; }
+.fee-calculator__competitor { margin-block-start: 20px; }
+
+/* Fee breakdown table — logical properties for RTL */
+.fee-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.fee-breakdown__section-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-block-start: 8px;
+  margin-block-end: 2px;
+}
+.fee-breakdown__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid #f0f0f0;
+}
+.fee-breakdown__row--total {
+  background: #f3f3f3;
+  border-color: #ddd;
+  font-weight: 700;
+}
+.fee-breakdown__row--zero {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+.fee-breakdown__labels { display: flex; flex-direction: column; gap: 2px; }
+.fee-breakdown__en     { font-size: 13px; color: #111; }
+.fee-breakdown__ar     { font-size: 11px; color: #666; }
+.fee-breakdown__value  { font-size: 14px; font-weight: 600; color: #111; }
+.fee-breakdown__value--zero      { color: #1a7f37; font-weight: 700; }
+.fee-breakdown__value--total     { font-size: 16px; }
+.fee-breakdown__value--highlight { color: #1a7f37; font-size: 15px; font-weight: 700; }
+.fee-breakdown__divider {
+  border: none;
+  border-block-start: 1px solid #eee;
+  margin-block: 6px;
+}
+
+/* Payout ETA badge */
+.payout-eta-badge {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #f0f8ff;
+  border: 1px solid #0969da44;
+  border-radius: 10px;
+  margin-block-start: 10px;
+}
+.payout-eta-badge--instant {
+  background: #fef9f0;
+  border-color: #d97706aa;
+}
+.payout-eta-badge--loading { color: #888; font-size: 12px; }
+.payout-eta-badge--error   { color: #b00020; font-size: 12px; }
+.payout-eta-badge__icon { font-size: 16px; flex-shrink: 0; margin-block-start: 1px; }
+.payout-eta-badge__en     { font-size: 13px; font-weight: 600; color: #0550ae; }
+.payout-eta-badge__ar     { font-size: 11px; color: #555; margin-block-start: 2px; }
+.payout-eta-badge__method    { font-size: 11px; color: #444; margin-block-start: 3px; }
+.payout-eta-badge__method-ar { font-size: 11px; color: #888; margin-block-start: 1px; }
+.payout-eta-badge-wrap { display: inline-block; }
+
+/* Competitor comparison */
+.fee-competitor {
+  border: 1px solid #eee;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.fee-competitor__header {
+  padding: 10px 14px;
+  background: #fafafa;
+  border-block-end: 1px solid #eee;
+  font-size: 12px;
+  font-weight: 700;
+  color: #444;
+}
+.fee-competitor__table { width: 100%; border-collapse: collapse; }
+.fee-competitor__table th {
+  padding: 8px 12px;
+  font-size: 11px;
+  color: #888;
+  text-align: start;
+  font-weight: 600;
+  background: #fafafa;
+}
+.fee-competitor__table td {
+  padding: 8px 12px;
+  font-size: 12px;
+  border-block-start: 1px solid #f3f3f3;
+}
+.fee-competitor__row--highlight td { background: #f0fdf4; font-weight: 600; color: #1a7f37; }
+
+/* Fee transparency page sections */
+.ft-intro {
+  font-size: 13px;
+  color: #555;
+  margin-block-end: 20px;
+  max-width: 540px;
+}
+.ft-section {
+  margin-block-end: 28px;
+  padding-block-end: 28px;
+  border-block-end: 1px solid #f0f0f0;
+}
+.ft-section:last-child { border-block-end: none; }
+.ft-section-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111;
+  margin-block-end: 6px;
+}
+.ft-section-title__ar { font-weight: 400; color: #666; }
+.ft-section-desc {
+  font-size: 12px;
+  color: #666;
+  margin-block-end: 14px;
+  max-width: 500px;
+}
+.ft-calc-container { max-width: 640px; }
+
+/* Offer / contract cards */
+.ft-offer-card,
+.ft-contract-card {
+  border: 1px solid #eee;
+  border-radius: 14px;
+  padding: 18px;
+  background: #fafafa;
+  max-width: 520px;
+}
+
+/* KV rows */
+.ft-kv { display: flex; flex-direction: column; gap: 6px; margin-block-start: 12px; }
+.ft-kv__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid #f0f0f0;
+}
+.ft-kv__row--total    { background: #f3f3f3; border-color: #ddd; font-weight: 700; }
+.ft-kv__row--highlight { background: #f0fdf4; border-color: #bbf7d0; }
+.ft-kv__row--zero     { background: #f0fdf4; border-color: #bbf7d0; }
+.ft-kv__labels { display: flex; flex-direction: column; gap: 1px; font-size: 13px; }
+.ft-kv__val           { font-size: 13px; font-weight: 600; }
+.ft-kv__val--total    { font-size: 15px; }
+.ft-kv__val--highlight { color: #1a7f37; font-weight: 700; }
+.ft-placeholder { color: #888; font-size: 13px; font-style: italic; padding: 12px 0; }

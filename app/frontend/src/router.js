@@ -1,27 +1,29 @@
 import { renderNav, setTenantOptions } from "./components/nav.js"
 import { apiGet } from "./api.js"
-import dashboard   from "./pages/dashboard.js"
-import workers     from "./pages/workers.js"
-import pods        from "./pages/pods.js"
-import assignments from "./pages/assignments.js"
-import evidence    from "./pages/evidence.js"
-import scheduler   from "./pages/scheduler.js"
-import governance  from "./pages/governance.js"
-import tenants     from "./pages/tenants.js"
-import analytics   from "./pages/analytics.js"
-import system      from "./pages/system.js"
+import dashboard        from "./pages/dashboard.js"
+import workers          from "./pages/workers.js"
+import pods             from "./pages/pods.js"
+import assignments      from "./pages/assignments.js"
+import evidence         from "./pages/evidence.js"
+import scheduler        from "./pages/scheduler.js"
+import governance       from "./pages/governance.js"
+import tenants          from "./pages/tenants.js"
+import analytics        from "./pages/analytics.js"
+import system           from "./pages/system.js"
+import feeTransparency  from "./pages/fee_transparency.js"
 
 const ROUTES = {
-  "dashboard":   dashboard,
-  "workers":     workers,
-  "pods":        pods,
-  "assignments": assignments,
-  "evidence":    evidence,
-  "scheduler":   scheduler,
-  "governance":  governance,
-  "tenants":     tenants,
-  "analytics":   analytics,
-  "system":      system,
+  "dashboard":        dashboard,
+  "workers":          workers,
+  "pods":             pods,
+  "assignments":      assignments,
+  "evidence":         evidence,
+  "scheduler":        scheduler,
+  "governance":       governance,
+  "tenants":          tenants,
+  "analytics":        analytics,
+  "system":           system,
+  "fee-transparency": feeTransparency,
 }
 
 const DEFAULT = "dashboard"
