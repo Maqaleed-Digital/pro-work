@@ -1,0 +1,4 @@
+project_id = "REPLACE_WITH_DEV_PROJECT_ID"
+region     = "me-central2"
+env        = "dev"
+db_tier    = "db-custom-1-3840"

@@ -1,0 +1,2 @@
+/opt/prowork/analytics/sql/014_session_auth_dataset_check.sql
+/opt/prowork/analytics/sql/015_first_gate_advancement_probe.sql

@@ -1,0 +1,47 @@
+{
+  "schema_version": "1.0",
+  "phase": 95,
+  "scope": "FIRST_GATE_ADVANCEMENT_EXECUTION",
+  "gate_chain": [
+    {
+      "gate": 1,
+      "status_code": "BLOCKED_MISSING_ENV",
+      "resolution": "export WORKCAPTAIN_BQ_PROJECT_ID and WORKCAPTAIN_BQ_DATASET",
+      "advancement_condition": "Both env vars present and non-empty"
+    },
+    {
+      "gate": 2,
+      "status_code": "BLOCKED_MISSING_BQ",
+      "resolution": "gcloud components install bq",
+      "advancement_condition": "bq binary present in PATH"
+    },
+    {
+      "gate": 3,
+      "status_code": "BLOCKED_AUTH_FAILURE",
+      "resolution": "gcloud auth application-default login OR set GOOGLE_APPLICATION_CREDENTIALS",
+      "advancement_condition": "bq query --nouse_legacy_sql SELECT 1 exits 0"
+    },
+    {
+      "gate": 4,
+      "status_code": "BLOCKED_QUERY_FAILURE",
+      "resolution": "Investigate bq query stderr; check project permissions",
+      "advancement_condition": "Gate advancement probe (SELECT 1) exits 0"
+    },
+    {
+      "gate": 5,
+      "status_code": "BLOCKED_MISSING_VIEWS",
+      "resolution": "Deploy mart views: mart_daily_product_kpis, mart_daily_execution_kpis, mart_daily_trust_kpis",
+      "advancement_condition": "All three mart views present in INFORMATION_SCHEMA.VIEWS",
+      "note": "This is the expected terminal state for Phase 95 when all prior gates pass"
+    },
+    {
+      "gate": 6,
+      "status_code": "PASS",
+      "resolution": "No action required",
+      "advancement_condition": "All gates clear including QUERY gate",
+      "note": "Future phase target"
+    }
+  ],
+  "phase95_expected_terminal_state": "BLOCKED_MISSING_VIEWS",
+  "truth_mode": "PASS_OR_BLOCKED_ONLY"
+}

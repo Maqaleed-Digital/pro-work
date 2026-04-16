@@ -1,0 +1,4 @@
+12:## Gate Advancement Order
+32:      "status_code": "BLOCKED_MISSING_VIEWS",
+45:  "phase95_expected_terminal_state": "BLOCKED_MISSING_VIEWS",
+1:SELECT 1 AS gate_advancement_probe_ok;
