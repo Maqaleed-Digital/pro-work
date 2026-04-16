@@ -16,6 +16,8 @@ const { validateProductionConfig } = require("./config/validate")
 const { getDataDir, getAppDataDir } = require("./lib/data_paths")
 const { createAiRouter }                               = require("./api/ai_router")
 const { createAuditLogService, InMemoryAuditLogStore } = require("./modules/ai/audit_log_service")
+const { createNitaqatRouter }                            = require("./api/nitaqat_router")
+const { createNitaqatPolicyEngine, InMemoryOverrideStore } = require("./modules/compliance/nitaqat_service")
 
 validateProductionConfig()
 
@@ -24,6 +26,14 @@ const _aiAuditService = createAuditLogService({ store: _aiAuditStore })
 const _aiRouter = createAiRouter({
   auditLogService: _aiAuditService,
   authenticate:    (req) => Admin.authenticate(req),
+})
+
+const _nitaqatOverrideStore = new InMemoryOverrideStore()
+const _nitaqatPolicy        = createNitaqatPolicyEngine(require("./config/compliance/nitaqat_policy_v1.json"))
+const _nitaqatRouter        = createNitaqatRouter({
+  nitaqatEngine: _nitaqatPolicy,
+  overrideStore: _nitaqatOverrideStore,
+  authenticate:  (req) => Admin.authenticate(req),
 })
 
 const UI_DIST = path.join(__dirname, "frontend", "dist")
@@ -1274,6 +1284,15 @@ const server = http.createServer(async (req, res) => {
         : {}
       if (body === null) return
       return _aiRouter.handle(req, res, url, body)
+    }
+
+    // S36-G3: Nitaqat compliance routes — delegated before inline dispatch
+    if (pathname.startsWith("/api/admin/compliance/nitaqat/")) {
+      const body = req.method === "POST"
+        ? await readJson(req, res)
+        : {}
+      if (body === null) return
+      return _nitaqatRouter.handle(req, res, url, body)
     }
 
     // S28: Admin UI static serve
