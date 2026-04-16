@@ -14,6 +14,10 @@ const ProductionConfig = require("./config/production")
 const { buildZip }   = require("./lib/zip")
 const { validateProductionConfig } = require("./config/validate")
 const { getDataDir, getAppDataDir } = require("./lib/data_paths")
+const { createEvidencePackRouter } = require("./api/evidence_pack_router")
+
+// S38-G3: evidence pack router — shared store across all requests
+const _evidencePackRouter = createEvidencePackRouter()
 
 validateProductionConfig()
 
@@ -1268,6 +1272,17 @@ const server = http.createServer(async (req, res) => {
       const ext = path.extname(assetPath)
       const types = { ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png" }
       return serveStatic(res, assetPath, types[ext] || "application/octet-stream")
+    }
+
+    // S38-G3: evidence pack routes — early exit
+    if (pathname.startsWith("/api/evidence/")) {
+      const tenantId = resolveTenantId(req)
+      let body = null
+      if (req.method === "POST") {
+        body = await readJson(req, res)
+        if (body === null) return  // readJson already sent error response
+      }
+      return _evidencePackRouter.handle(req, res, pathname, req.method, tenantId, body)
     }
 
     const route = matchRoute(req.method || "GET", pathname)
