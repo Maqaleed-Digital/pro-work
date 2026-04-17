@@ -1407,7 +1407,8 @@ const server = http.createServer(async (req, res) => {
     }
 
     // S28: Admin UI static serve
-    if (req.method === "GET" && pathname === "/admin") {
+    if (req.method === "GET" &&
+        (pathname === "/admin" || pathname === "/admin/")) {
       return serveStatic(res, path.join(UI_DIST, "index.html"), "text/html")
     }
 

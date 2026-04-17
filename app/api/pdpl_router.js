@@ -185,6 +185,21 @@ function createPdplRouter(opts) {
         return ok(res, { ...updated, ...computeSla(updated) })
       }
 
+      // GET /api/compliance/pdpl/lawful-basis
+      if (pathname === '/api/compliance/pdpl/lawful-basis' && method === 'GET') {
+        return ok(res, {
+          lawful_bases: [
+            { id: 'consent',             label: 'Consent',               article: 'Art. 5' },
+            { id: 'contractual',         label: 'Contractual necessity', article: 'Art. 5' },
+            { id: 'legal_obligation',    label: 'Legal obligation',      article: 'Art. 5' },
+            { id: 'vital_interests',     label: 'Vital interests',       article: 'Art. 5' },
+            { id: 'public_task',         label: 'Public task',           article: 'Art. 5' },
+            { id: 'legitimate_interest', label: 'Legitimate interests',  article: 'Art. 5' },
+          ],
+          jurisdiction: 'KSA PDPL (Personal Data Protection Law)',
+        })
+      }
+
       // GET /api/compliance/pdpl/coverage
       if (pathname === '/api/compliance/pdpl/coverage' && method === 'GET') {
         return ok(res, {
