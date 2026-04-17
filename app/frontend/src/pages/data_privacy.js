@@ -318,7 +318,7 @@ export default {
             const url = URL.createObjectURL(blob)
             const a   = document.createElement('a')
             a.href  = url
-            a.download = `${doc.type}_ProWork_v1.txt`
+            a.download = `${doc.type}_WorkCaptain_v1.txt`
             document.body.appendChild(a)
             a.click()
             document.body.removeChild(a)

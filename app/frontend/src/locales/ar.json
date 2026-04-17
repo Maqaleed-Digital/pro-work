@@ -12,7 +12,7 @@
   "nav.aiControl": "مركز الذكاء الاصطناعي",
   "nav.tenant": "المستأجر:",
   "nav.signOut": "تسجيل الخروج",
-  "auth.title": "ProWork Admin",
+  "auth.title": "WorkCaptain Admin",
   "auth.subtitle": "أدخل رمز حامل المسؤول للمتابعة.",
   "auth.tokenPlaceholder": "رمز الحامل",
   "auth.signIn": "تسجيل الدخول",

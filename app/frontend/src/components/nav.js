@@ -58,7 +58,7 @@ export function renderNav(activeKey, onSignOut, onTenantChange) {
   const brand = document.createElement("div")
   brand.className = "brand"
   brand.setAttribute("aria-hidden", "true")  // decorative duplicate of page title
-  brand.textContent = "ProWork Admin"
+  brand.textContent = "WorkCaptain Admin"
   nav.appendChild(brand)
 
   // tabs

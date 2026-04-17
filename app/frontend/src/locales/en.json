@@ -13,7 +13,7 @@
   "nav.tenant":        "Tenant:",
   "nav.signOut":       "Sign out",
 
-  "auth.title":            "ProWork Admin",
+  "auth.title":            "WorkCaptain Admin",
   "auth.subtitle":         "Enter your admin bearer token to continue.",
   "auth.tokenPlaceholder": "Bearer token",
   "auth.signIn":           "Sign in",

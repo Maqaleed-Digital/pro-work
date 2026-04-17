@@ -11,7 +11,7 @@ function showLogin() {
   const box = document.createElement("div")
   box.className = "login-box"
   // WCAG 2.4.2: page has descriptive title (set via index.html); heading provides section title
-  box.innerHTML = `<h1>ProWork Admin</h1>`
+  box.innerHTML = `<h1>WorkCaptain Admin</h1>`
 
   // WCAG 1.3.1 / 4.1.2: form input requires associated label
   const tokenLabel = document.createElement("label")
