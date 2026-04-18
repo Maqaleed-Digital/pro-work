@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WorkCaptain — The KSA Workforce OS</title>
+  <meta name="description" content="The only platform built for Saudi compliance from day one. Nitaqat impact preview, evidence-backed hiring, 0% freelancer commission.">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy: #0b1a3b;
+      --navy-light: #132952;
+      --gold: #c9a84c;
+      --gold-light: #e2c770;
+      --teal: #1a8a7a;
+      --white: #ffffff;
+      --gray-100: #f4f6f9;
+      --gray-200: #e2e6ed;
+      --gray-500: #7a8499;
+      --gray-700: #3d4663;
+      --radius: 12px;
+      --font: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font);
+      color: var(--navy);
+      background: var(--white);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ── RTL ─────────────────────────────────────────── */
+    html[dir="rtl"] body { font-family: 'Segoe UI', Tahoma, 'Noto Sans Arabic', sans-serif; }
+    html[dir="rtl"] .hero-badge { direction: rtl; }
+
+    /* ── Header ──────────────────────────────────────── */
+    .header {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: rgba(11, 26, 59, 0.97);
+      backdrop-filter: blur(8px);
+      padding: 0 24px;
+      height: 64px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    .header-brand {
+      color: var(--white);
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      display: flex; align-items: center; gap: 10px;
+    }
+
+    .header-brand .mark {
+      width: 32px; height: 32px;
+      background: var(--gold);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 800; color: var(--navy);
+    }
+
+    .header-actions { display: flex; align-items: center; gap: 12px; }
+
+    .btn-lang {
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.3);
+      color: var(--white);
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+    .btn-lang:hover { border-color: var(--gold); color: var(--gold); }
+
+    .btn-cta-sm {
+      background: var(--gold);
+      color: var(--navy);
+      border: none;
+      padding: 8px 20px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+    .btn-cta-sm:hover { background: var(--gold-light); }
+
+    /* ── Hero ─────────────────────────────────────────── */
+    .hero {
+      min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center;
+      padding: 100px 24px 60px;
+      background: linear-gradient(160deg, var(--navy) 0%, var(--navy-light) 50%, #0f2f5e 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute; top: -50%; right: -30%;
+      width: 800px; height: 800px;
+      background: radial-gradient(circle, rgba(201,168,76,0.08) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+
+    .hero-badge {
+      display: inline-block;
+      background: rgba(201,168,76,0.15);
+      color: var(--gold);
+      border: 1px solid rgba(201,168,76,0.3);
+      padding: 6px 18px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 32px;
+      letter-spacing: 0.5px;
+    }
+
+    .hero h1 {
+      color: var(--white);
+      font-size: clamp(36px, 6vw, 64px);
+      font-weight: 800;
+      line-height: 1.15;
+      max-width: 700px;
+      margin-bottom: 20px;
+      letter-spacing: -1px;
+    }
+
+    .hero h1 .gold { color: var(--gold); }
+
+    .hero p {
+      color: var(--gray-200);
+      font-size: clamp(16px, 2.5vw, 20px);
+      max-width: 520px;
+      margin-bottom: 40px;
+      line-height: 1.7;
+    }
+
+    .btn-cta {
+      display: inline-block;
+      background: var(--gold);
+      color: var(--navy);
+      padding: 16px 40px;
+      border-radius: 8px;
+      font-size: 18px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: background 0.2s, transform 0.15s;
+      position: relative;
+      z-index: 1;
+    }
+    .btn-cta:hover { background: var(--gold-light); transform: translateY(-1px); }
+
+    .hero-note {
+      color: var(--gray-500);
+      font-size: 13px;
+      margin-top: 16px;
+    }
+
+    /* ── Value Props ──────────────────────────────────── */
+    .values {
+      padding: 80px 24px;
+      background: var(--gray-100);
+    }
+
+    .values-inner {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .values h2 {
+      text-align: center;
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: var(--navy);
+    }
+
+    .values .subtitle {
+      text-align: center;
+      color: var(--gray-500);
+      font-size: 16px;
+      margin-bottom: 48px;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+    }
+
+    .card {
+      background: var(--white);
+      border-radius: var(--radius);
+      padding: 32px 28px;
+      border: 1px solid var(--gray-200);
+      transition: box-shadow 0.2s, transform 0.15s;
+    }
+    .card:hover {
+      box-shadow: 0 8px 24px rgba(11,26,59,0.08);
+      transform: translateY(-2px);
+    }
+
+    .card-icon {
+      width: 48px; height: 48px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px;
+      margin-bottom: 16px;
+    }
+
+    .card-icon.nitaqat { background: rgba(26,138,122,0.12); color: var(--teal); }
+    .card-icon.evidence { background: rgba(11,26,59,0.08); color: var(--navy); }
+    .card-icon.commission { background: rgba(201,168,76,0.15); color: var(--gold); }
+
+    .card h3 {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--navy);
+    }
+
+    .card p {
+      color: var(--gray-700);
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    /* ── Footer ──────────────────────────────────────── */
+    .footer {
+      background: var(--navy);
+      color: var(--gray-500);
+      text-align: center;
+      padding: 32px 24px;
+      font-size: 14px;
+    }
+
+    .footer a { color: var(--gold); text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+
+    /* ── Mobile ──────────────────────────────────────── */
+    @media (max-width: 640px) {
+      .header { padding: 0 16px; }
+      .hero { padding: 80px 20px 40px; }
+      .values { padding: 48px 16px; }
+      .cards { grid-template-columns: 1fr; }
+      .btn-cta { padding: 14px 32px; font-size: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-brand">
+      <div class="mark">W</div>
+      <span data-en="WorkCaptain" data-ar="WorkCaptain">WorkCaptain</span>
+    </div>
+    <div class="header-actions">
+      <button class="btn-lang" id="langToggle" aria-label="Switch language">AR</button>
+      <a class="btn-cta-sm" href="https://api.workcaptain.ai/admin/#register"
+         data-en="Request Beta" data-ar="&#x0637;&#x0644;&#x0628; &#x0627;&#x0644;&#x0648;&#x0635;&#x0648;&#x0644;">Request Beta</a>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-badge" data-en="Built for KSA compliance from day one" data-ar="&#x0645;&#x0635;&#x0645;&#x0645; &#x0644;&#x0644;&#x0627;&#x0645;&#x062a;&#x062b;&#x0627;&#x0644; &#x0627;&#x0644;&#x0633;&#x0639;&#x0648;&#x062f;&#x064a; &#x0645;&#x0646; &#x0627;&#x0644;&#x064a;&#x0648;&#x0645; &#x0627;&#x0644;&#x0623;&#x0648;&#x0644;">Built for KSA compliance from day one</div>
+
+    <h1 data-en="The KSA<br><span class='gold'>Workforce OS</span>" data-ar="&#x0646;&#x0638;&#x0627;&#x0645; &#x062a;&#x0634;&#x063a;&#x064a;&#x0644;<br><span class='gold'>&#x0627;&#x0644;&#x0642;&#x0648;&#x0649; &#x0627;&#x0644;&#x0639;&#x0627;&#x0645;&#x0644;&#x0629;</span>">The KSA<br><span class="gold">Workforce OS</span></h1>
+
+    <p data-en="The only platform built for Saudi compliance from day one. Nitaqat-aware hiring, evidence-backed decisions, zero freelancer fees." data-ar="&#x0627;&#x0644;&#x0645;&#x0646;&#x0635;&#x0629; &#x0627;&#x0644;&#x0648;&#x062d;&#x064a;&#x062f;&#x0629; &#x0627;&#x0644;&#x0645;&#x0635;&#x0645;&#x0645;&#x0629; &#x0644;&#x0644;&#x0627;&#x0645;&#x062a;&#x062b;&#x0627;&#x0644; &#x0627;&#x0644;&#x0633;&#x0639;&#x0648;&#x062f;&#x064a; &#x0645;&#x0646; &#x0627;&#x0644;&#x064a;&#x0648;&#x0645; &#x0627;&#x0644;&#x0623;&#x0648;&#x0644;. &#x062a;&#x0648;&#x0638;&#x064a;&#x0641; &#x0645;&#x062a;&#x0648;&#x0627;&#x0641;&#x0642; &#x0645;&#x0639; &#x0646;&#x0637;&#x0627;&#x0642;&#x0627;&#x062a;&#x060c; &#x0642;&#x0631;&#x0627;&#x0631;&#x0627;&#x062a; &#x0645;&#x062f;&#x0639;&#x0648;&#x0645;&#x0629; &#x0628;&#x0627;&#x0644;&#x0623;&#x062f;&#x0644;&#x0629;&#x060c; &#x0628;&#x062f;&#x0648;&#x0646; &#x0639;&#x0645;&#x0648;&#x0644;&#x0627;&#x062a; &#x0639;&#x0644;&#x0649; &#x0627;&#x0644;&#x0645;&#x0633;&#x062a;&#x0642;&#x0644;&#x064a;&#x0646;.">The only platform built for Saudi compliance from day one. Nitaqat-aware hiring, evidence-backed decisions, zero freelancer fees.</p>
+
+    <a class="btn-cta" href="https://api.workcaptain.ai/admin/#register"
+       data-en="Request Beta Access" data-ar="&#x0637;&#x0644;&#x0628; &#x0627;&#x0644;&#x0648;&#x0635;&#x0648;&#x0644; &#x0644;&#x0644;&#x0646;&#x0633;&#x062e;&#x0629; &#x0627;&#x0644;&#x062a;&#x062c;&#x0631;&#x064a;&#x0628;&#x064a;&#x0629;">Request Beta Access</a>
+
+    <div class="hero-note" data-en="Free during beta. No credit card required." data-ar="&#x0645;&#x062c;&#x0627;&#x0646;&#x064a; &#x062e;&#x0644;&#x0627;&#x0644; &#x0627;&#x0644;&#x0641;&#x062a;&#x0631;&#x0629; &#x0627;&#x0644;&#x062a;&#x062c;&#x0631;&#x064a;&#x0628;&#x064a;&#x0629;. &#x0644;&#x0627; &#x062d;&#x0627;&#x062c;&#x0629; &#x0644;&#x0628;&#x0637;&#x0627;&#x0642;&#x0629; &#x0627;&#x0626;&#x062a;&#x0645;&#x0627;&#x0646;.">Free during beta. No credit card required.</div>
+  </section>
+
+  <!-- Value Props -->
+  <section class="values">
+    <div class="values-inner">
+      <h2 data-en="Built different for the Kingdom" data-ar="&#x0645;&#x0635;&#x0645;&#x0645; &#x0628;&#x0634;&#x0643;&#x0644; &#x0645;&#x062e;&#x062a;&#x0644;&#x0641; &#x0644;&#x0644;&#x0645;&#x0645;&#x0644;&#x0643;&#x0629;">Built different for the Kingdom</h2>
+      <p class="subtitle" data-en="Every feature serves Saudi regulatory reality" data-ar="&#x0643;&#x0644; &#x0645;&#x064a;&#x0632;&#x0629; &#x062a;&#x062e;&#x062f;&#x0645; &#x0627;&#x0644;&#x0648;&#x0627;&#x0642;&#x0639; &#x0627;&#x0644;&#x062a;&#x0646;&#x0638;&#x064a;&#x0645;&#x064a; &#x0627;&#x0644;&#x0633;&#x0639;&#x0648;&#x062f;&#x064a;">Every feature serves Saudi regulatory reality</p>
+
+      <div class="cards">
+        <!-- Card 1: Nitaqat -->
+        <div class="card">
+          <div class="card-icon nitaqat">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          </div>
+          <h3 data-en="Nitaqat Impact Preview" data-ar="&#x0645;&#x0639;&#x0627;&#x064a;&#x0646;&#x0629; &#x062a;&#x0623;&#x062b;&#x064a;&#x0631; &#x0646;&#x0637;&#x0627;&#x0642;&#x0627;&#x062a;">Nitaqat Impact Preview</h3>
+          <p data-en="Know your Saudization zone before you hire. Simulate the impact of every workforce change on your Nitaqat band in real time." data-ar="&#x0627;&#x0639;&#x0631;&#x0641; &#x0646;&#x0637;&#x0627;&#x0642; &#x0627;&#x0644;&#x0633;&#x0639;&#x0648;&#x062f;&#x0629; &#x0642;&#x0628;&#x0644; &#x0627;&#x0644;&#x062a;&#x0648;&#x0638;&#x064a;&#x0641;. &#x062d;&#x0627;&#x0643;&#x0650; &#x062a;&#x0623;&#x062b;&#x064a;&#x0631; &#x0643;&#x0644; &#x062a;&#x063a;&#x064a;&#x064a;&#x0631; &#x0641;&#x064a; &#x0627;&#x0644;&#x0642;&#x0648;&#x0649; &#x0627;&#x0644;&#x0639;&#x0627;&#x0645;&#x0644;&#x0629; &#x0639;&#x0644;&#x0649; &#x0646;&#x0637;&#x0627;&#x0642;&#x0643; &#x0641;&#x0648;&#x0631;&#x064b;&#x0627;.">Know your Saudization zone before you hire. Simulate the impact of every workforce change on your Nitaqat band in real time.</p>
+        </div>
+
+        <!-- Card 2: Evidence -->
+        <div class="card">
+          <div class="card-icon evidence">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          </div>
+          <h3 data-en="Evidence-backed hiring" data-ar="&#x062a;&#x0648;&#x0638;&#x064a;&#x0641; &#x0645;&#x062f;&#x0639;&#x0648;&#x0645; &#x0628;&#x0627;&#x0644;&#x0623;&#x062f;&#x0644;&#x0629;">Evidence-backed hiring</h3>
+          <p data-en="Every hiring decision, AI recommendation, and compliance check is logged with a full audit trail. Ready for MOL inspection at any time." data-ar="&#x0643;&#x0644; &#x0642;&#x0631;&#x0627;&#x0631; &#x062a;&#x0648;&#x0638;&#x064a;&#x0641; &#x0648;&#x062a;&#x0648;&#x0635;&#x064a;&#x0629; &#x0630;&#x0643;&#x0627;&#x0621; &#x0627;&#x0635;&#x0637;&#x0646;&#x0627;&#x0639;&#x064a; &#x0648;&#x0641;&#x062d;&#x0635; &#x0627;&#x0645;&#x062a;&#x062b;&#x0627;&#x0644; &#x0645;&#x0633;&#x062c;&#x0644; &#x0628;&#x0633;&#x062c;&#x0644; &#x0645;&#x0631;&#x0627;&#x062c;&#x0639;&#x0629; &#x0643;&#x0627;&#x0645;&#x0644;. &#x062c;&#x0627;&#x0647;&#x0632; &#x0644;&#x062a;&#x0641;&#x062a;&#x064a;&#x0634; &#x0648;&#x0632;&#x0627;&#x0631;&#x0629; &#x0627;&#x0644;&#x0639;&#x0645;&#x0644; &#x0641;&#x064a; &#x0623;&#x064a; &#x0648;&#x0642;&#x062a;.">Every hiring decision, AI recommendation, and compliance check is logged with a full audit trail. Ready for MOL inspection at any time.</p>
+        </div>
+
+        <!-- Card 3: Commission -->
+        <div class="card">
+          <div class="card-icon commission">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          </div>
+          <h3 data-en="0% freelancer commission" data-ar="0% &#x0639;&#x0645;&#x0648;&#x0644;&#x0629; &#x0639;&#x0644;&#x0649; &#x0627;&#x0644;&#x0645;&#x0633;&#x062a;&#x0642;&#x0644;&#x064a;&#x0646;">0% freelancer commission</h3>
+          <p data-en="Freelancers keep 100% of what they earn. Always. WorkCaptain charges employers only &mdash; a flat 5% platform fee. Transparent by design." data-ar="&#x0627;&#x0644;&#x0645;&#x0633;&#x062a;&#x0642;&#x0644;&#x0648;&#x0646; &#x064a;&#x062d;&#x062a;&#x0641;&#x0638;&#x0648;&#x0646; &#x0628;&#x0640; 100% &#x0645;&#x0645;&#x0627; &#x064a;&#x0643;&#x0633;&#x0628;&#x0648;&#x0646;. &#x062f;&#x0627;&#x0626;&#x0645;&#x064b;&#x0627;. WorkCaptain &#x062a;&#x0641;&#x0631;&#x0636; &#x0631;&#x0633;&#x0648;&#x0645;&#x064b;&#x0627; &#x0639;&#x0644;&#x0649; &#x0623;&#x0635;&#x062d;&#x0627;&#x0628; &#x0627;&#x0644;&#x0639;&#x0645;&#x0644; &#x0641;&#x0642;&#x0637; &mdash; 5% &#x0631;&#x0633;&#x0645; &#x0645;&#x0646;&#x0635;&#x0629; &#x062b;&#x0627;&#x0628;&#x062a;.">Freelancers keep 100% of what they earn. Always. WorkCaptain charges employers only &mdash; a flat 5% platform fee. Transparent by design.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <span data-en="&copy; 2026 Maqaleed Digital. Built in Saudi Arabia." data-ar="&copy; 2026 &#x0645;&#x0642;&#x0627;&#x0644;&#x064a;&#x062f; &#x0627;&#x0644;&#x0631;&#x0642;&#x0645;&#x064a;&#x0629;. &#x0635;&#x064f;&#x0646;&#x0639; &#x0641;&#x064a; &#x0627;&#x0644;&#x0645;&#x0645;&#x0644;&#x0643;&#x0629; &#x0627;&#x0644;&#x0639;&#x0631;&#x0628;&#x064a;&#x0629; &#x0627;&#x0644;&#x0633;&#x0639;&#x0648;&#x062f;&#x064a;&#x0629;.">&copy; 2026 Maqaleed Digital. Built in Saudi Arabia.</span>
+  </footer>
+
+  <script>
+    (function () {
+      var lang = 'en';
+      var toggle = document.getElementById('langToggle');
+      var els = document.querySelectorAll('[data-en]');
+
+      toggle.addEventListener('click', function () {
+        lang = lang === 'en' ? 'ar' : 'en';
+        document.documentElement.lang = lang;
+        document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+        toggle.textContent = lang === 'en' ? 'AR' : 'EN';
+
+        for (var i = 0; i < els.length; i++) {
+          var el = els[i];
+          var text = el.getAttribute('data-' + lang);
+          if (text) {
+            if (el.tagName === 'H1' || text.indexOf('<') !== -1) {
+              el.innerHTML = text;
+            } else {
+              el.textContent = text;
+            }
+          }
+        }
+      });
+    })();
+  </script>
+
+</body>
+</html>
