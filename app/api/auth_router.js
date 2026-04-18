@@ -82,6 +82,7 @@ function createAuthRouter(opts) {
           tenant: { id: tenantId, name: companyName },
         }, 201)
       } catch (e) {
+        console.error('[auth/register] error:', e.message, 'status:', e.status, 'stack:', e.stack && e.stack.split('\n')[1])
         // Clean up tenant on failure
         await pool.query('DELETE FROM tenants WHERE id = $1', [tenantId]).catch(() => {})
         if (e.status === 409) return fail(res, 'CONFLICT', e.message, 409)

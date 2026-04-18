@@ -3,6 +3,21 @@
 
 BEGIN;
 
+-- ── tenants (prerequisite — created by app initSchema but may not exist yet) ──
+CREATE TABLE IF NOT EXISTS tenants (
+  id         VARCHAR(64) PRIMARY KEY,
+  name       VARCHAR(255) NOT NULL,
+  status     VARCHAR(32) DEFAULT 'active',
+  config     JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Seed default tenant if not exists
+INSERT INTO tenants (id, name, status)
+  VALUES ('default', 'Default Tenant', 'active')
+  ON CONFLICT (id) DO NOTHING;
+
 -- ── users ─────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS users (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),

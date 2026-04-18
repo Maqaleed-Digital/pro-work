@@ -23,7 +23,7 @@ function createAuthService(opts) {
 
   // ── Tenant context helper ───────────────────────────────────────────────
   async function withTenant(client, tenantId, fn) {
-    await client.query("SELECT set_config('app.current_tenant_id', $1, true)", [tenantId])
+    await client.query("SELECT set_config('app.current_tenant_id', $1, false)", [tenantId])
     return fn(client)
   }
 
@@ -91,6 +91,9 @@ function createAuthService(opts) {
 
       const client = await pool.connect()
       try {
+        // Set tenant context for RLS
+        await client.query("SELECT set_config('app.current_tenant_id', $1, false)", [tenantId])
+
         const result = await client.query(
           'SELECT id, email, password_hash, tenant_id, role, status FROM users WHERE email = $1 AND tenant_id = $2',
           [email, tenantId]
@@ -140,16 +143,25 @@ function createAuthService(opts) {
       if (!payload) return null
 
       const tokenHash = jwt.hashToken(token)
-      const result = await pool.query(
-        'SELECT id, user_id, expires_at FROM sessions WHERE token_hash = $1',
-        [tokenHash]
-      )
-      if (result.rows.length === 0) return null
+      const client = await pool.connect()
+      try {
+        // Set tenant context for RLS
+        if (payload.tenant_id) {
+          await client.query("SELECT set_config('app.current_tenant_id', $1, false)", [payload.tenant_id])
+        }
+        const result = await client.query(
+          'SELECT id, user_id, expires_at FROM sessions WHERE token_hash = $1',
+          [tokenHash]
+        )
+        if (result.rows.length === 0) return null
 
-      const session = result.rows[0]
-      if (new Date(session.expires_at) < new Date()) return null
+        const session = result.rows[0]
+        if (new Date(session.expires_at) < new Date()) return null
 
-      return payload
+        return payload
+      } finally {
+        client.release()
+      }
     },
 
     /**
@@ -159,22 +171,28 @@ function createAuthService(opts) {
       const payload = jwt.verify(token)
       if (!payload) return null
 
-      const oldHash = jwt.hashToken(token)
+      const client = await pool.connect()
+      try {
+        if (payload.tenant_id) {
+          await client.query("SELECT set_config('app.current_tenant_id', $1, false)", [payload.tenant_id])
+        }
 
-      // Revoke old session
-      await pool.query('DELETE FROM sessions WHERE token_hash = $1', [oldHash])
+        const oldHash = jwt.hashToken(token)
+        await client.query('DELETE FROM sessions WHERE token_hash = $1', [oldHash])
 
-      // Issue new token
-      const { token: newToken, expiresAt } = jwt.issue(payload.sub, payload.role, payload.tenant_id)
-      const newHash = jwt.hashToken(newToken)
+        const { token: newToken, expiresAt } = jwt.issue(payload.sub, payload.role, payload.tenant_id)
+        const newHash = jwt.hashToken(newToken)
 
-      await pool.query(
-        `INSERT INTO sessions (id, user_id, token_hash, expires_at, created_at, ip_address, user_agent)
-         VALUES ($1, $2, $3, $4, NOW(), $5, $6)`,
-        [crypto.randomUUID(), payload.sub, newHash, expiresAt, ipAddress || null, userAgent || null]
-      )
+        await client.query(
+          `INSERT INTO sessions (id, user_id, token_hash, expires_at, created_at, ip_address, user_agent)
+           VALUES ($1, $2, $3, $4, NOW(), $5, $6)`,
+          [crypto.randomUUID(), payload.sub, newHash, expiresAt, ipAddress || null, userAgent || null]
+        )
 
-      return { token: newToken, expiresAt }
+        return { token: newToken, expiresAt }
+      } finally {
+        client.release()
+      }
     },
 
     /**

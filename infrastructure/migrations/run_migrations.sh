@@ -78,7 +78,17 @@ psql "$DATABASE_URL" \
   -f 20260416_create_owner_role_and_revoke_phase2.sql
 echo "✓ create_owner_role_and_revoke_phase2"
 
-echo "All 15 migrations complete."
+psql "$MIGRATION_URL" \
+  -v ON_ERROR_STOP=1 \
+  -f 20260418_create_auth_tables.sql
+echo "✓ create_auth_tables"
+
+psql "$MIGRATION_URL" \
+  -v ON_ERROR_STOP=1 \
+  -f 20260418_create_invitations.sql
+echo "✓ create_invitations"
+
+echo "All 17 migrations complete."
 
 psql "$MIGRATION_URL" \
   -c "\dt" | head -50

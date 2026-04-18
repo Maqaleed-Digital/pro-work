@@ -182,8 +182,9 @@ function renderStep3(el) {
           proposedSalary: 0,
         })
 
-        const zone = (nitaqat.currentZone || "").toLowerCase()
-        const pct = nitaqat.saudiPercentageBefore
+        const nr = nitaqat.result || nitaqat
+        const zone = (nr.currentZone || "").toLowerCase()
+        const pct = nr.saudiPercentageBefore
         const zoneLabel = { platinum: t("onboarding.nitaqat.platinum"), green: t("onboarding.nitaqat.green"), yellow: t("onboarding.nitaqat.yellow"), "low-green": t("onboarding.nitaqat.lowGreen"), red: t("onboarding.nitaqat.red") }
 
         previewEl.innerHTML = ""

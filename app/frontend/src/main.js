@@ -1,5 +1,6 @@
 import { getToken, setToken } from "./api.js"
 import { initRouter } from "./router.js"
+import { initLocale } from "./locale.js"
 
 function showLogin() {
   const app = document.getElementById("app")
@@ -63,10 +64,19 @@ function showLogin() {
 }
 
 function boot() {
+  const hash = window.location.hash.replace('#', '').split('?')[0]
+  const PUBLIC_ROUTES = ['register', 'onboarding', 'accept-invite']
+  const app = document.getElementById("app")
+
+  if (PUBLIC_ROUTES.includes(hash)) {
+    // Public route — initialize router without auth check
+    initRouter(app, () => showLogin())
+    return
+  }
+
   const token = getToken()
   if (!token) { showLogin(); return }
-  const app = document.getElementById("app")
   initRouter(app, () => showLogin())
 }
 
-boot()
+initLocale().then(() => boot())

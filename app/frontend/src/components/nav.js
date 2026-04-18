@@ -45,7 +45,11 @@ export function renderNav(activeKey, onSignOut, onTenantChange) {
   if (onTenantChange) _tenantChangeCb = onTenantChange
 
   // S36-G2: refresh pending count on every nav render (polling on navigation)
-  refreshAiPendingCount()
+  // S40: skip on public routes to avoid 401 noise
+  const _hash = window.location.hash.replace('#', '').split('?')[0]
+  if (!['register', 'onboarding', 'accept-invite'].includes(_hash)) {
+    refreshAiPendingCount()
+  }
 
   const nav = document.getElementById("nav")
   if (!nav) return

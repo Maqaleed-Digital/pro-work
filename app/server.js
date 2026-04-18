@@ -503,6 +503,9 @@ function resolveTenantId(req) {
   const queryTenant = url.searchParams.get("tenant_id")
   if (queryTenant && queryTenant.trim()) return queryTenant.trim()
 
+  // S40: JWT-authenticated users — use tenant from token
+  if (req._jwtPrincipal && req._jwtPrincipal.tenant_id) return req._jwtPrincipal.tenant_id
+
   return "default"
 }
 
@@ -1498,8 +1501,19 @@ const server = http.createServer(async (req, res) => {
         body = await readJson(req, res)
         if (body === null) return
       }
-      // Resolve user from JWT if authenticated
-      const user = req._jwtPrincipal ? { id: req._jwtPrincipal.id, tenant_id: req._jwtPrincipal.tenant_id, role: req._jwtPrincipal._rbacRole } : null
+      // Resolve user from JWT — onboarding routes are outside /api/admin so _jwtPrincipal is not set
+      let user = null
+      if (_authService) {
+        const authHeader = req.headers && (req.headers.authorization || req.headers.Authorization)
+        const bearerToken = authHeader && String(authHeader).startsWith("Bearer ")
+          ? String(authHeader).slice(7).trim() : null
+        if (bearerToken) {
+          const payload = await _authService.verifySession(bearerToken)
+          if (payload) {
+            user = { id: payload.sub, tenant_id: payload.tenant_id, role: payload.role }
+          }
+        }
+      }
       return _employerOnboardingRouter.handle(req, res, pathname, req.method, body, user)
     }
 
