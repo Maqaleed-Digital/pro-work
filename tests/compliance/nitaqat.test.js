@@ -313,3 +313,46 @@ test('saudiCount exceeding totalCount throws an error', () => {
     /saudiCount cannot exceed totalCount/,
   );
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 26–28. S40-G5: currentZoneOnly mode (candidateNationality === null)
+// ─────────────────────────────────────────────────────────────────────────────
+test('calculateImpact with null candidateNationality returns currentZone only', () => {
+  const result = engine.calculateImpact({
+    establishmentProfile: { saudiCount: 8, totalCount: 20 },
+    candidateNationality: null,
+    roleCategory: null,
+    contractType: 'FTE',
+    proposedSalary: 0,
+  });
+  assert.ok(result.currentZone, 'currentZone should be set');
+  assert.strictEqual(result.projectedZone, result.currentZone, 'projectedZone === currentZone in currentZoneOnly mode');
+  assert.strictEqual(result.zoneChanged, false);
+  assert.ok(result.influencingFactors.includes('CURRENT_ZONE_ONLY'));
+});
+
+test('saudiPercentageBefore === saudiPercentageAfter when candidateNationality is null', () => {
+  const result = engine.calculateImpact({
+    establishmentProfile: { saudiCount: 5, totalCount: 20 },
+    candidateNationality: null,
+    roleCategory: null,
+    contractType: 'FTE',
+    proposedSalary: 0,
+  });
+  assert.strictEqual(result.saudiPercentageBefore, result.saudiPercentageAfter,
+    'no projection — before and after must be identical');
+  assert.strictEqual(result.saudiPercentageBefore, 25);
+});
+
+test('confidenceBand.lower === confidenceBand.upper when candidateNationality is null', () => {
+  const result = engine.calculateImpact({
+    establishmentProfile: { saudiCount: 10, totalCount: 30 },
+    candidateNationality: null,
+    roleCategory: null,
+    contractType: 'FTE',
+    proposedSalary: 0,
+  });
+  assert.strictEqual(result.confidenceBand.lower, result.confidenceBand.upper,
+    'no projection — confidence band is a single point');
+  assert.strictEqual(result.confidenceBand.lower, result.saudiPercentageBefore);
+});

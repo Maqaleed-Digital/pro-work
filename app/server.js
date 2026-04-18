@@ -61,6 +61,8 @@ const { createAuthService }                 = require("./modules/auth/auth_servi
 const { createAuthRouter }                  = require("./api/auth_router")
 const { requireAuth, requireRole, requirePermission } = require("./modules/auth/auth_middleware")
 const { PERMISSIONS }                       = require("./modules/auth/rbac_policy")
+// S40-G5: Employer onboarding
+const { createEmployerOnboardingRouter }    = require("./api/employer_onboarding_router")
 
 // S38-G3: evidence pack router — shared store across all requests
 const _evidencePackRouter = createEvidencePackRouter()
@@ -124,6 +126,9 @@ const _authRouter = _authService
   ? createAuthRouter({ authService: _authService, pool: _pgPool })
   : null
 const _requireAuth = _authService ? requireAuth(_authService) : null
+const _employerOnboardingRouter = _pgPool
+  ? createEmployerOnboardingRouter({ pool: _pgPool })
+  : null
 
 const UI_DIST = path.join(__dirname, "frontend", "dist")
 
@@ -1458,6 +1463,22 @@ const server = http.createServer(async (req, res) => {
       const ext = path.extname(assetPath)
       const types = { ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png" }
       return serveStatic(res, assetPath, types[ext] || "application/octet-stream")
+    }
+
+    // S40-G5: Employer onboarding routes — profile, status, resend-verification
+    if (_employerOnboardingRouter && (
+      pathname === "/api/onboarding/profile" ||
+      pathname === "/api/onboarding/status" ||
+      pathname === "/api/auth/resend-verification"
+    )) {
+      let body = null
+      if (req.method === "PATCH" || req.method === "POST") {
+        body = await readJson(req, res)
+        if (body === null) return
+      }
+      // Resolve user from JWT if authenticated
+      const user = req._jwtPrincipal ? { id: req._jwtPrincipal.id, tenant_id: req._jwtPrincipal.tenant_id, role: req._jwtPrincipal._rbacRole } : null
+      return _employerOnboardingRouter.handle(req, res, pathname, req.method, body, user)
     }
 
     // S37-G1: WPS Readiness Pack — early-exit before matchRoute

@@ -15,6 +15,11 @@ import dataPrivacy      from "./pages/data_privacy.js"
 import feeTransparency  from "./pages/fee_transparency.js"
 import identity         from "./pages/identity.js"
 import betaDashboard    from "./pages/beta_dashboard.js"
+import register         from "./pages/register.js"
+import onboarding       from "./pages/onboarding.js"
+
+// S40-G5: routes that skip auth and hide nav
+const PUBLIC_ROUTES = new Set(["register", "onboarding"])
 
 const ROUTES = {
   "dashboard":        dashboard,
@@ -32,6 +37,8 @@ const ROUTES = {
   "fee-transparency": feeTransparency,
   "identity":         identity,
   "beta-dashboard":   betaDashboard,
+  "register":         register,
+  "onboarding":       onboarding,
 }
 
 const DEFAULT = "dashboard"
@@ -46,7 +53,16 @@ let _pageEl = null
 function navigate(name, pushState = true) {
   const key = ROUTES[name] ? name : DEFAULT
   if (pushState) location.hash = key
-  renderNav(key)
+
+  // S40-G5: hide nav on public routes (register, onboarding)
+  const navEl = document.getElementById("nav")
+  if (PUBLIC_ROUTES.has(key)) {
+    if (navEl) navEl.style.display = "none"
+  } else {
+    if (navEl) navEl.style.display = ""
+    renderNav(key)
+  }
+
   if (_pageEl) {
     _pageEl.innerHTML = ""
     ROUTES[key].render(_pageEl)

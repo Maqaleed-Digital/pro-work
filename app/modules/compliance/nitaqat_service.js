@@ -117,10 +117,11 @@ function validateParams(params) {
   if (saudiCount > totalCount) {
     throw new Error('saudiCount cannot exceed totalCount');
   }
-  if (!candidateNationality || typeof candidateNationality !== 'string') {
-    throw new Error('candidateNationality is required');
+  // S40-G5: null candidateNationality = currentZoneOnly mode (no projection)
+  if (candidateNationality !== null && (!candidateNationality || typeof candidateNationality !== 'string')) {
+    throw new Error('candidateNationality is required or null for current-zone-only mode');
   }
-  if (!['FTE', 'FREELANCER'].includes(contractType)) {
+  if (candidateNationality !== null && !['FTE', 'FREELANCER'].includes(contractType)) {
     throw new Error('contractType must be FTE or FREELANCER');
   }
 }
@@ -202,6 +203,21 @@ function createNitaqatPolicyEngine(config) {
 
     const effectivePctBefore = saudiPercentageBefore * activityMultiplier;
     const currentZone = zoneForPercentage(effectivePctBefore, zones);
+
+    // S40-G5: current-zone-only mode — no hire projection
+    if (candidateNationality === null) {
+      return {
+        currentZone,
+        projectedZone: currentZone,
+        saudiPercentageBefore: round2(saudiPercentageBefore),
+        saudiPercentageAfter:  round2(saudiPercentageBefore),
+        confidenceBand: { lower: round2(saudiPercentageBefore), upper: round2(saudiPercentageBefore) },
+        zoneChanged: false,
+        influencingFactors: ['CURRENT_ZONE_ONLY'],
+        activityMultiplier,
+        policyVersion: config.policyVersion || 'v1',
+      };
+    }
 
     // ── Projected state ──────────────────────────────────────────────────────
     const isSaudi      = candidateNationality === 'SA';
