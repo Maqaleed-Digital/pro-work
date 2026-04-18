@@ -244,7 +244,7 @@ export default {
     title.textContent = "Command Center"
     const tenantEl = document.createElement("span")
     tenantEl.style.cssText = "font-size:12px;color:#9ca3af"
-    tenantEl.textContent = getTenant()
+    tenantEl.textContent = (() => { try { return localStorage.getItem('pw_company') } catch { return null } })() || getTenant()
     header.appendChild(title)
     header.appendChild(tenantEl)
     container.appendChild(header)

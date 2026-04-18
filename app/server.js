@@ -487,11 +487,36 @@ function isTenantActive(tenantId) {
   return !!e && String(e.status || "active") === "active"
 }
 
-function requireTenantActive(res, tenantId) {
-  const e = tenantRegistry[tenantId]
-  if (!e) { fail(res, "TENANT_NOT_FOUND", `tenant "${tenantId}" is not registered`, 404); return false }
-  if (!isTenantActive(tenantId)) { fail(res, "TENANT_DISABLED", `tenant "${tenantId}" is disabled`, 403); return false }
-  return true
+async function requireTenantActive(res, tenantId) {
+  // Check in-memory registry first (legacy path)
+  const fromRegistry = tenantRegistry[tenantId]
+  if (fromRegistry) {
+    if (String(fromRegistry.status || "active") !== "active") {
+      fail(res, "TENANT_DISABLED", `tenant "${tenantId}" is disabled`, 403)
+      return false
+    }
+    return true
+  }
+  // Fallback: check PG tenants table (JWT-created tenants)
+  if (_pgPool) {
+    try {
+      const result = await _pgPool.query('SELECT id, status FROM tenants WHERE id = $1', [tenantId])
+      if (result.rows.length === 0) {
+        fail(res, "TENANT_NOT_FOUND", `tenant "${tenantId}" is not registered`, 404)
+        return false
+      }
+      if (result.rows[0].status !== 'active') {
+        fail(res, "TENANT_DISABLED", `tenant "${tenantId}" is disabled`, 403)
+        return false
+      }
+      return true
+    } catch {
+      fail(res, "TENANT_NOT_FOUND", "tenant registry unavailable", 503)
+      return false
+    }
+  }
+  fail(res, "TENANT_NOT_FOUND", `tenant "${tenantId}" is not registered`, 404)
+  return false
 }
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -1408,6 +1433,26 @@ const server = http.createServer(async (req, res) => {
     if (!applyCors(req, res)) return
     if (req.method === "OPTIONS") { res.writeHead(204); return res.end() }
 
+    // S40-G2: JWT pre-auth — set req._jwtPrincipal before ALL route handlers
+    if (_authService) {
+      const authHeader = req.headers && (req.headers.authorization || req.headers.Authorization)
+      const bearerToken = authHeader && String(authHeader).startsWith("Bearer ")
+        ? String(authHeader).slice(7).trim() : null
+      if (bearerToken) {
+        const payload = await _authService.verifySession(bearerToken)
+        if (payload) {
+          req._jwtPrincipal = {
+            id:        payload.sub,
+            name:      payload.role,
+            role:      payload.role === 'OWNER' || payload.role === 'ADMIN' ? 'superadmin' : payload.role.toLowerCase(),
+            _rbacRole: payload.role,
+            status:    'active',
+            tenant_id: payload.tenant_id,
+          }
+        }
+      }
+    }
+
     // S40-G2: Auth routes — early exit before all other routes
     if (_authRouter && pathname.startsWith("/api/auth/")) {
       let body = null
@@ -1648,27 +1693,7 @@ const server = http.createServer(async (req, res) => {
       if (!checkRateLimit(req, res, _RL_WRITE_MAX)) return
     }
 
-    // S40-G2: JWT pre-auth for /api/admin/* — try JWT first, fall back to ADMIN_API_TOKEN
-    if (_authService && pathname.startsWith("/api/admin")) {
-      const authHeader = req.headers && (req.headers.authorization || req.headers.Authorization)
-      const bearerToken = authHeader && String(authHeader).startsWith("Bearer ")
-        ? String(authHeader).slice(7).trim() : null
-      if (bearerToken) {
-        const payload = await _authService.verifySession(bearerToken)
-        if (payload) {
-          // JWT valid — attach synthetic admin principal for existing Admin.authenticate() calls
-          req._jwtPrincipal = {
-            id:        payload.sub,
-            name:      payload.role,
-            role:      payload.role === 'OWNER' || payload.role === 'ADMIN' ? 'superadmin' : payload.role.toLowerCase(),
-            _rbacRole: payload.role,  // S40-G3: original role for RBAC permission checks
-            status:    'active',
-            tenant_id: payload.tenant_id,
-          }
-        }
-        // If JWT verification failed, fall through to ADMIN_API_TOKEN check below
-      }
-    }
+    // (JWT pre-auth block moved earlier — before all early-exit routes)
 
     const tenantId = resolveTenantId(req)
     const tenant = getTenantStore(tenantId)
@@ -1870,7 +1895,7 @@ const server = http.createServer(async (req, res) => {
 
     // S30: enforce tenant registry on all WOS routes
     if (route.name.startsWith("wos.")) {
-      if (!requireTenantActive(res, tenantId)) return
+      if (!(await requireTenantActive(res, tenantId))) return
       // S30: auth gate for WOS writes when WOS_PUBLIC_WRITE=false (default)
       if (!WOS_PUBLIC_WRITE && (req.method === "POST" || req.method === "PATCH")) {
         const ap = Admin.authenticate(req)
@@ -2000,7 +2025,7 @@ const server = http.createServer(async (req, res) => {
       if (!ap.ok) return failFromAdmin(res, ap)
       if (!requireAdminPerm(res, ap.principal, "admin:workers:read")) return
       if (!requireTenantAccess(res, ap.principal, tenantId)) return  // S30
-      if (!requireTenantActive(res, tenantId)) return                // S30
+      if (!(await requireTenantActive(res, tenantId))) return                // S30
       // S24-C-RBAC
       const auth = ap  // S24-C: authenticated by guard above
       const out = listAdminWorkers(tenantId, url.searchParams)
@@ -2013,7 +2038,7 @@ const server = http.createServer(async (req, res) => {
       if (!ap.ok) return failFromAdmin(res, ap)
       if (!requireAdminPerm(res, ap.principal, "admin:pods:read")) return
       if (!requireTenantAccess(res, ap.principal, tenantId)) return  // S30
-      if (!requireTenantActive(res, tenantId)) return                // S30
+      if (!(await requireTenantActive(res, tenantId))) return                // S30
       // S24-C-RBAC
       const auth = ap  // S24-C: authenticated by guard above
       return ok(res, { ...bootMeta(), admin: { id: auth.principal.id, name: auth.principal.name, role: auth.principal.role }, pods: [] }, 200)
@@ -2023,7 +2048,7 @@ const server = http.createServer(async (req, res) => {
       if (!ap.ok) return failFromAdmin(res, ap)
       if (!requireAdminPerm(res, ap.principal, "admin:workers:read")) return
       if (!requireTenantAccess(res, ap.principal, tenantId)) return  // S30
-      if (!requireTenantActive(res, tenantId)) return                // S30
+      if (!(await requireTenantActive(res, tenantId))) return                // S30
 
       const items = Array.from(tenant.wosAssignments.values())
       return ok(res, { items, count: items.length })
@@ -2192,7 +2217,7 @@ function runSchedulerForTenant(tenantId, tenant, limit, dryRun) {
       if (!ap.ok) return failFromAdmin(res, ap)
       if (!requireAdminPerm(res, ap.principal, "admin:governance:read")) return
       if (!requireTenantAccess(res, ap.principal, tenantId)) return  // S30
-      if (!requireTenantActive(res, tenantId)) return                // S30
+      if (!(await requireTenantActive(res, tenantId))) return                // S30
 
       const evidenceResult = adminListEvidence(tenantId, url.searchParams)
       return ok(res, { tenant_id: tenantId, ...evidenceResult })

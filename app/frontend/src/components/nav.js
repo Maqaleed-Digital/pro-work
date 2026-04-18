@@ -120,40 +120,50 @@ export function renderNav(activeKey, onSignOut, onTenantChange) {
   right.style.gap = "8px"
   right.style.alignItems = "center"
 
-  // tenant selector
+  // tenant / company display
+  const companyName = (() => { try { return localStorage.getItem("pw_company") } catch { return null } })()
   const tenantWrap = document.createElement("div")
   tenantWrap.style.cssText = "display:flex;align-items:center;gap:4px;font-size:12px;color:#888"
-  const tenantLabel = document.createElement("span")
-  tenantLabel.textContent = "Tenant:"
-  const tenantSel = document.createElement("select")
-  tenantSel.style.cssText = "font-size:12px;padding:2px 4px;border-radius:4px;border:1px solid #ccc;cursor:pointer"
-  const currentTenant = getTenant()
-  const base = _tenantOptions || ["default", "t1", "t2", "t3"]
-  const tenantOptions = [...base]
-  if (!tenantOptions.includes(currentTenant)) tenantOptions.unshift(currentTenant)
-  tenantOptions.forEach(tid => {
-    const opt = document.createElement("option")
-    opt.value = tid
-    opt.textContent = tid
-    if (tid === currentTenant) opt.selected = true
-    tenantSel.appendChild(opt)
-  })
-  tenantSel.addEventListener("change", () => {
-    setTenant(tenantSel.value)
-    if (_tenantChangeCb) _tenantChangeCb(tenantSel.value)
-  })
-  tenantWrap.appendChild(tenantLabel)
-  tenantWrap.appendChild(tenantSel)
+
+  if (companyName) {
+    // JWT user — show company name
+    const companyLabel = document.createElement("span")
+    companyLabel.textContent = companyName
+    companyLabel.style.cssText = "font-weight:600;color:#555"
+    tenantWrap.appendChild(companyLabel)
+  } else {
+    // Legacy admin — show tenant selector
+    const tenantLabel = document.createElement("span")
+    tenantLabel.textContent = "Tenant:"
+    const tenantSel = document.createElement("select")
+    tenantSel.style.cssText = "font-size:12px;padding:2px 4px;border-radius:4px;border:1px solid #ccc;cursor:pointer"
+    const currentTenant = getTenant()
+    const base = _tenantOptions || ["default", "t1", "t2", "t3"]
+    const tenantOptions = [...base]
+    if (!tenantOptions.includes(currentTenant)) tenantOptions.unshift(currentTenant)
+    tenantOptions.forEach(tid => {
+      const opt = document.createElement("option")
+      opt.value = tid
+      opt.textContent = tid
+      if (tid === currentTenant) opt.selected = true
+      tenantSel.appendChild(opt)
+    })
+    tenantSel.addEventListener("change", () => {
+      setTenant(tenantSel.value)
+      if (_tenantChangeCb) _tenantChangeCb(tenantSel.value)
+    })
+    tenantWrap.appendChild(tenantLabel)
+    tenantWrap.appendChild(tenantSel)
+  }
   right.appendChild(tenantWrap)
 
   const token = getToken()
   if (token) {
-    const badge = document.createElement("div")
-    badge.className = "token-badge"
-    badge.textContent = token.length > 12
-      ? token.slice(0, 6) + "…" + token.slice(-4)
-      : token
-    right.appendChild(badge)
+    const userLabel = document.createElement("div")
+    userLabel.className = "token-badge"
+    const email = (() => { try { return localStorage.getItem('pw_email') } catch { return null } })()
+    userLabel.textContent = email || 'My Account'
+    right.appendChild(userLabel)
   }
 
   const btn = document.createElement("button")

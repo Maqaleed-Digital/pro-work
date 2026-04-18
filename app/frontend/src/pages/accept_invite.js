@@ -88,6 +88,7 @@ function render(el) {
     try {
       const data = await apiPostPublic("/api/invitations/accept", { token, password })
       setToken(data.token)
+      try { localStorage.setItem("pw_email", data.user && data.user.email || '') } catch {}
       location.hash = "dashboard"
     } catch (e) {
       errEl.textContent = e.message || t("invite.accept.failed")

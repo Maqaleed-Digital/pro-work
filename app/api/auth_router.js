@@ -119,6 +119,10 @@ function createAuthRouter(opts) {
           ipAddress: req.socket && req.socket.remoteAddress,
           userAgent: req.headers && req.headers['user-agent'],
         })
+        // Add company name from tenants table
+        const tenantRow = await pool.query('SELECT name FROM tenants WHERE id = $1', [resolvedTenantId])
+        const companyName = tenantRow.rows[0] ? tenantRow.rows[0].name : null
+        result.user.companyName = companyName
         return ok(res, result)
       } catch (e) {
         if (e.status === 401) return fail(res, 'UNAUTHORIZED', 'invalid credentials', 401)
@@ -171,6 +175,10 @@ function createAuthRouter(opts) {
       const user = await authService.getUserById(payload.sub)
       if (!user) return fail(res, 'NOT_FOUND', 'user not found', 404)
 
+      // Add company name from tenants table
+      const tenantRow = await pool.query('SELECT name FROM tenants WHERE id = $1', [user.tenant_id])
+      const companyName = tenantRow.rows[0] ? tenantRow.rows[0].name : null
+
       return ok(res, {
         id:           user.id,
         email:        user.email,
@@ -178,6 +186,7 @@ function createAuthRouter(opts) {
         tenant_id:    user.tenant_id,
         status:       user.status,
         last_login_at: user.last_login_at,
+        companyName,
       })
     }
 

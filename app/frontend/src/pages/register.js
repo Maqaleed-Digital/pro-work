@@ -86,6 +86,9 @@ function render(el) {
     try {
       const data = await apiPostPublic("/api/auth/register", { email, password, companyName })
       setToken(data.token)
+      try { localStorage.setItem("pw_company", data.tenant && data.tenant.name || companyName) } catch {}
+      try { localStorage.setItem("pw_tenant", data.user && data.user.tenant_id || "default") } catch {}
+      try { localStorage.setItem("pw_email", data.user && data.user.email || email) } catch {}
       // Navigate to onboarding step 2
       location.hash = "onboarding"
     } catch (e) {
