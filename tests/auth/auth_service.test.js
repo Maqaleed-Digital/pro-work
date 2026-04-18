@@ -72,18 +72,18 @@ function createMockPool() {
         return { rows: [], rowCount: u ? 1 : 0 }
       }
 
-      // SELECT ... FROM sessions WHERE token_hash
-      if (/FROM sessions WHERE token_hash/i.test(sql)) {
-        const matches = Array.from(sessions.values()).filter(s => s.token_hash === params[0])
-        return { rows: matches, rowCount: matches.length }
-      }
-
-      // DELETE FROM sessions WHERE token_hash
+      // DELETE FROM sessions WHERE token_hash (must be before SELECT pattern)
       if (/DELETE FROM sessions WHERE token_hash/i.test(sql)) {
         for (const [k, v] of sessions) {
           if (v.token_hash === params[0]) { sessions.delete(k); break }
         }
         return { rows: [], rowCount: 1 }
+      }
+
+      // SELECT FROM sessions WHERE token_hash
+      if (/SELECT.*FROM sessions WHERE token_hash/i.test(sql)) {
+        const matches = Array.from(sessions.values()).filter(s => s.token_hash === params[0])
+        return { rows: matches, rowCount: matches.length }
       }
 
       // DELETE FROM sessions WHERE id

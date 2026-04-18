@@ -56,6 +56,10 @@ const { createBetaAccessService,
         InMemoryBetaStore }                 = require("./modules/beta/beta_access_service")
 const { createKpiTracker }                  = require("./modules/beta/kpi_tracker")
 const { createBetaRouter }                  = require("./api/beta_router")
+// S40-G2: Auth + JWT
+const { createAuthService }                 = require("./modules/auth/auth_service")
+const { createAuthRouter }                  = require("./api/auth_router")
+const { requireAuth, requireRole }          = require("./modules/auth/auth_middleware")
 
 // S38-G3: evidence pack router — shared store across all requests
 const _evidencePackRouter = createEvidencePackRouter()
@@ -107,6 +111,18 @@ const _evidencePackSvc    = createEvidencePackService({ store: new InMemoryEvide
 const _betaAccessSvc      = createBetaAccessService({ store: new InMemoryBetaStore() })
 const _kpiTracker         = createKpiTracker()
 const _betaRouter         = createBetaRouter({ betaAccessService: _betaAccessSvc, kpiTracker: _kpiTracker })
+
+// S40-G2: Auth service + router (JWT-based)
+const _pgPool = process.env.DATABASE_URL
+  ? new (require("pg").Pool)({ connectionString: process.env.DATABASE_URL, max: 20 })
+  : null
+const _authService = _pgPool && process.env.JWT_SECRET
+  ? createAuthService({ pool: _pgPool, secret: process.env.JWT_SECRET })
+  : null
+const _authRouter = _authService
+  ? createAuthRouter({ authService: _authService, pool: _pgPool })
+  : null
+const _requireAuth = _authService ? requireAuth(_authService) : null
 
 const UI_DIST = path.join(__dirname, "frontend", "dist")
 
@@ -1374,6 +1390,16 @@ const server = http.createServer(async (req, res) => {
     if (!applyCors(req, res)) return
     if (req.method === "OPTIONS") { res.writeHead(204); return res.end() }
 
+    // S40-G2: Auth routes — early exit before all other routes
+    if (_authRouter && pathname.startsWith("/api/auth/")) {
+      let body = null
+      if (req.method === "POST") {
+        body = await readJson(req, res)
+        if (body === null) return
+      }
+      return _authRouter.handle(req, res, pathname, req.method, body)
+    }
+
     // S36-G2: AI governance routes — delegated to aiRouter before inline dispatch
     if (pathname.startsWith("/api/admin/ai/")) {
       const body = (req.method === "PATCH" || req.method === "POST")
@@ -1531,6 +1557,27 @@ const server = http.createServer(async (req, res) => {
       if (!checkRateLimit(req, res, _RL_ADMIN_MAX)) return
     } else if (req.method !== "GET" && req.method !== "HEAD" && pathname.startsWith("/api/")) {
       if (!checkRateLimit(req, res, _RL_WRITE_MAX)) return
+    }
+
+    // S40-G2: JWT pre-auth for /api/admin/* — try JWT first, fall back to ADMIN_API_TOKEN
+    if (_authService && pathname.startsWith("/api/admin")) {
+      const authHeader = req.headers && (req.headers.authorization || req.headers.Authorization)
+      const bearerToken = authHeader && String(authHeader).startsWith("Bearer ")
+        ? String(authHeader).slice(7).trim() : null
+      if (bearerToken) {
+        const payload = await _authService.verifySession(bearerToken)
+        if (payload) {
+          // JWT valid — attach synthetic admin principal for existing Admin.authenticate() calls
+          req._jwtPrincipal = {
+            id:        payload.sub,
+            name:      payload.role,
+            role:      payload.role === 'OWNER' || payload.role === 'ADMIN' ? 'superadmin' : payload.role.toLowerCase(),
+            status:    'active',
+            tenant_id: payload.tenant_id,
+          }
+        }
+        // If JWT verification failed, fall through to ADMIN_API_TOKEN check below
+      }
     }
 
     const tenantId = resolveTenantId(req)
