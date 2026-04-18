@@ -5,6 +5,7 @@ const jwt        = require('./jwt_service.test')
 const auth       = require('./auth_service.test')
 const authRouter = require('./auth_router.test')
 const rbac       = require('./rbac_policy.test')
+const invitation = require('./invitation_service.test')
 
 async function main() {
   console.log('\n=== S40 Auth Test Suite ===\n')
@@ -24,8 +25,11 @@ async function main() {
   console.log('\n[rbac_policy]')
   const p5 = await rbac.run()
 
-  const total = p1 + p2 + p3 + p4 + p5
-  const expected = 9 + 13 + 23 + 25 + 35
+  console.log('\n[invitation_service]')
+  const p6 = await invitation.run()
+
+  const total = p1 + p2 + p3 + p4 + p5 + p6
+  const expected = 9 + 13 + 23 + 25 + 35 + 25
   console.log(`\n=== Total: ${total}/${expected} passed ===`)
 
   if (total < expected) {

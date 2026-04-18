@@ -17,9 +17,11 @@ import identity         from "./pages/identity.js"
 import betaDashboard    from "./pages/beta_dashboard.js"
 import register         from "./pages/register.js"
 import onboarding       from "./pages/onboarding.js"
+import invite           from "./pages/invite.js"
+import acceptInvite     from "./pages/accept_invite.js"
 
-// S40-G5: routes that skip auth and hide nav
-const PUBLIC_ROUTES = new Set(["register", "onboarding"])
+// S40-G5/G6: routes that skip auth and hide nav
+const PUBLIC_ROUTES = new Set(["register", "onboarding", "accept-invite"])
 
 const ROUTES = {
   "dashboard":        dashboard,
@@ -39,6 +41,8 @@ const ROUTES = {
   "beta-dashboard":   betaDashboard,
   "register":         register,
   "onboarding":       onboarding,
+  "invite":           invite,
+  "accept-invite":    acceptInvite,
 }
 
 const DEFAULT = "dashboard"

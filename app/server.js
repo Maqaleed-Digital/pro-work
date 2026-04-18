@@ -63,6 +63,9 @@ const { requireAuth, requireRole, requirePermission } = require("./modules/auth/
 const { PERMISSIONS }                       = require("./modules/auth/rbac_policy")
 // S40-G5: Employer onboarding
 const { createEmployerOnboardingRouter }    = require("./api/employer_onboarding_router")
+// S40-G6: Team invitations
+const { createInvitationService }           = require("./modules/auth/invitation_service")
+const { createInvitationRouter }            = require("./api/invitation_router")
 
 // S38-G3: evidence pack router — shared store across all requests
 const _evidencePackRouter = createEvidencePackRouter()
@@ -128,6 +131,12 @@ const _authRouter = _authService
 const _requireAuth = _authService ? requireAuth(_authService) : null
 const _employerOnboardingRouter = _pgPool
   ? createEmployerOnboardingRouter({ pool: _pgPool })
+  : null
+const _invitationService = _pgPool && _authService
+  ? createInvitationService({ pool: _pgPool, authService: _authService, baseUrl: process.env.PUBLIC_BASE_URL || 'https://api.workcaptain.ai' })
+  : null
+const _invitationRouter = _invitationService
+  ? createInvitationRouter({ invitationService: _invitationService })
   : null
 
 const UI_DIST = path.join(__dirname, "frontend", "dist")
@@ -1463,6 +1472,19 @@ const server = http.createServer(async (req, res) => {
       const ext = path.extname(assetPath)
       const types = { ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png" }
       return serveStatic(res, assetPath, types[ext] || "application/octet-stream")
+    }
+
+    // S40-G6: Invitation routes — /api/invitations/*
+    if (_invitationRouter && pathname.startsWith("/api/invitations")) {
+      let body = null
+      if (req.method === "POST") {
+        body = await readJson(req, res)
+        if (body === null) return
+      }
+      const user = req._jwtPrincipal
+        ? { id: req._jwtPrincipal.id, tenant_id: req._jwtPrincipal.tenant_id, role: req._jwtPrincipal._rbacRole }
+        : null
+      return _invitationRouter.handle(req, res, pathname, req.method, body, user)
     }
 
     // S40-G5: Employer onboarding routes — profile, status, resend-verification

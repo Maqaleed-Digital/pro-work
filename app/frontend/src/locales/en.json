@@ -133,5 +133,31 @@
   "onboarding.action.inviteTeam":    "Invite a team member",
   "onboarding.action.inviteTeamDesc": "Add colleagues to your workspace.",
   "onboarding.action.explore":       "Explore the platform",
-  "onboarding.action.exploreDesc":   "See your dashboard and compliance tools."
+  "onboarding.action.exploreDesc":   "See your dashboard and compliance tools.",
+
+  "invite.title":              "Invite team member",
+  "invite.email":              "Email address",
+  "invite.emailPlaceholder":   "colleague@company.com",
+  "invite.role":               "Role",
+  "invite.send":               "Send invitation",
+  "invite.sending":            "Sending…",
+  "invite.linkLabel":          "Invitation link:",
+  "invite.pendingTitle":       "Pending invitations",
+  "invite.noInvitations":      "No invitations yet.",
+  "invite.revoke":             "Revoke",
+  "invite.err.emailInvalid":   "Enter a valid email address",
+  "invite.err.failed":         "Failed to send invitation.",
+  "invite.err.loadFailed":     "Failed to load invitations.",
+
+  "invite.accept.title":             "Join your team",
+  "invite.accept.subtitle":          "Create a password to accept your invitation.",
+  "invite.accept.password":          "Password",
+  "invite.accept.passwordPlaceholder": "Minimum 8 characters",
+  "invite.accept.confirmPassword":   "Confirm password",
+  "invite.accept.confirmPlaceholder": "Re-enter password",
+  "invite.accept.submit":            "Accept & Join",
+  "invite.accept.accepting":         "Joining…",
+  "invite.accept.failed":            "Failed to accept invitation.",
+  "invite.accept.noToken":           "Invalid invitation link",
+  "invite.accept.noTokenDesc":       "This link is missing an invitation token. Please check the link you received."
 }
