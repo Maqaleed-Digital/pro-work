@@ -1,11 +1,14 @@
 'use strict'
 
 /**
- * S40-G2: Auth middleware — JWT verification + role enforcement.
+ * S40-G2/G3: Auth middleware — JWT verification + permission enforcement.
  *
- * requireAuth(authService)    — verifies Bearer JWT, attaches req.user
- * requireRole(...roles)       — checks req.user.role ∈ allowed set
+ * requireAuth(authService)       — verifies Bearer JWT, attaches req.user
+ * requireRole(res, user, ...roles)  — checks req.user.role ∈ allowed set
+ * requirePermission(res, user, perm) — checks role has permission via RBAC policy
  */
+
+const { hasPermission } = require('./rbac_policy')
 
 /**
  * Extract Bearer token from Authorization header.
@@ -23,7 +26,7 @@ function extractToken(req) {
 /**
  * Create requireAuth middleware bound to an authService instance.
  *
- * On success: sets req.user = { sub, role, tenant_id, ... }
+ * On success: sets req.user = { id, role, tenant_id, token }
  * On failure: sends 401 JSON and returns false
  *
  * @param {Object} authService — from createAuthService()
@@ -75,10 +78,31 @@ function requireRole(res, user, ...roles) {
   return true
 }
 
+/**
+ * Check req.user.role has a specific permission via RBAC policy.
+ * Routes declare required permission, not role — decouples route code from roles.
+ *
+ * @param {import('http').ServerResponse} res
+ * @param {Object} user — req.user
+ * @param {string} permission — permission name from PERMISSIONS
+ * @returns {boolean} true if allowed, false if 403 was sent
+ */
+function requirePermission(res, user, permission) {
+  if (!user || !user.role) {
+    _send(res, 401, 'UNAUTHORIZED', 'not authenticated')
+    return false
+  }
+  if (!hasPermission(user.role, permission)) {
+    _send(res, 403, 'FORBIDDEN', `permission ${permission} is not granted to role ${user.role}`)
+    return false
+  }
+  return true
+}
+
 function _send(res, status, code, message) {
   const body = JSON.stringify({ ok: false, error: { code, message } })
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
   res.end(body)
 }
 
-module.exports = { requireAuth, requireRole, extractToken }
+module.exports = { requireAuth, requireRole, requirePermission, extractToken }

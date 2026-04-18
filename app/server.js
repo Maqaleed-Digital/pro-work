@@ -59,7 +59,8 @@ const { createBetaRouter }                  = require("./api/beta_router")
 // S40-G2: Auth + JWT
 const { createAuthService }                 = require("./modules/auth/auth_service")
 const { createAuthRouter }                  = require("./api/auth_router")
-const { requireAuth, requireRole }          = require("./modules/auth/auth_middleware")
+const { requireAuth, requireRole, requirePermission } = require("./modules/auth/auth_middleware")
+const { PERMISSIONS }                       = require("./modules/auth/rbac_policy")
 
 // S38-G3: evidence pack router — shared store across all requests
 const _evidencePackRouter = createEvidencePackRouter()
@@ -1402,6 +1403,10 @@ const server = http.createServer(async (req, res) => {
 
     // S36-G2: AI governance routes — delegated to aiRouter before inline dispatch
     if (pathname.startsWith("/api/admin/ai/")) {
+      if (req._jwtPrincipal) {
+        const perm = (req.method === "PATCH" || req.method === "POST") ? PERMISSIONS.APPROVE_AI : PERMISSIONS.VIEW_AI
+        if (!requirePermission(res, { role: req._jwtPrincipal._rbacRole }, perm)) return
+      }
       const body = (req.method === "PATCH" || req.method === "POST")
         ? await readJson(req, res)
         : {}
@@ -1411,6 +1416,10 @@ const server = http.createServer(async (req, res) => {
 
     // S36-G3: Nitaqat compliance routes — delegated before inline dispatch
     if (pathname.startsWith("/api/admin/compliance/nitaqat/")) {
+      if (req._jwtPrincipal) {
+        const perm = req.method === "POST" ? PERMISSIONS.MANAGE_COMPLIANCE : PERMISSIONS.VIEW_COMPLIANCE
+        if (!requirePermission(res, { role: req._jwtPrincipal._rbacRole }, perm)) return
+      }
       const body = req.method === "POST"
         ? await readJson(req, res)
         : {}
@@ -1420,6 +1429,9 @@ const server = http.createServer(async (req, res) => {
 
     // S36-G4: Occupation code compliance routes — delegated before inline dispatch
     if (pathname.startsWith("/api/admin/compliance/occupation-code/")) {
+      if (req._jwtPrincipal) {
+        if (!requirePermission(res, { role: req._jwtPrincipal._rbacRole }, PERMISSIONS.VIEW_COMPLIANCE)) return
+      }
       const body = req.method === "POST"
         ? await readJson(req, res)
         : {}
@@ -1429,6 +1441,9 @@ const server = http.createServer(async (req, res) => {
 
     // S36-G6: Command Center KPI route — delegated before inline dispatch
     if (pathname.startsWith("/api/admin/dashboard/")) {
+      if (req._jwtPrincipal) {
+        if (!requirePermission(res, { role: req._jwtPrincipal._rbacRole }, PERMISSIONS.VIEW_DASHBOARD)) return
+      }
       return _dashboardRouter.handle(req, res, url, {})
     }
 
@@ -1447,6 +1462,7 @@ const server = http.createServer(async (req, res) => {
 
     // S37-G1: WPS Readiness Pack — early-exit before matchRoute
     if (pathname.startsWith("/api/onboarding/wps/")) {
+      if (req._jwtPrincipal && !requirePermission(res, { role: req._jwtPrincipal._rbacRole }, PERMISSIONS.MANAGE_PROBATION)) return
       const body = ["POST", "PATCH", "PUT"].includes(req.method)
         ? await readJson(req, res)
         : {}
@@ -1472,6 +1488,10 @@ const server = http.createServer(async (req, res) => {
     }
 
     // S38-G3: evidence pack routes — early exit
+    if (pathname.startsWith("/api/evidence/") && req._jwtPrincipal) {
+      const perm = req.method === "POST" ? PERMISSIONS.MANAGE_EVIDENCE : PERMISSIONS.VIEW_EVIDENCE
+      if (!requirePermission(res, { role: req._jwtPrincipal._rbacRole }, perm)) return
+    }
     if (pathname.startsWith("/api/evidence/")) {
       const tenantId = resolveTenantId(req)
       let body = null
@@ -1488,6 +1508,9 @@ const server = http.createServer(async (req, res) => {
     }
 
     // S38-G6 / S39-G6 wiring 4: PDPL DSR routes — real event bus
+    if (pathname.startsWith("/api/compliance/pdpl/") && req._jwtPrincipal) {
+      if (!requirePermission(res, { role: req._jwtPrincipal._rbacRole }, PERMISSIONS.VIEW_COMPLIANCE)) return
+    }
     if (pathname.startsWith("/api/compliance/pdpl/")) {
       const tenantId = resolveTenantId(req)
       let body = null
@@ -1499,6 +1522,9 @@ const server = http.createServer(async (req, res) => {
     }
 
     // S39-G6 wiring 2: compliance dashboard (Nitaqat) endpoints
+    if (pathname.startsWith("/api/compliance/dashboard/") && req._jwtPrincipal) {
+      if (!requirePermission(res, { role: req._jwtPrincipal._rbacRole }, PERMISSIONS.VIEW_COMPLIANCE)) return
+    }
     if (pathname.startsWith("/api/compliance/dashboard/")) {
       if (req.method === "GET") {
         if (pathname === "/api/compliance/dashboard/summary") {
@@ -1529,6 +1555,9 @@ const server = http.createServer(async (req, res) => {
     }
 
     // S39-G4: fee transparency — public read + calculate endpoints
+    if (pathname.startsWith("/api/payments/fee-transparency/") && req._jwtPrincipal) {
+      if (!requirePermission(res, { role: req._jwtPrincipal._rbacRole }, PERMISSIONS.VIEW_PAYMENTS)) return
+    }
     if (pathname.startsWith("/api/payments/fee-transparency/")) {
       let body = null
       if (req.method === "POST") {
@@ -1539,6 +1568,9 @@ const server = http.createServer(async (req, res) => {
     }
 
     // S39-G6 Part 2: beta admin routes
+    if (pathname.startsWith("/admin/beta") && req._jwtPrincipal) {
+      if (!requirePermission(res, { role: req._jwtPrincipal._rbacRole }, PERMISSIONS.MANAGE_BETA)) return
+    }
     if (pathname.startsWith("/admin/beta")) {
       let body = null
       if (req.method === "POST" || req.method === "PUT" || req.method === "PATCH") {
@@ -1572,6 +1604,7 @@ const server = http.createServer(async (req, res) => {
             id:        payload.sub,
             name:      payload.role,
             role:      payload.role === 'OWNER' || payload.role === 'ADMIN' ? 'superadmin' : payload.role.toLowerCase(),
+            _rbacRole: payload.role,  // S40-G3: original role for RBAC permission checks
             status:    'active',
             tenant_id: payload.tenant_id,
           }
