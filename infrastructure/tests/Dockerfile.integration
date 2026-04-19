@@ -4,6 +4,7 @@ COPY app/package*.json ./app/
 RUN cd app && npm install --production
 COPY app/ ./app/
 COPY tests/ ./tests/
+COPY infrastructure/tests/ ./infrastructure/tests/
 COPY infrastructure/tests/run_g3_integration.sh ./run_test.sh
-RUN chmod +x run_test.sh
+RUN chmod +x run_test.sh && chmod +x infrastructure/tests/*.sh 2>/dev/null || true
 ENTRYPOINT ["./run_test.sh"]

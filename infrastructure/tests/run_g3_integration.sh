@@ -41,4 +41,7 @@ async function run() {
 run().catch(e => console.error(e.message))
 "
 
+echo "=== G5 Smoke Test ==="
+sh /workspace/infrastructure/tests/run_g5_smoke.sh
+
 echo "All integration tests complete."
