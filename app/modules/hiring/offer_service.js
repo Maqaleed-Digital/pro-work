@@ -1,124 +1,185 @@
-'use strict';
+'use strict'
 
-const { randomUUID } = require('crypto');
+const crypto = require('crypto')
 
-function assert(condition, message) {
-  if (!condition) {
-    const err = new Error(message);
-    err.name = 'OfferServiceError';
-    throw err;
+const ATTENDANCE_BLOCKED = /\b(shift|attendance|punch|clock[-\s]?in|clock[-\s]?out|roster)\b/i
+
+/**
+ * S43-G6: Offer service — FTE / FREELANCER / AI_EXECUTABLE offers.
+ * @param {Object} opts
+ * @param {Object} opts.pool - pg Pool
+ */
+function createOfferService(opts) {
+  if (!opts || !opts.pool) throw new Error('pool is required')
+  const pool = opts.pool
+
+  async function withTenant(tenantId, fn) {
+    const client = await pool.connect()
+    try {
+      await client.query("SELECT set_config('app.current_tenant_id', $1, false)", [tenantId])
+      return await fn(client)
+    } finally { client.release() }
   }
-}
-
-function clone(value) {
-  return JSON.parse(JSON.stringify(value));
-}
-
-class InMemoryOfferStore {
-  constructor() { this.items = new Map(); }
-
-  async insert(item) {
-    this.items.set(item.id, clone(item));
-    return clone(item);
-  }
-
-  async update(id, patch) {
-    const existing = this.items.get(id);
-    assert(existing, `offer not found: ${id}`);
-    const next = { ...existing, ...clone(patch) };
-    this.items.set(id, next);
-    return clone(next);
-  }
-
-  async get(id) { return this.items.has(id) ? clone(this.items.get(id)) : null; }
-  async all()   { return Array.from(this.items.values()).map(clone); }
-}
-
-function createOfferService({ store, hooks }) {
-  assert(store, 'store is required');
-  assert(hooks && typeof hooks.publish === 'function', 'hooks.publish is required');
 
   return {
-    async draftOffer(input) {
-      assert(input.hiring_case_id, 'hiring_case_id is required');
+    async createOffer(tenantId, applicationId, offerType, payload) {
+      if (!tenantId) throw Object.assign(new Error('tenantId is required'), { status: 400 })
+      if (!applicationId) throw Object.assign(new Error('applicationId is required'), { status: 400 })
+      if (!['FTE', 'FREELANCER', 'AI_EXECUTABLE'].includes(offerType)) {
+        throw Object.assign(new Error('invalid offer_type'), { status: 422 })
+      }
 
-      const id       = randomUUID();
-      const occurred = input.occurred_at || new Date().toISOString();
-      const event_id = input.event_id    || randomUUID();
-      const actor    = input.actor       || { actor_type: 'SYSTEM', actor_id: 'offer-service' };
-      const corr     = input.correlation_id || randomUUID();
-      const caus     = input.causation_id   || event_id;
+      return withTenant(tenantId, async (client) => {
+        const app = await client.query('SELECT * FROM applications WHERE id = $1', [applicationId])
+        if (!app.rows[0]) throw Object.assign(new Error('application not found'), { status: 404 })
 
-      const rec = {
-        id,
-        hiring_case_id: input.hiring_case_id,
-        ...(input.package_data || {}),
-        status:     'DRAFT',
-        created_at: occurred,
-      };
+        if (offerType === 'FTE') {
+          const req = await client.query('SELECT salary_min, salary_max FROM requisitions WHERE id = $1', [app.rows[0].requisition_id])
+          const r = req.rows[0]
+          if (r && payload.base_salary != null) {
+            if (r.salary_min && payload.base_salary < parseFloat(r.salary_min)) {
+              throw Object.assign(new Error('salary below requisition minimum'), { status: 422 })
+            }
+            if (r.salary_max && payload.base_salary > parseFloat(r.salary_max)) {
+              throw Object.assign(new Error('salary above requisition maximum'), { status: 422 })
+            }
+          }
+        }
 
-      await store.insert(rec);
+        if (offerType === 'FREELANCER') {
+          if (!payload.milestones || payload.milestones.length === 0) {
+            throw Object.assign(new Error('at least one milestone required for FREELANCER'), { status: 422 })
+          }
+        }
 
-      await hooks.publish({
-        event_id,
-        event_type:     'OFFER_DRAFTED',
-        event_version:  '1.0',
-        occurred_at:    occurred,
-        tenant_id:      input.tenant_id,
-        aggregate_type: 'OFFER',
-        aggregate_id:   id,
-        actor,
-        correlation_id: corr,
-        causation_id:   caus,
-        source: { service: 'hiring', module: 'offer_service', environment: process.env.NODE_ENV || 'development' },
-        trust_level:      'STANDARD',
-        requires_approval: false,
-        payload: { id, hiring_case_id: input.hiring_case_id },
-        metadata: input.metadata || {},
-      });
+        if (offerType === 'AI_EXECUTABLE') {
+          if (ATTENDANCE_BLOCKED.test(JSON.stringify(payload))) {
+            throw Object.assign(new Error('AI_EXECUTABLE offers must not contain attendance/shift language'), { status: 422 })
+          }
+        }
 
-      return rec;
+        const result = await client.query(
+          `INSERT INTO offers (id, tenant_id, application_id, candidate_id, requisition_id, offer_type, payload, status, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, 'DRAFT', NOW(), NOW()) RETURNING *`,
+          [crypto.randomUUID(), tenantId, applicationId, app.rows[0].candidate_id,
+           app.rows[0].requisition_id, offerType, JSON.stringify(payload)]
+        )
+        return result.rows[0]
+      })
     },
 
-    async sendOffer(input) {
-      const offer_id = typeof input === 'string' ? input : input.offer_id;
-      assert(offer_id, 'offer_id is required');
-
-      const rec = await store.get(offer_id);
-      assert(rec, `offer not found: ${offer_id}`);
-
-      const occurred = (typeof input === 'object' && input.occurred_at) || new Date().toISOString();
-      const event_id = (typeof input === 'object' && input.event_id)    || randomUUID();
-      const actor    = (typeof input === 'object' && input.actor)       || { actor_type: 'SYSTEM', actor_id: 'offer-service' };
-      const corr     = (typeof input === 'object' && input.correlation_id) || randomUUID();
-      const caus     = (typeof input === 'object' && input.causation_id)   || event_id;
-
-      const updated = await store.update(offer_id, { status: 'SENT' });
-
-      await hooks.publish({
-        event_id,
-        event_type:     'OFFER_SENT',
-        event_version:  '1.0',
-        occurred_at:    occurred,
-        tenant_id:      rec.tenant_id || (typeof input === 'object' && input.tenant_id),
-        aggregate_type: 'OFFER',
-        aggregate_id:   offer_id,
-        actor,
-        correlation_id: corr,
-        causation_id:   caus,
-        source: { service: 'hiring', module: 'offer_service', environment: process.env.NODE_ENV || 'development' },
-        trust_level:      'STANDARD',
-        requires_approval: false,
-        payload: { offer_id },
-        metadata: (typeof input === 'object' && input.metadata) || {},
-      });
-
-      return updated;
+    async getOffer(tenantId, offerId) {
+      return withTenant(tenantId, async (client) => {
+        const r = await client.query('SELECT * FROM offers WHERE id = $1', [offerId])
+        return r.rows[0] || null
+      })
     },
 
-    async getOffer(id) { return store.get(id); },
-    async listOffers() { return store.all(); },
-  };
+    async updateOffer(tenantId, offerId, payload) {
+      return withTenant(tenantId, async (client) => {
+        const o = await client.query('SELECT * FROM offers WHERE id = $1', [offerId])
+        if (!o.rows[0]) throw Object.assign(new Error('offer not found'), { status: 404 })
+        if (o.rows[0].status !== 'DRAFT') throw Object.assign(new Error('only DRAFT offers can be updated'), { status: 409 })
+        await client.query('UPDATE offers SET payload = $1, updated_at = NOW() WHERE id = $2', [JSON.stringify(payload), offerId])
+        return { offerId, updated: true }
+      })
+    },
+
+    async runCompliancePreview(tenantId, offerId) {
+      return withTenant(tenantId, async (client) => {
+        const o = await client.query('SELECT * FROM offers WHERE id = $1', [offerId])
+        if (!o.rows[0]) throw Object.assign(new Error('offer not found'), { status: 404 })
+        const offer = o.rows[0]
+        const payload = typeof offer.payload === 'string' ? JSON.parse(offer.payload) : offer.payload
+
+        const req = await client.query('SELECT * FROM requisitions WHERE id = $1', [offer.requisition_id])
+        const requisition = req.rows[0] || {}
+
+        const checks = {
+          nitaqat_alignment: { status: 'GREEN', message: 'Nitaqat zone maintained' },
+          occupation_code:   { status: 'GREEN', message: 'Occupation code valid' },
+          salary_range:      { status: 'GREEN', message: 'Salary within approved range' },
+          probation_policy:  { status: 'GREEN', message: 'Probation within policy' },
+        }
+
+        if (offer.offer_type === 'FTE' && payload.base_salary != null) {
+          if (requisition.salary_min && payload.base_salary < parseFloat(requisition.salary_min)) {
+            checks.salary_range = { status: 'RED', message: 'Salary below requisition minimum' }
+          } else if (requisition.salary_max && payload.base_salary > parseFloat(requisition.salary_max)) {
+            checks.salary_range = { status: 'RED', message: 'Salary above requisition maximum' }
+          }
+        }
+
+        if (payload.probation_days != null && payload.probation_days > 180) {
+          checks.probation_policy = { status: 'RED', message: 'Probation exceeds 180-day maximum' }
+        } else if (payload.probation_days != null && payload.probation_days > 90) {
+          checks.probation_policy = { status: 'AMBER', message: 'Probation exceeds standard 90 days' }
+        }
+
+        if (!requisition.occupation_code) {
+          checks.occupation_code = { status: 'AMBER', message: 'No occupation code set on requisition' }
+        }
+
+        const preview = {
+          checks,
+          all_green: Object.values(checks).every(c => c.status === 'GREEN'),
+          has_red: Object.values(checks).some(c => c.status === 'RED'),
+        }
+
+        await client.query(
+          'UPDATE offers SET compliance_preview_json = $1, updated_at = NOW() WHERE id = $2',
+          [JSON.stringify(preview), offerId]
+        )
+        return preview
+      })
+    },
+
+    async sendOffer(tenantId, offerId, overrideReason, actorUserId) {
+      return withTenant(tenantId, async (client) => {
+        const o = await client.query('SELECT * FROM offers WHERE id = $1', [offerId])
+        if (!o.rows[0]) throw Object.assign(new Error('offer not found'), { status: 404 })
+        const offer = o.rows[0]
+
+        if (offer.status !== 'DRAFT') {
+          throw Object.assign(new Error('offer must be in DRAFT status to send'), { status: 409 })
+        }
+
+        const preview = typeof offer.compliance_preview_json === 'string'
+          ? JSON.parse(offer.compliance_preview_json) : offer.compliance_preview_json
+        if (!preview) {
+          throw Object.assign(new Error('compliance preview required before sending'), { status: 409 })
+        }
+
+        if (preview.has_red) {
+          if (!overrideReason || !overrideReason.trim()) {
+            throw Object.assign(new Error('override_reason required — compliance check has RED items'), { status: 422 })
+          }
+          await client.query(
+            'UPDATE offers SET status = $1, sent_at = NOW(), compliance_overridden = TRUE, override_reason = $2, updated_at = NOW() WHERE id = $3',
+            ['SENT', overrideReason.trim(), offerId]
+          )
+        } else {
+          await client.query(
+            'UPDATE offers SET status = $1, sent_at = NOW(), updated_at = NOW() WHERE id = $2',
+            ['SENT', offerId]
+          )
+        }
+
+        // Transition application to OFFERED
+        await client.query('UPDATE applications SET status = $1, updated_at = NOW() WHERE id = $2', ['OFFERED', offer.application_id])
+
+        // Emit OFFER_SENT event
+        await client.query(
+          `INSERT INTO application_events (id, tenant_id, application_id, event_type, previous_status, new_status, actor_user_id, actor_type, payload, created_at)
+           VALUES ($1, $2, $3, 'OFFER_SENT', NULL, 'OFFERED', $4, 'HUMAN', $5, NOW())`,
+          [crypto.randomUUID(), tenantId, offer.application_id, actorUserId || null,
+           JSON.stringify({ offer_id: offerId, offer_type: offer.offer_type })]
+        )
+
+        return { offerId, status: 'SENT', applicationStatus: 'OFFERED' }
+      })
+    },
+  }
 }
 
-module.exports = { createOfferService, InMemoryOfferStore };
+module.exports = { createOfferService }

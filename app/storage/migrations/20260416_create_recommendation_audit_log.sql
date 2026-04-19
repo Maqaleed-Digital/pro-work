@@ -2,6 +2,28 @@
 -- BRD Refs: Gold BRD A4, WOS §11.3, RT-1 §8.2
 -- Append-only: no UPDATE or DELETE permissions granted to application role
 -- RLS: tenant isolation enforced on every query
+--
+-- ── Audit schema convention: explicit enum states, not NULL ──────────────
+--
+-- reviewer_decision uses 'PENDING' as the default unset state rather than
+-- NULL. This is intentional and applies to all audit and compliance status
+-- columns going forward:
+--
+--   • Queryability: string equality predicates use standard B-tree index
+--     scans. NULL predicates require IS NULL and benefit only from partial
+--     indexes.
+--
+--   • Downstream safety: consumers pattern-match on string values without
+--     null-guarding. Reduces a common class of "undefined vs not-yet-set"
+--     bugs.
+--
+--   • Consistency: applied uniformly across reviewer_decision, evidence
+--     pack approval status, compliance review status, and any future audit
+--     enum. No column uses NULL to encode "awaiting action."
+--
+-- Source: S36-G1 schema (this file). Reaffirmed and documented in S43-G4
+-- closure review.
+-- ────────────────────────────────────────────────────────────────────────
 
 BEGIN;
 

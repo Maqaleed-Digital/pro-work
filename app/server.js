@@ -66,6 +66,14 @@ const { createEmployerOnboardingRouter }    = require("./api/employer_onboarding
 // S40-G6: Team invitations
 const { createInvitationService }           = require("./modules/auth/invitation_service")
 const { createInvitationRouter }            = require("./api/invitation_router")
+// S43-G1: Requisitions
+const { createRequisitionService }          = require("./modules/hiring/requisition_service")
+const { createRequisitionRouter }           = require("./api/requisition_router")
+const { createAiMatchingService }           = require("./modules/hiring/ai_matching_service")
+const { createOfferService }               = require("./modules/hiring/offer_service")
+const { createOfferRouter }                = require("./api/offer_router")
+const { createCandidateService }            = require("./modules/hiring/candidate_service")
+const { createApplicationService }          = require("./modules/hiring/application_service")
 
 // S38-G3: evidence pack router — shared store across all requests
 const _evidencePackRouter = createEvidencePackRouter()
@@ -137,6 +145,28 @@ const _invitationService = _pgPool && _authService
   : null
 const _invitationRouter = _invitationService
   ? createInvitationRouter({ invitationService: _invitationService })
+  : null
+// S43: Requisition service + router
+const _nitaqatPolicyForHiring = (() => {
+  try { return require("./modules/compliance/nitaqat_service").createNitaqatPolicyEngine(require("./config/compliance/nitaqat_policy_v1.json")) }
+  catch { return null }
+})()
+const _requisitionService = _pgPool
+  ? createRequisitionService({ pool: _pgPool, nitaqatEngine: _nitaqatPolicyForHiring })
+  : null
+const _aiMatchingService = _pgPool
+  ? createAiMatchingService({ pool: _pgPool })
+  : null
+const _candidateService = _pgPool ? createCandidateService({ pool: _pgPool }) : null
+const _offerService = _pgPool ? createOfferService({ pool: _pgPool }) : null
+const _offerRouter = _offerService ? createOfferRouter({ offerService: _offerService }) : null
+const _applicationService = _pgPool ? createApplicationService({ pool: _pgPool }) : null
+const _requisitionRouter = _requisitionService
+  ? createRequisitionRouter({
+      requisitionService: Object.assign(_requisitionService, { _pool_ref: _pgPool }),
+      aiMatchingService: _aiMatchingService,
+      applicationService: _applicationService,
+    })
   : null
 
 const UI_DIST = path.join(__dirname, "frontend", "dist")
@@ -1520,6 +1550,27 @@ const server = http.createServer(async (req, res) => {
       const ext = path.extname(assetPath)
       const types = { ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png" }
       return serveStatic(res, assetPath, types[ext] || "application/octet-stream")
+    }
+
+    // S43: Hiring routes — /api/hiring/*
+    if (pathname.startsWith("/api/hiring/")) {
+      let body = null
+      if (req.method === "POST" || req.method === "PATCH") {
+        body = await readJson(req, res)
+        if (body === null) return
+      }
+      const user = req._jwtPrincipal
+        ? { id: req._jwtPrincipal.id, tenant_id: req._jwtPrincipal.tenant_id, role: req._jwtPrincipal._rbacRole }
+        : null
+
+      // Offer routes
+      if (_offerRouter && pathname.startsWith("/api/hiring/offers")) {
+        return _offerRouter.handle(req, res, pathname, req.method, body, user)
+      }
+      // Requisition + application + matching routes
+      if (_requisitionRouter) {
+        return _requisitionRouter.handle(req, res, pathname, req.method, body, user)
+      }
     }
 
     // S40-G6: Invitation routes — /api/invitations/*
