@@ -68,6 +68,10 @@ function createRequisitionRouter(opts) {
     const closeMatch   = pathname.match(/^\/api\/hiring\/requisitions\/([^/]+)\/close$/)
     const rankMatch    = pathname.match(/^\/api\/hiring\/requisitions\/([^/]+)\/rank-candidates$/)
     const reviewMatch  = pathname.match(/^\/api\/hiring\/recommendations\/([^/]+)\/review$/)
+    const appsMatch    = pathname.match(/^\/api\/hiring\/requisitions\/([^/]+)\/applications$/)
+    const appStatusMatch = pathname.match(/^\/api\/hiring\/applications\/([^/]+)\/status$/)
+    const appTimelineMatch = pathname.match(/^\/api\/hiring\/applications\/([^/]+)\/timeline$/)
+    const recDetailMatch = pathname.match(/^\/api\/hiring\/recommendations\/([^/]+)$/)
 
     // GET /api/hiring/requisitions/:id
     if (idMatch && method === 'GET') {
@@ -157,6 +161,74 @@ function createRequisitionRouter(opts) {
         return ok(res, result)
       } catch (e) {
         return fail(res, 'REVIEW_ERROR', e.message, e.status || 400)
+      }
+    }
+
+    // GET /api/hiring/requisitions/:id/applications — list pipeline
+    if (appsMatch && method === 'GET') {
+      if (!opts.applicationService) return fail(res, 'SERVICE_UNAVAILABLE', 'application service not configured', 503)
+      try {
+        const result = await opts.applicationService.listApplications(user.tenant_id, appsMatch[1])
+        return ok(res, { applications: result })
+      } catch (e) {
+        return fail(res, 'APPLICATION_ERROR', e.message, e.status || 500)
+      }
+    }
+
+    // PATCH /api/hiring/applications/:id/status — transition
+    if (appStatusMatch && method === 'PATCH') {
+      if (!opts.applicationService) return fail(res, 'SERVICE_UNAVAILABLE', 'application service not configured', 503)
+      if (!body) return fail(res, 'MISSING_BODY', 'request body required', 400)
+      try {
+        const result = await opts.applicationService.transitionStatus(
+          user.tenant_id, appStatusMatch[1], body.status, user.id, body.reason || body
+        )
+        return ok(res, result)
+      } catch (e) {
+        return fail(res, 'TRANSITION_ERROR', e.message, e.status || 400)
+      }
+    }
+
+    // GET /api/hiring/applications/:id/timeline
+    if (appTimelineMatch && method === 'GET') {
+      if (!opts.applicationService) return fail(res, 'SERVICE_UNAVAILABLE', 'application service not configured', 503)
+      try {
+        const result = await opts.applicationService.getApplicationTimeline(user.tenant_id, appTimelineMatch[1])
+        return ok(res, { events: result })
+      } catch (e) {
+        return fail(res, 'TIMELINE_ERROR', e.message, e.status || 500)
+      }
+    }
+
+    // GET /api/hiring/recommendations/:logId — detail
+    if (recDetailMatch && method === 'GET') {
+      try {
+        const client = await opts.requisitionService._pool_ref.connect()
+        try {
+          await client.query("SELECT set_config('app.current_tenant_id', $1, false)", [user.tenant_id])
+          const crypto = require('crypto')
+          const tenantUuid = (() => {
+            const h = crypto.createHash('md5').update(user.tenant_id).digest('hex')
+            return h.slice(0,8)+'-'+h.slice(8,12)+'-'+h.slice(12,16)+'-'+h.slice(16,20)+'-'+h.slice(20,32)
+          })()
+          await client.query("SELECT set_config('app.tenant_id', $1, false)", [tenantUuid])
+          const result = await client.query('SELECT * FROM recommendation_audit_logs WHERE id = $1', [recDetailMatch[1]])
+          if (!result.rows[0]) return fail(res, 'NOT_FOUND', 'recommendation not found', 404)
+          const log = result.rows[0]
+          return ok(res, {
+            id: log.id,
+            action_type: log.action_type,
+            input_signals: log.input_signals,
+            rationale: log.rationale,
+            confidence_score: log.confidence_score,
+            bias_score: log.bias_score,
+            model_version: log.model_version,
+            reviewer_decision: log.reviewer_decision,
+            output_snapshot: log.output_snapshot,
+          })
+        } finally { client.release() }
+      } catch (e) {
+        return fail(res, 'RECOMMENDATION_ERROR', e.message, e.status || 500)
       }
     }
 

@@ -70,6 +70,8 @@ const { createInvitationRouter }            = require("./api/invitation_router")
 const { createRequisitionService }          = require("./modules/hiring/requisition_service")
 const { createRequisitionRouter }           = require("./api/requisition_router")
 const { createAiMatchingService }           = require("./modules/hiring/ai_matching_service")
+const { createCandidateService }            = require("./modules/hiring/candidate_service")
+const { createApplicationService }          = require("./modules/hiring/application_service")
 
 // S38-G3: evidence pack router — shared store across all requests
 const _evidencePackRouter = createEvidencePackRouter()
@@ -153,8 +155,14 @@ const _requisitionService = _pgPool
 const _aiMatchingService = _pgPool
   ? createAiMatchingService({ pool: _pgPool })
   : null
+const _candidateService = _pgPool ? createCandidateService({ pool: _pgPool }) : null
+const _applicationService = _pgPool ? createApplicationService({ pool: _pgPool }) : null
 const _requisitionRouter = _requisitionService
-  ? createRequisitionRouter({ requisitionService: _requisitionService, aiMatchingService: _aiMatchingService })
+  ? createRequisitionRouter({
+      requisitionService: Object.assign(_requisitionService, { _pool_ref: _pgPool }),
+      aiMatchingService: _aiMatchingService,
+      applicationService: _applicationService,
+    })
   : null
 
 const UI_DIST = path.join(__dirname, "frontend", "dist")
