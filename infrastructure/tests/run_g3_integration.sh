@@ -54,3 +54,6 @@ echo "All integration tests complete."
 
 echo "=== S44-G1 Integration ==="
 node --test tests/contracts/contract_lifecycle.integration.test.js
+
+echo "=== S44-G2 WPS Integration ==="
+node --test tests/compliance/wps_lifecycle.integration.test.js
