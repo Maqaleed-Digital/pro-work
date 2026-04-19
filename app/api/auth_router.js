@@ -49,7 +49,7 @@ function createAuthRouter(opts) {
     if (pathname === '/api/auth/register' && method === 'POST') {
       if (!body) return fail(res, 'MISSING_BODY', 'request body required', 400)
 
-      const { email, password, companyName, role } = body
+      const { email, password, companyName, role, personaType } = body
       if (!email)       return fail(res, 'VALIDATION_ERROR', 'email is required', 422)
       if (!password)    return fail(res, 'VALIDATION_ERROR', 'password is required', 422)
       if (!companyName) return fail(res, 'VALIDATION_ERROR', 'companyName is required', 422)
@@ -67,6 +67,7 @@ function createAuthRouter(opts) {
         // Register owner user
         const user = await authService.register({
           email, password, tenantId, role: role || undefined,
+          personaType: personaType || 'EMPLOYER',
         })
 
         // Issue JWT immediately (auto-login after registration)

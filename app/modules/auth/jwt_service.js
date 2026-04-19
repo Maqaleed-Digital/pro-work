@@ -70,13 +70,14 @@ function createJwtService(opts) {
      * @param {string} tenantId
      * @returns {{ token: string, expiresAt: Date }}
      */
-    issue(userId, role, tenantId) {
+    issue(userId, role, tenantId, personaType) {
       const now       = Math.floor(Date.now() / 1000)
       const expiresAt = now + ttl
       const payload   = {
         sub:       userId,
         role:      role,
         tenant_id: tenantId,
+        persona_type: personaType || 'EMPLOYER',
         iat:       now,
         exp:       expiresAt,
         jti:       crypto.randomUUID(),

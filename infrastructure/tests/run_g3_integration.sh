@@ -99,3 +99,6 @@ echo "=== S44-G7 Complete ==="
 
 echo "=== S45-G1 Seeker Integration ==="
 node --test tests/seekers/seeker_profile_lifecycle.integration.test.js
+
+echo "=== S45-G2 Seeker Registration Integration ==="
+node --test tests/auth/seeker_registration.integration.test.js

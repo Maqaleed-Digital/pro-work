@@ -1,4 +1,5 @@
 import { getToken, setToken, getTenant, setTenant, apiGetJson } from "../api.js"
+import { t } from "../locale.js"
 
 // S30: live tenant list (null = use hardcoded fallback)
 let _tenantOptions = null
@@ -55,16 +56,30 @@ const NAV_SECTIONS = [
   },
 ]
 
+// S45-G2: Seeker persona nav items
+const SEEKER_NAV_ITEMS = [
+  { key: "seeker-home",     labelKey: "seekerNav.home",         icon: "\u2302" },
+  { key: "seeker-apps",     labelKey: "seekerNav.applications", icon: "\u{1F4CB}" },
+  { key: "seeker-profile",  labelKey: "seekerNav.profile",      icon: "\u{1F464}" },
+  { key: "seeker-earnings", labelKey: "seekerNav.earnings",     icon: "\u{1F4B0}" },
+]
+
 let _signOutCb = null
+
+function _getPersona() {
+  try { return localStorage.getItem("pw_persona") || "EMPLOYER" } catch { return "EMPLOYER" }
+}
 
 export function renderNav(activeKey, onSignOut) {
   if (onSignOut) _signOutCb = onSignOut
 
   // S40: skip AI pending count on public routes
   const _hash = window.location.hash.replace('#', '').split('?')[0]
-  if (!['register', 'onboarding', 'accept-invite'].includes(_hash)) {
+  if (!['register', 'onboarding', 'accept-invite', 'seeker-home'].includes(_hash)) {
     refreshAiPendingCount()
   }
+
+  const persona = _getPersona()
 
   const nav = document.getElementById("nav")
   if (!nav) return
@@ -90,22 +105,50 @@ export function renderNav(activeKey, onSignOut) {
   brand.appendChild(brandText)
   nav.appendChild(brand)
 
+  // ── Persona toggle for BOTH users ─────────────────────────────────────
+  if (persona === "BOTH") {
+    const toggleWrap = document.createElement("div")
+    toggleWrap.className = "persona-toggle"
+    toggleWrap.style.cssText = "padding:var(--space-2) var(--space-3);display:flex;gap:var(--space-2)"
+
+    const currentView = (() => { try { return localStorage.getItem("pw_persona_view") || "EMPLOYER" } catch { return "EMPLOYER" } })()
+
+    const empBtn = document.createElement("button")
+    empBtn.className = "btn btn-sm" + (currentView === "EMPLOYER" ? " btn-accent" : "")
+    empBtn.textContent = "Employer"
+    empBtn.addEventListener("click", () => {
+      try { localStorage.setItem("pw_persona_view", "EMPLOYER") } catch {}
+      renderNav(activeKey)
+    })
+
+    const seekBtn = document.createElement("button")
+    seekBtn.className = "btn btn-sm" + (currentView === "SEEKER" ? " btn-accent" : "")
+    seekBtn.textContent = "Seeker"
+    seekBtn.addEventListener("click", () => {
+      try { localStorage.setItem("pw_persona_view", "SEEKER") } catch {}
+      renderNav(activeKey)
+    })
+
+    toggleWrap.appendChild(empBtn)
+    toggleWrap.appendChild(seekBtn)
+    nav.appendChild(toggleWrap)
+  }
+
   // ── Nav sections ──────────────────────────────────────────────────────
   const navWrap = document.createElement("div")
   navWrap.className = "sidebar-nav"
 
-  NAV_SECTIONS.forEach(section => {
+  // Determine which nav to render based on persona
+  const effectivePersona = persona === "BOTH"
+    ? (() => { try { return localStorage.getItem("pw_persona_view") || "EMPLOYER" } catch { return "EMPLOYER" } })()
+    : persona
+
+  if (effectivePersona === "SEEKER") {
+    // Render seeker nav items
     const sectionEl = document.createElement("div")
     sectionEl.className = "nav-section"
 
-    if (section.label) {
-      const sectionLabel = document.createElement("div")
-      sectionLabel.className = "nav-section-label"
-      sectionLabel.textContent = section.label
-      sectionEl.appendChild(sectionLabel)
-    }
-
-    section.items.forEach(({ key, label, icon, badge }) => {
+    SEEKER_NAV_ITEMS.forEach(({ key, labelKey, icon }) => {
       const a = document.createElement("a")
       a.className = "nav-item" + (key === activeKey ? " active" : "")
       a.href = "#" + key
@@ -118,24 +161,58 @@ export function renderNav(activeKey, onSignOut) {
 
       const labelEl = document.createElement("span")
       labelEl.className = "nav-item-label"
-      labelEl.textContent = label
+      labelEl.textContent = t(labelKey)
       a.appendChild(labelEl)
-
-      if (badge) {
-        const count = badge()
-        if (count > 0) {
-          const badgeEl = document.createElement("span")
-          badgeEl.className = "nav-item-badge"
-          badgeEl.textContent = count > 99 ? "99+" : String(count)
-          a.appendChild(badgeEl)
-        }
-      }
 
       sectionEl.appendChild(a)
     })
 
     navWrap.appendChild(sectionEl)
-  })
+  } else {
+    // Render employer nav (existing behavior)
+    NAV_SECTIONS.forEach(section => {
+      const sectionEl = document.createElement("div")
+      sectionEl.className = "nav-section"
+
+      if (section.label) {
+        const sectionLabel = document.createElement("div")
+        sectionLabel.className = "nav-section-label"
+        sectionLabel.textContent = section.label
+        sectionEl.appendChild(sectionLabel)
+      }
+
+      section.items.forEach(({ key, label, icon, badge }) => {
+        const a = document.createElement("a")
+        a.className = "nav-item" + (key === activeKey ? " active" : "")
+        a.href = "#" + key
+        if (key === activeKey) a.setAttribute("aria-current", "page")
+
+        const iconEl = document.createElement("span")
+        iconEl.className = "nav-item-icon"
+        iconEl.textContent = icon
+        a.appendChild(iconEl)
+
+        const labelEl = document.createElement("span")
+        labelEl.className = "nav-item-label"
+        labelEl.textContent = label
+        a.appendChild(labelEl)
+
+        if (badge) {
+          const count = badge()
+          if (count > 0) {
+            const badgeEl = document.createElement("span")
+            badgeEl.className = "nav-item-badge"
+            badgeEl.textContent = count > 99 ? "99+" : String(count)
+            a.appendChild(badgeEl)
+          }
+        }
+
+        sectionEl.appendChild(a)
+      })
+
+      navWrap.appendChild(sectionEl)
+    })
+  }
 
   nav.appendChild(navWrap)
 
@@ -167,6 +244,8 @@ export function renderNav(activeKey, onSignOut) {
     try { localStorage.removeItem("pw_company") } catch {}
     try { localStorage.removeItem("pw_email") } catch {}
     try { localStorage.removeItem("pw_tenant") } catch {}
+    try { localStorage.removeItem("pw_persona") } catch {}
+    try { localStorage.removeItem("pw_persona_view") } catch {}
     window.location.hash = "register"
     window.location.reload()
   })

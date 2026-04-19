@@ -33,7 +33,7 @@ function createAuthService(opts) {
     /**
      * Register a new user. The first user in a tenant gets OWNER role.
      */
-    async register({ email, password, tenantId, role }) {
+    async register({ email, password, tenantId, role, personaType }) {
       if (!email || !password || !tenantId) {
         throw Object.assign(new Error('email, password, and tenantId are required'), { status: 400 })
       }
@@ -41,13 +41,16 @@ function createAuthService(opts) {
       if (role && !VALID_ROLES.has(role)) {
         throw Object.assign(new Error(`invalid role: ${role}`), { status: 422 })
       }
+      const persona = personaType || 'EMPLOYER'
+      if (!['EMPLOYER', 'SEEKER', 'BOTH'].includes(persona)) {
+        throw Object.assign(new Error(`invalid persona_type: ${persona}`), { status: 422 })
+      }
 
       const passwordHash = await passwordService.hash(password)
       const client = await pool.connect()
       try {
         await client.query('BEGIN')
         await withTenant(client, tenantId, async (c) => {
-          // Check for duplicate email within tenant
           const dup = await c.query(
             'SELECT id FROM users WHERE email = $1 AND tenant_id = $2',
             [email, tenantId]
@@ -57,18 +60,19 @@ function createAuthService(opts) {
           }
         })
 
-        // Determine role: first user in tenant becomes OWNER
+        // Determine role
         const countResult = await client.query(
           'SELECT COUNT(*) AS cnt FROM users WHERE tenant_id = $1',
           [tenantId]
         )
-        const assignedRole = (parseInt(countResult.rows[0].cnt) === 0) ? 'OWNER' : (role || 'VIEWER')
+        let assignedRole = (parseInt(countResult.rows[0].cnt) === 0) ? 'OWNER' : (role || 'VIEWER')
+        if (persona === 'SEEKER' && !role) assignedRole = 'SEEKER'
 
         const result = await client.query(
-          `INSERT INTO users (id, email, password_hash, tenant_id, role, status, created_at)
-           VALUES ($1, $2, $3, $4, $5, 'ACTIVE', NOW())
-           RETURNING id, email, tenant_id, role, status, created_at`,
-          [crypto.randomUUID(), email, passwordHash, tenantId, assignedRole]
+          `INSERT INTO users (id, email, password_hash, tenant_id, role, status, persona_type, current_persona_preference, created_at)
+           VALUES ($1, $2, $3, $4, $5, 'ACTIVE', $6, $7, NOW())
+           RETURNING id, email, tenant_id, role, status, persona_type, current_persona_preference, created_at`,
+          [crypto.randomUUID(), email, passwordHash, tenantId, assignedRole, persona, persona === 'BOTH' ? 'EMPLOYER' : persona]
         )
         await client.query('COMMIT')
         return result.rows[0]
@@ -95,7 +99,7 @@ function createAuthService(opts) {
         await client.query("SELECT set_config('app.current_tenant_id', $1, false)", [tenantId])
 
         const result = await client.query(
-          'SELECT id, email, password_hash, tenant_id, role, status FROM users WHERE email = $1 AND tenant_id = $2',
+          'SELECT id, email, password_hash, tenant_id, role, status, persona_type FROM users WHERE email = $1 AND tenant_id = $2',
           [email, tenantId]
         )
         const user = result.rows[0]
@@ -111,8 +115,8 @@ function createAuthService(opts) {
           throw Object.assign(new Error('invalid credentials'), { status: 401 })
         }
 
-        // Issue JWT
-        const { token, expiresAt, jti } = jwt.issue(user.id, user.role, user.tenant_id)
+        // Issue JWT (with persona_type from user row)
+        const { token, expiresAt, jti } = jwt.issue(user.id, user.role, user.tenant_id, user.persona_type)
         const tokenHash = jwt.hashToken(token)
 
         // Create session
@@ -128,7 +132,7 @@ function createAuthService(opts) {
         return {
           token,
           expiresAt,
-          user: { id: user.id, email: user.email, role: user.role, tenant_id: user.tenant_id },
+          user: { id: user.id, email: user.email, role: user.role, tenant_id: user.tenant_id, persona_type: user.persona_type || 'EMPLOYER' },
         }
       } finally {
         client.release()

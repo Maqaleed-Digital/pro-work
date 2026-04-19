@@ -313,5 +313,19 @@
   "offer.overrideBtn":           "Override compliance",
   "offer.overrideReason":        "Override reason (required)",
   "offer.sendBlocked":           "Cannot send — compliance check has RED items",
-  "offer.navLabel":              "Offer Builder"
+  "offer.navLabel":              "Offer Builder",
+
+  "register.personaTitle":       "How do you want to use WorkCaptain?",
+  "register.personaEmployer":    "I'm hiring",
+  "register.personaEmployerDesc": "Post roles, manage candidates, build contracts",
+  "register.personaSeeker":      "I'm looking for work",
+  "register.personaSeekerDesc":  "Find opportunities, build your profile, get hired",
+
+  "seekerNav.home":              "Home",
+  "seekerNav.applications":      "My Applications",
+  "seekerNav.profile":           "My Profile",
+  "seekerNav.earnings":          "Earnings",
+
+  "seekerHome.welcome":          "Welcome to WorkCaptain",
+  "seekerHome.comingSoon":       "Your seeker dashboard is coming soon."
 }

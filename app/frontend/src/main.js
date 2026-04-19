@@ -65,7 +65,7 @@ function showLogin() {
 
 function boot() {
   const hash = window.location.hash.replace('#', '').split('?')[0]
-  const PUBLIC_ROUTES = ['register', 'onboarding', 'accept-invite', 'signin']
+  const PUBLIC_ROUTES = ['register', 'onboarding', 'accept-invite', 'signin', 'seeker-home']
   const INTERNAL_ROUTES = ['admin-login']
   const app = document.getElementById("app")
 
@@ -84,9 +84,13 @@ function boot() {
     return
   }
 
-  // Has token — load app
+  // Has token — load app; redirect SEEKER persona to seeker-home
   const token = getToken()
   if (token) {
+    const pw_persona = (() => { try { return localStorage.getItem('pw_persona') } catch { return null } })()
+    if (pw_persona === 'SEEKER' && !hash) {
+      window.location.hash = 'seeker-home'
+    }
     initRouter(app, () => {
       window.location.hash = 'register'
       window.location.reload()

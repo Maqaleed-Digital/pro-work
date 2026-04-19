@@ -1,8 +1,83 @@
-// S40-G5: Registration page — Step 1 of employer onboarding
+// S45-G2: Registration page — persona selector + employer onboarding form
+// Accessibility: persona cards use role="radio" with aria-checked for screen readers
 import { apiPostPublic, setToken } from "../api.js"
 import { t } from "../locale.js"
 
-function render(el) {
+let _personaType = null
+
+function renderPersonaStep(el, onSelect) {
+  el.innerHTML = ""
+
+  const wrap = document.createElement("div")
+  wrap.className = "onboarding-screen"
+
+  const box = document.createElement("div")
+  box.className = "onboarding-box"
+
+  // Brand wordmark
+  const brandRow = document.createElement("div")
+  brandRow.style.cssText = "display:flex;align-items:center;gap:8px;margin-bottom:var(--space-3)"
+  const brandMark = document.createElement("div")
+  brandMark.className = "sidebar-brand-mark"
+  brandMark.textContent = "W"
+  const brandName = document.createElement("span")
+  brandName.style.cssText = "font-family:var(--font-display);font-size:var(--text-xl);font-weight:700;color:var(--color-text-primary)"
+  brandName.textContent = "WorkCaptain"
+  brandRow.appendChild(brandMark)
+  brandRow.appendChild(brandName)
+  box.appendChild(brandRow)
+
+  const title = document.createElement("h1")
+  title.textContent = t("register.personaTitle")
+  box.appendChild(title)
+
+  // Persona cards container — acts as radiogroup for accessibility
+  const cardWrap = document.createElement("div")
+  cardWrap.className = "persona-cards"
+  cardWrap.setAttribute("role", "radiogroup")
+  cardWrap.setAttribute("aria-label", t("register.personaTitle"))
+  cardWrap.style.cssText = "display:flex;gap:var(--space-4);margin-top:var(--space-4)"
+
+  // EMPLOYER card
+  const empCard = document.createElement("div")
+  empCard.className = "persona-card"
+  empCard.setAttribute("role", "radio")
+  empCard.setAttribute("aria-checked", "false")
+  empCard.setAttribute("tabindex", "0")
+  empCard.style.cssText = "flex:1;padding:var(--space-5);border:2px solid var(--color-border);border-radius:var(--radius-lg);cursor:pointer;text-align:center"
+  empCard.innerHTML = `<h2 style="margin:0 0 var(--space-2)">${t("register.personaEmployer")}</h2><p style="margin:0;color:var(--color-text-secondary)">${t("register.personaEmployerDesc")}</p>`
+  empCard.addEventListener("click", () => {
+    _personaType = "EMPLOYER"
+    onSelect("EMPLOYER")
+  })
+  empCard.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); empCard.click() }
+  })
+  cardWrap.appendChild(empCard)
+
+  // SEEKER card
+  const seekCard = document.createElement("div")
+  seekCard.className = "persona-card"
+  seekCard.setAttribute("role", "radio")
+  seekCard.setAttribute("aria-checked", "false")
+  seekCard.setAttribute("tabindex", "0")
+  seekCard.style.cssText = "flex:1;padding:var(--space-5);border:2px solid var(--color-border);border-radius:var(--radius-lg);cursor:pointer;text-align:center"
+  seekCard.innerHTML = `<h2 style="margin:0 0 var(--space-2)">${t("register.personaSeeker")}</h2><p style="margin:0;color:var(--color-text-secondary)">${t("register.personaSeekerDesc")}</p>`
+  seekCard.addEventListener("click", () => {
+    _personaType = "SEEKER"
+    onSelect("SEEKER")
+  })
+  seekCard.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); seekCard.click() }
+  })
+  cardWrap.appendChild(seekCard)
+
+  box.appendChild(cardWrap)
+  wrap.appendChild(box)
+  el.appendChild(wrap)
+}
+
+function renderForm(el) {
   el.innerHTML = ""
 
   const wrap = document.createElement("div")
@@ -87,6 +162,7 @@ function render(el) {
     const password    = inputs.password.value || ""
     const confirm     = inputs.confirmPassword.value || ""
     const companyName = (inputs.companyName.value || "").trim()
+    const personaType = _personaType || "EMPLOYER"
 
     if (!companyName) { errEl.textContent = t("register.err.companyRequired"); return }
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { errEl.textContent = t("register.err.emailInvalid"); return }
@@ -97,13 +173,19 @@ function render(el) {
     btn.textContent = t("register.submitting")
 
     try {
-      const data = await apiPostPublic("/api/auth/register", { email, password, companyName })
+      const data = await apiPostPublic("/api/auth/register", { email, password, companyName, personaType })
       setToken(data.token)
       try { localStorage.setItem("pw_company", data.tenant && data.tenant.name || companyName) } catch {}
       try { localStorage.setItem("pw_tenant", data.user && data.user.tenant_id || "default") } catch {}
       try { localStorage.setItem("pw_email", data.user && data.user.email || email) } catch {}
-      // Navigate to onboarding step 2
-      location.hash = "onboarding"
+      try { localStorage.setItem("pw_persona", data.user && data.user.persona_type || personaType) } catch {}
+
+      // Route SEEKER to seeker-home, EMPLOYER to onboarding
+      if (personaType === "SEEKER") {
+        location.hash = "seeker-home"
+      } else {
+        location.hash = "onboarding"
+      }
     } catch (e) {
       errEl.textContent = e.message || t("register.err.failed")
       btn.disabled = false
@@ -121,6 +203,13 @@ function render(el) {
   box.appendChild(form)
   wrap.appendChild(box)
   el.appendChild(wrap)
+}
+
+function render(el) {
+  _personaType = null
+  renderPersonaStep(el, () => {
+    renderForm(el)
+  })
 }
 
 export default { render }
