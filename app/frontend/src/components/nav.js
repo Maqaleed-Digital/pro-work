@@ -26,6 +26,7 @@ const NAV_SECTIONS = [
     items: [
       { key: "dashboard",        label: "Command Center",   icon: "\u2302" },
       { key: "workers",          label: "Workers",          icon: "\u{1F465}" },
+      { key: "post-role",       label: "Post a Role",      icon: "\u{1F4DD}" },
       { key: "governance",       label: "Compliance",       icon: "\u{1F6E1}" },
       { key: "ai",               label: "AI Control",       icon: "\u2728",    badge: () => _aiPendingCount },
     ]
