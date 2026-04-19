@@ -271,3 +271,115 @@ ESB lifecycle, offboarding workflow, and SDP programs.
 - Update-resets-to-DRAFT pattern where applicable
 - All policy rules in versioned JSON config
 - Design system CSS variables from S42 throughout
+
+S44 STATUS: CLOSED — April 19, 2026
+Authority: Waheeb Mahmoud
+337 tests. 9 commits. 7/7 gates PASS.
+integration/post-s44 at 1ed7e85.
+
+---
+
+## SPRINT S45 — Workforce Seeker Portal
+
+Objective: Freelancers and job seekers can register,
+build a profile, browse marketplace listings, apply
+to roles, view contracts, and track payments — all
+from a seeker-specific portal separate from the
+employer admin dashboard.
+
+### S45 Gate Structure
+
+| Gate | Description |
+|------|-------------|
+| S45-G1 | Seeker registration + profile schema |
+| S45-G2 | Seeker registration flow |
+| S45-G3 | Seeker dashboard (#seeker-home) with ERI display |
+| S45-G4 | Role marketplace (#marketplace) |
+| S45-G5 | Application flow |
+| S45-G6 | Seeker contract + payment view |
+| S45-G7 | Sprint closure + integration test (MANUAL) |
+
+---
+
+### S45-G1 Deliverables — Seeker Profile Schema
+
+- Migration: seekers table with profile fields
+  (skills, experience, portfolio, ERI score,
+  nationality, languages, availability)
+- Seeker-specific auth: persona_type EMPLOYER|SEEKER
+  on users table (migration to add column)
+- Profile service: create, update, get, search
+
+---
+
+### S45-G2 Deliverables — Seeker Registration Flow
+
+- #seeker-register route with seeker-specific
+  onboarding (skills, experience, portfolio)
+- Different from employer registration (#register)
+- Persona detection on login: redirect to correct
+  dashboard based on persona_type
+
+---
+
+### S45-G3 Deliverables — Seeker Dashboard
+
+- #seeker-home route with seeker layout (no admin
+  sidebar — different shell)
+- ERI score display (from S39-G5 identity service)
+- Active applications list
+- Contract status summary
+- Earnings overview
+
+---
+
+### S45-G4 Deliverables — Role Marketplace
+
+- #marketplace route: public-facing role listings
+- Search + filter by skills, location, contract type
+- Role cards with Nitaqat zone indicator
+- "Apply" button (authenticated seekers only)
+
+---
+
+### S45-G5 Deliverables — Application Flow
+
+- Seeker applies to marketplace listing
+- Creates application via application_service (S43-G3)
+- Shows application status timeline
+- Notification when status changes
+
+---
+
+### S45-G6 Deliverables — Seeker Contract + Payment View
+
+- Seeker views their active contracts
+- Payment schedule per contract
+- 0% commission badge on FREELANCER contracts
+- Milestone payment tracking
+
+---
+
+### S45-G7 — Sprint Closure
+
+- Full seeker journey integration test:
+  register → profile → browse → apply → contract → payment
+- Evidence pack audit for seeker-initiated actions
+- Manual sprint closure required (human-only)
+
+### S45 Standing Constraints (inherited + new)
+
+- Three-actor discipline (SYSTEM / HUMAN / AI)
+- Update-resets-to-DRAFT on preview-then-commit flows
+- Versioned policy engines for calculated outputs
+- Evidence packs auto-generate at terminal states
+- Arabic RTL parity on every screen
+- Schema-level non-employment safeguard
+- Closure gate includes product-surface accessibility
+- Role-aware layout switcher: main.js detects
+  persona_type (EMPLOYER/SEEKER) and loads correct
+  shell — no admin sidebar for seekers
+- Seeker routes: #seeker-* prefix
+- Employer routes: existing #dashboard, #workers, etc.
+- Shared auth system (S40) — same JWT, different
+  persona routing
