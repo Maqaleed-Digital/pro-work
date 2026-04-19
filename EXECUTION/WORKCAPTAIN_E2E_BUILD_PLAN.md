@@ -134,3 +134,140 @@ if preview not run in same session.
 - Evidence pack generates all 8 schema fields
   per S38-G2.
 - Manual sprint closure required (human-only).
+
+S43 STATUS: CLOSED — April 19, 2026
+Authority: Waheeb Mahmoud
+166 tests. 11 commits. 7/7 gates PASS.
+integration/post-s43 at 8f4f6ae.
+
+---
+
+## SPRINT S44 — Contract Builder + Lifecycle
+
+Objective: Employer can build contracts from accepted
+offers, manage WPS readiness, probation governance,
+ESB lifecycle, offboarding workflow, and SDP programs.
+
+### S44 Gate Structure
+
+| Gate | Description |
+|------|-------------|
+| S44-G1 | Contract builder UI (#contracts) |
+| S44-G2 | WPS checklist UI in admin |
+| S44-G3 | Probation dashboard (#probation) |
+| S44-G4 | ESB calculator screen (#lifecycle) |
+| S44-G5 | Offboarding workflow UI |
+| S44-G6 | SDP program workspace UI (#programs) |
+| S44-G7 | Sprint closure + evidence pack audit (MANUAL) |
+
+---
+
+### S44-G1 Deliverables — Contract Builder UI
+
+- app/frontend/src/pages/contracts.js
+  Route: #contracts
+  Converts accepted offers (status ACCEPTED) into
+  Qiwa-ready contract records. Three contract paths
+  matching offer types: FTE / FREELANCER / AI_EXECUTABLE.
+  - FTE: full employment contract with probation,
+    GOSI, WPS fields, notice period
+  - FREELANCER: milestone-based service agreement,
+    escrow terms, 0% commission badge visible
+  - AI_EXECUTABLE: service delivery agreement with
+    outcome criteria, escalation thresholds
+  Compliance preview (GREEN/AMBER/RED) before signing.
+  EP auto-generates on contract signed (terminal state).
+
+- Migration: app/storage/migrations/20260420_create_contracts.sql
+  contracts table with RLS, column-level UPDATE, no DELETE.
+
+- Service: app/modules/hiring/contract_service.js
+  createContract(), signContract(), terminateContract()
+
+- RBAC: HIRING_MANAGER permission required.
+- Arabic RTL labels throughout.
+
+---
+
+### S44-G2 Deliverables — WPS Checklist UI
+
+- Integration of existing S37-G1 WPS readiness service
+  into admin UI at #wps-readiness or within #contracts.
+- Checklist items rendered from wps_readiness_service.
+- Progress bar showing completion percentage.
+- Items update via existing PATCH endpoints.
+- MANAGE_COMPLIANCE permission required.
+
+---
+
+### S44-G3 Deliverables — Probation Dashboard
+
+- app/frontend/src/pages/probation.js
+  Route: #probation
+  Shows all employees in probation period:
+  - Days elapsed / days remaining
+  - Day-80 pack generation trigger
+  - Probation decision: CONFIRM / EXTEND / TERMINATE
+  - Decision triggers EP-WOS-PROBATION-01 evidence pack.
+  Uses existing S37-G2 probation_governance_service.
+  MANAGE_PROBATION permission required.
+
+---
+
+### S44-G4 Deliverables — ESB Calculator Screen
+
+- app/frontend/src/pages/lifecycle.js
+  Route: #lifecycle
+  End-of-service benefit calculator:
+  - Salary, years of service, termination type
+  - KSA Labor Law Article 84/85 calculation
+  - ESB breakdown: first 5 years (half), remaining
+    (full) per Article 84
+  Uses existing S37-G6 ESB service.
+  VIEW_ESB + APPROVE_ESB permissions.
+
+---
+
+### S44-G5 Deliverables — Offboarding Workflow UI
+
+- app/frontend/src/pages/offboarding.js
+  Route: #offboarding
+  Offboarding checklist and workflow:
+  - Asset return tracking
+  - Final settlement calculation
+  - Exit interview record
+  - Clearance approvals chain
+  EP-WOS-OFFBOARD-01 auto-generates on completion.
+  Uses existing S38-G4/G5 offboarding services.
+
+---
+
+### S44-G6 Deliverables — SDP Program Workspace
+
+- app/frontend/src/pages/programs.js
+  Route: #programs
+  Saudi Development Program workspace:
+  - Program creation and enrolment
+  - Progress tracking per enrolled employee
+  - Completion certificates
+  Uses existing S38-G7 SDP service.
+  MANAGE_COMPLIANCE permission required.
+
+---
+
+### S44-G7 — Sprint Closure
+
+- Evidence pack audit: verify EP generation for all
+  terminal states across hiring, probation, offboarding.
+- Cumulative test count across S44.
+- Manual sprint closure required (human-only).
+
+### S44 Standing Constraints (inherited)
+
+- EP auto-generates on every terminal state
+- Arabic RTL parity maintained
+- RBAC enforced per screen
+- AMBER advisory / RED blocking semantics
+- Update-resets-to-DRAFT pattern where applicable
+- All policy rules in versioned JSON config
+- Design system CSS variables from S42 throughout

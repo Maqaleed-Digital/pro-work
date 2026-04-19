@@ -18,5 +18,17 @@ RUN chmod +x run_migration_requisitions.sh
 RUN chmod +x run_migration_candidates.sh
 RUN chmod +x run_fix_audit_log_review_grant.sh
 COPY infrastructure/migrations/run_migration_offers.sh ./
+COPY infrastructure/migrations/run_migration_contracts.sh ./
+COPY infrastructure/migrations/run_migration_wps_readiness.sh ./
 RUN chmod +x run_migration_offers.sh
-ENTRYPOINT ["./run_migration_offers.sh"]
+RUN chmod +x run_migration_contracts.sh
+COPY infrastructure/migrations/run_migration_probation.sh ./
+COPY infrastructure/migrations/run_migration_esb.sh ./
+RUN chmod +x run_migration_wps_readiness.sh
+RUN chmod +x run_migration_probation.sh
+COPY infrastructure/migrations/run_migration_offboarding.sh ./
+RUN chmod +x run_migration_esb.sh
+COPY infrastructure/migrations/run_migration_sdp.sh ./
+RUN chmod +x run_migration_offboarding.sh
+RUN chmod +x run_migration_sdp.sh
+ENTRYPOINT ["./run_migration_sdp.sh"]
