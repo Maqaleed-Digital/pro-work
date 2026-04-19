@@ -69,6 +69,7 @@ const { createInvitationRouter }            = require("./api/invitation_router")
 // S43-G1: Requisitions
 const { createRequisitionService }          = require("./modules/hiring/requisition_service")
 const { createRequisitionRouter }           = require("./api/requisition_router")
+const { createAiMatchingService }           = require("./modules/hiring/ai_matching_service")
 
 // S38-G3: evidence pack router — shared store across all requests
 const _evidencePackRouter = createEvidencePackRouter()
@@ -149,8 +150,11 @@ const _nitaqatPolicyForHiring = (() => {
 const _requisitionService = _pgPool
   ? createRequisitionService({ pool: _pgPool, nitaqatEngine: _nitaqatPolicyForHiring })
   : null
+const _aiMatchingService = _pgPool
+  ? createAiMatchingService({ pool: _pgPool })
+  : null
 const _requisitionRouter = _requisitionService
-  ? createRequisitionRouter({ requisitionService: _requisitionService })
+  ? createRequisitionRouter({ requisitionService: _requisitionService, aiMatchingService: _aiMatchingService })
   : null
 
 const UI_DIST = path.join(__dirname, "frontend", "dist")

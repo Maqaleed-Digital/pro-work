@@ -66,6 +66,8 @@ function createRequisitionRouter(opts) {
     const previewMatch = pathname.match(/^\/api\/hiring\/requisitions\/([^/]+)\/nitaqat-preview$/)
     const publishMatch = pathname.match(/^\/api\/hiring\/requisitions\/([^/]+)\/publish$/)
     const closeMatch   = pathname.match(/^\/api\/hiring\/requisitions\/([^/]+)\/close$/)
+    const rankMatch    = pathname.match(/^\/api\/hiring\/requisitions\/([^/]+)\/rank-candidates$/)
+    const reviewMatch  = pathname.match(/^\/api\/hiring\/recommendations\/([^/]+)\/review$/)
 
     // GET /api/hiring/requisitions/:id
     if (idMatch && method === 'GET') {
@@ -124,6 +126,37 @@ function createRequisitionRouter(opts) {
         return ok(res, result)
       } catch (e) {
         return fail(res, 'CLOSE_ERROR', e.message, e.status || 400)
+      }
+    }
+
+    // POST /api/hiring/requisitions/:id/rank-candidates
+    if (rankMatch && method === 'POST') {
+      if (!hasPermission(user.role, PERMISSIONS.CREATE_REQUISITION)) {
+        return fail(res, 'FORBIDDEN', 'HIRING_MANAGER permission required', 403)
+      }
+      if (!opts.aiMatchingService) return fail(res, 'SERVICE_UNAVAILABLE', 'AI matching not configured', 503)
+      try {
+        const result = await opts.aiMatchingService.rankCandidates(user.tenant_id, rankMatch[1], body || {})
+        return ok(res, result)
+      } catch (e) {
+        return fail(res, 'MATCHING_ERROR', e.message, e.status || 400)
+      }
+    }
+
+    // POST /api/hiring/recommendations/:logId/review
+    if (reviewMatch && method === 'POST') {
+      if (!hasPermission(user.role, PERMISSIONS.CREATE_REQUISITION)) {
+        return fail(res, 'FORBIDDEN', 'HIRING_MANAGER permission required', 403)
+      }
+      if (!opts.aiMatchingService) return fail(res, 'SERVICE_UNAVAILABLE', 'AI matching not configured', 503)
+      if (!body) return fail(res, 'MISSING_BODY', 'request body required', 400)
+      try {
+        const result = await opts.aiMatchingService.reviewRecommendation(
+          user.tenant_id, reviewMatch[1], body.decision, user.id, body.override_reason
+        )
+        return ok(res, result)
+      } catch (e) {
+        return fail(res, 'REVIEW_ERROR', e.message, e.status || 400)
       }
     }
 
