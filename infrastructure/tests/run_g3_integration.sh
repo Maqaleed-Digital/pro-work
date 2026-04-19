@@ -60,3 +60,6 @@ node --test tests/compliance/wps_lifecycle.integration.test.js
 
 echo "=== S44-G3 Probation Integration ==="
 node --test tests/compliance/probation_lifecycle.integration.test.js
+
+echo "=== S44-G4 ESB Integration ==="
+node --test tests/compliance/esb_lifecycle.integration.test.js
