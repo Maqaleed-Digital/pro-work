@@ -1,5 +1,28 @@
 'use strict'
 
+/**
+ * S44-G3: Probation Governance Service.
+ *
+ * Event chain design note (S44-G3 closure review):
+ *
+ * triggerDay80 emits two events in sequence:
+ *   1. DAY_80_TRIGGERED  (ACTIVE → EVIDENCE_PACK_READY)
+ *   2. EVIDENCE_COMPILED (EVIDENCE_PACK_READY → AWAITING_DECISION)
+ *
+ * There is intentionally NO separate DECISION_REQUESTED event.
+ * The EVIDENCE_COMPILED event with new_status=AWAITING_DECISION
+ * IS the decision-requested signal — the evidence pack being
+ * compiled is what makes the decision actionable. A separate
+ * event would carry zero additional information.
+ *
+ * The probation_records.status value after triggerDay80 is
+ * AWAITING_DECISION (not EVIDENCE_PACK_READY). The intermediate
+ * state is captured in the event chain but not persisted on the
+ * row — the compound transition is atomic.
+ *
+ * Confirmed during S44-G3 closure review.
+ */
+
 const crypto = require('crypto')
 const policy = require('../../config/compliance/probation_policy_v1.json')
 
