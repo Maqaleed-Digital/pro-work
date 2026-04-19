@@ -66,3 +66,6 @@ node --test tests/compliance/esb_lifecycle.integration.test.js
 
 echo "=== S44-G5 Offboarding Integration ==="
 node --test tests/compliance/offboarding_lifecycle.integration.test.js
+
+echo "=== S44-G6 SDP Integration ==="
+node --test tests/programs/sdp_lifecycle.integration.test.js
