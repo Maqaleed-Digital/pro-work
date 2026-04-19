@@ -69,3 +69,30 @@ node --test tests/compliance/offboarding_lifecycle.integration.test.js
 
 echo "=== S44-G6 SDP Integration ==="
 node --test tests/programs/sdp_lifecycle.integration.test.js
+
+echo "=== S44-G7 Evidence Pack Audit ==="
+node -e "
+const { Pool } = require('pg')
+const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1 })
+async function run() {
+  const client = await pool.connect()
+  try {
+    const summary = await client.query(
+      \"SELECT pack_type, count(*)::int AS count, min(created_at)::text AS first_created, max(created_at)::text AS last_created FROM evidence_packs GROUP BY pack_type ORDER BY pack_type\"
+    )
+    console.log('=== EVIDENCE PACK AUDIT TABLE ===')
+    summary.rows.forEach(r => console.log('  ' + r.pack_type + ': count=' + r.count + ' first=' + r.first_created.slice(0,19) + ' last=' + r.last_created.slice(0,19)))
+    console.log('  TOTAL: ' + summary.rows.reduce((s, r) => s + r.count, 0))
+    const empty = await client.query(\"SELECT count(*)::int AS cnt FROM evidence_packs WHERE data_snapshot IS NULL OR data_snapshot::text = '{}'\")
+    console.log('  Empty snapshots: ' + empty.rows[0].cnt)
+    const noHash = await client.query(\"SELECT count(*)::int AS cnt FROM evidence_packs WHERE immutable_hash IS NULL OR immutable_hash = ''\")
+    console.log('  Missing hashes: ' + noHash.rows[0].cnt)
+  } finally { client.release(); await pool.end() }
+}
+run().catch(e => console.error(e.message))
+"
+
+echo "=== S44-G7 Full Regression ==="
+node --test tests/contracts/ tests/compliance/ tests/programs/ tests/hiring/ 2>&1 | grep -E "^# (pass|fail|tests)"
+
+echo "=== S44-G7 Complete ==="

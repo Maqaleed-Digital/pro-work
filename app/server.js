@@ -1662,6 +1662,43 @@ const server = http.createServer(async (req, res) => {
       const perm = req.method === "POST" ? PERMISSIONS.MANAGE_EVIDENCE : PERMISSIONS.VIEW_EVIDENCE
       if (!requirePermission(res, { role: req._jwtPrincipal._rbacRole }, perm)) return
     }
+    // S44-G7: PG-backed evidence pack listing and export
+    if (_pgPool && pathname === "/api/evidence/packs" && req.method === "GET") {
+      const tenantId = resolveTenantId(req)
+      const tenantUuid = (() => { const h = require("crypto").createHash("md5").update(tenantId).digest("hex"); return h.slice(0,8)+"-"+h.slice(8,12)+"-"+h.slice(12,16)+"-"+h.slice(16,20)+"-"+h.slice(20,32) })()
+      try {
+        const client = await _pgPool.connect()
+        try {
+          const result = await client.query("SELECT pack_id, pack_type, status, created_at, immutable_hash FROM evidence_packs WHERE tenant_id = $1 ORDER BY created_at DESC", [tenantUuid])
+          return ok(res, { packs: result.rows, count: result.rows.length })
+        } finally { client.release() }
+      } catch (e) { return fail(res, "EVIDENCE_ERROR", e.message, 500) }
+    }
+
+    const epExportMatch = pathname.match(/^\/api\/evidence\/packs\/([^/]+)\/export$/)
+    if (_pgPool && epExportMatch && req.method === "POST") {
+      const packId = epExportMatch[1]
+      const tenantId = resolveTenantId(req)
+      const tenantUuid = (() => { const h = require("crypto").createHash("md5").update(tenantId).digest("hex"); return h.slice(0,8)+"-"+h.slice(8,12)+"-"+h.slice(12,16)+"-"+h.slice(16,20)+"-"+h.slice(20,32) })()
+      try {
+        const client = await _pgPool.connect()
+        try {
+          const result = await client.query("SELECT * FROM evidence_packs WHERE pack_id = $1 AND tenant_id = $2", [packId, tenantUuid])
+          if (!result.rows[0]) return fail(res, "NOT_FOUND", "evidence pack not found", 404)
+          const pack = result.rows[0]
+          const snapshot = typeof pack.data_snapshot === "string" ? pack.data_snapshot : JSON.stringify(pack.data_snapshot)
+          const files = {}
+          files["manifest.json"] = Buffer.from(JSON.stringify({ pack_id: pack.pack_id, pack_type: pack.pack_type, created_at: pack.created_at, immutable_hash: pack.immutable_hash, policy_version: pack.policy_version }, null, 2))
+          files["data_snapshot.json"] = Buffer.from(snapshot)
+          const { buildZip } = require("./lib/zip")
+          const zipBuf = buildZip(files)
+          const fname = `evidence-pack-${pack.pack_type}-${pack.pack_id.slice(0,8)}.zip`
+          res.writeHead(200, { "content-type": "application/zip", "content-disposition": `attachment; filename="${fname}"`, "content-length": zipBuf.length })
+          return res.end(zipBuf)
+        } finally { client.release() }
+      } catch (e) { return fail(res, "EXPORT_ERROR", e.message, 500) }
+    }
+
     if (pathname.startsWith("/api/evidence/")) {
       const tenantId = resolveTenantId(req)
       let body = null
