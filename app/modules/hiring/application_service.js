@@ -26,6 +26,79 @@ function createApplicationService(opts) {
     }
   }
 
+  async function generateRecruitEvidencePack(client, tenantId, applicationId, actorUserId) {
+    try {
+      // Collect all entities for the evidence pack
+      const appRow = await client.query('SELECT * FROM applications WHERE id = $1', [applicationId])
+      const app = appRow.rows[0]
+      if (!app) return
+
+      const candRow = await client.query('SELECT * FROM candidates WHERE id = $1', [app.candidate_id])
+      const reqRow = await client.query('SELECT * FROM requisitions WHERE id = $1', [app.requisition_id])
+      const eventsRow = await client.query('SELECT * FROM application_events WHERE application_id = $1 ORDER BY created_at ASC', [applicationId])
+
+      // Optional: recommendation audit log
+      let auditLog = null
+      if (app.ai_recommendation_log_id) {
+        const tenantUuid = (() => {
+          const h = require('crypto').createHash('md5').update(tenantId).digest('hex')
+          return h.slice(0,8)+'-'+h.slice(8,12)+'-'+h.slice(12,16)+'-'+h.slice(16,20)+'-'+h.slice(20,32)
+        })()
+        await client.query("SELECT set_config('app.tenant_id', $1, false)", [tenantUuid])
+        const logRow = await client.query('SELECT * FROM recommendation_audit_logs WHERE id = $1', [app.ai_recommendation_log_id])
+        auditLog = logRow.rows[0] || null
+      }
+
+      // Optional: offer
+      let offer = null
+      const offerRow = await client.query('SELECT * FROM offers WHERE application_id = $1 LIMIT 1', [applicationId])
+      offer = offerRow.rows[0] || null
+
+      const packId = crypto.randomUUID()
+      const snapshot = {
+        candidate: candRow.rows[0] || null,
+        requisition: reqRow.rows[0] || null,
+        application: app,
+        events: eventsRow.rows,
+        recommendation_audit_log: auditLog,
+        compliance_preview: offer ? offer.compliance_preview_json : null,
+        offer: offer,
+      }
+
+      const snapshotJson = JSON.stringify(snapshot)
+      const immutableHash = crypto.createHash('sha256').update(snapshotJson).digest('hex').slice(0, 32)
+
+      const tenantUuidForPack = (() => {
+        const h = crypto.createHash('md5').update(tenantId).digest('hex')
+        return h.slice(0,8)+'-'+h.slice(8,12)+'-'+h.slice(12,16)+'-'+h.slice(16,20)+'-'+h.slice(20,32)
+      })()
+
+      await client.query(
+        `INSERT INTO evidence_packs (pack_id, pack_type, tenant_id, status, actor, action, timestamp, data_snapshot, immutable_hash, policy_version, created_at)
+         VALUES ($1, 'EP_WOS_RECRUIT_01', $2, 'CLOSED', $3, $4, NOW(), $5, $6, 'v1', NOW())`,
+        [
+          packId,
+          tenantUuidForPack,
+          JSON.stringify({ user_id: actorUserId || 'system', type: 'HUMAN' }),
+          app.status === 'HIRED' ? 'CANDIDATE_HIRED' : 'CANDIDATE_REJECTED',
+          snapshotJson,
+          immutableHash,
+        ]
+      )
+
+      // Emit EVIDENCE_GENERATED event
+      await emitEvent(client, tenantId, applicationId, 'EVIDENCE_GENERATED',
+        null, null, actorUserId, 'SYSTEM',
+        { evidence_pack_id: packId, pack_type: 'EP_WOS_RECRUIT_01' })
+
+      return packId
+    } catch (err) {
+      // Fire-and-forget — log but don't fail the transition
+      console.error('[EP-WOS-RECRUIT-01] error:', err.message)
+      return null
+    }
+  }
+
   async function emitEvent(client, tenantId, applicationId, eventType, previousStatus, newStatus, actorUserId, actorType, payload) {
     await client.query(
       `INSERT INTO application_events
@@ -123,6 +196,13 @@ function createApplicationService(opts) {
         await emitEvent(client, tenantId, applicationId, 'STATUS_CHANGED',
           currentStatus, newStatus, actorUserId, 'HUMAN',
           typeof reasonOrPayload === 'object' ? reasonOrPayload : { reason: reasonOrPayload || null })
+
+        // S43-G7: Evidence pack auto-generation for terminal states
+        if (newStatus === 'HIRED' || newStatus === 'REJECTED') {
+          generateRecruitEvidencePack(client, tenantId, applicationId, actorUserId).catch(err => {
+            console.error('[EP-WOS-RECRUIT-01] evidence pack generation failed:', err.message)
+          })
+        }
 
         return { applicationId, previousStatus: currentStatus, newStatus }
       })
