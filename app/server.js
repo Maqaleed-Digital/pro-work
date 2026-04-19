@@ -72,6 +72,8 @@ const { createRequisitionRouter }           = require("./api/requisition_router"
 const { createAiMatchingService }           = require("./modules/hiring/ai_matching_service")
 const { createOfferService }               = require("./modules/hiring/offer_service")
 const { createOfferRouter }                = require("./api/offer_router")
+const { createContractService }            = require("./modules/contracts/contract_service")
+const { createContractRouter }             = require("./api/contract_router")
 const { createCandidateService }            = require("./modules/hiring/candidate_service")
 const { createApplicationService }          = require("./modules/hiring/application_service")
 
@@ -160,6 +162,8 @@ const _aiMatchingService = _pgPool
 const _candidateService = _pgPool ? createCandidateService({ pool: _pgPool }) : null
 const _offerService = _pgPool ? createOfferService({ pool: _pgPool }) : null
 const _offerRouter = _offerService ? createOfferRouter({ offerService: _offerService }) : null
+const _contractService = _pgPool ? createContractService({ pool: _pgPool }) : null
+const _contractRouter = _contractService ? createContractRouter({ contractService: _contractService }) : null
 const _applicationService = _pgPool ? createApplicationService({ pool: _pgPool }) : null
 const _requisitionRouter = _requisitionService
   ? createRequisitionRouter({
@@ -1550,6 +1554,19 @@ const server = http.createServer(async (req, res) => {
       const ext = path.extname(assetPath)
       const types = { ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png" }
       return serveStatic(res, assetPath, types[ext] || "application/octet-stream")
+    }
+
+    // S44: Contract routes — /api/contracts/*
+    if (_contractRouter && pathname.startsWith("/api/contracts")) {
+      let body = null
+      if (req.method === "POST" || req.method === "PATCH") {
+        body = await readJson(req, res)
+        if (body === null) return
+      }
+      const user = req._jwtPrincipal
+        ? { id: req._jwtPrincipal.id, tenant_id: req._jwtPrincipal.tenant_id, role: req._jwtPrincipal._rbacRole }
+        : null
+      return _contractRouter.handle(req, res, pathname, req.method, body, user)
     }
 
     // S43: Hiring routes — /api/hiring/*

@@ -51,3 +51,6 @@ echo "=== G5 Smoke Test ==="
 sh /workspace/infrastructure/tests/run_g5_smoke.sh
 
 echo "All integration tests complete."
+
+echo "=== S44-G1 Integration ==="
+node --test tests/contracts/contract_lifecycle.integration.test.js
