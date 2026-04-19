@@ -57,3 +57,6 @@ node --test tests/contracts/contract_lifecycle.integration.test.js
 
 echo "=== S44-G2 WPS Integration ==="
 node --test tests/compliance/wps_lifecycle.integration.test.js
+
+echo "=== S44-G3 Probation Integration ==="
+node --test tests/compliance/probation_lifecycle.integration.test.js
