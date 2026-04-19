@@ -1,0 +1,21 @@
+{
+  "version": "v1",
+  "items": [
+    { "key": "hr_notification_received",         "required": true,  "n_a_allowed": false, "prerequisite": null,                          "phase": "HANDOVER" },
+    { "key": "access_revocation_scheduled",      "required": true,  "n_a_allowed": false, "prerequisite": "hr_notification_received",    "phase": "HANDOVER" },
+    { "key": "hardware_return_confirmed",        "required": true,  "n_a_allowed": false, "prerequisite": null,                          "phase": "HANDOVER" },
+    { "key": "documentation_handover_complete",  "required": true,  "n_a_allowed": false, "prerequisite": null,                          "phase": "HANDOVER" },
+    { "key": "final_payroll_prepared",           "required": true,  "n_a_allowed": false, "prerequisite": null,                          "phase": "SETTLEMENT" },
+    { "key": "final_pay_slip_issued",            "required": true,  "n_a_allowed": false, "prerequisite": "final_payroll_prepared",      "phase": "SETTLEMENT" },
+    { "key": "experience_certificate_issued",    "required": true,  "n_a_allowed": false, "prerequisite": null,                          "phase": "SETTLEMENT" },
+    { "key": "exit_interview_completed",         "required": false, "n_a_allowed": true,  "prerequisite": null,                          "phase": "SETTLEMENT" },
+    { "key": "gosi_notification_prepared",       "required": true,  "n_a_allowed": false, "prerequisite": null,                          "phase": "SETTLEMENT" },
+    { "key": "qiwa_contract_termination_prepared", "required": true, "n_a_allowed": false, "prerequisite": null,                         "phase": "SETTLEMENT" },
+    { "key": "wps_final_salary_flagged",         "required": true,  "n_a_allowed": false, "prerequisite": null,                          "phase": "SETTLEMENT" }
+  ],
+  "phases": ["HANDOVER", "SETTLEMENT"],
+  "phaseStatusMap": {
+    "HANDOVER": "HANDOVER",
+    "SETTLEMENT": "SETTLEMENT_PENDING"
+  }
+}

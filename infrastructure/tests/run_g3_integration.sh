@@ -63,3 +63,6 @@ node --test tests/compliance/probation_lifecycle.integration.test.js
 
 echo "=== S44-G4 ESB Integration ==="
 node --test tests/compliance/esb_lifecycle.integration.test.js
+
+echo "=== S44-G5 Offboarding Integration ==="
+node --test tests/compliance/offboarding_lifecycle.integration.test.js
