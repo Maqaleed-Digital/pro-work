@@ -1,0 +1,14 @@
+{
+  "version": "v1",
+  "activationThresholdPct": 70,
+  "weights": {
+    "basic_identity": { "weight": 25, "fields": ["full_name_en", "full_name_ar", "nationality", "residency_country"] },
+    "work_permit": { "weight": 10, "fields": ["work_permit_status"] },
+    "persona": { "weight": 5, "fields": ["primary_persona"] },
+    "skills_min_3": { "weight": 20, "check": "skills_count >= 3" },
+    "verified_credential": { "weight": 15, "check": "has_verified_skill OR has_certification" },
+    "timezone_availability": { "weight": 10, "fields": ["timezone_offset_minutes", "availability_hours_per_week"] },
+    "languages": { "weight": 10, "fields": ["preferred_language_codes"] },
+    "bio_summary": { "weight": 5, "fields": ["bio"], "note": "placeholder — bio field added in future gate" }
+  }
+}

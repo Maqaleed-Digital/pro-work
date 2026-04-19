@@ -42,6 +42,9 @@ const PERMISSIONS = {
   // Owner-only
   DELETE_TENANT:       'DELETE_TENANT',
   MANAGE_BILLING:      'MANAGE_BILLING',
+
+  // Seeker persona (S45)
+  SEEKER_OWN_PROFILE:  'SEEKER_OWN_PROFILE',
 }
 
 const VIEW_ALL = [
@@ -82,6 +85,12 @@ const ROLE_PERMISSIONS = {
   ],
 
   VIEWER: [...VIEW_ALL],
+
+  SEEKER: [
+    PERMISSIONS.SEEKER_OWN_PROFILE,
+    PERMISSIONS.VIEW_IDENTITY,
+    PERMISSIONS.VIEW_PAYMENTS,
+  ],
 }
 
 // Pre-compute Sets for O(1) lookup

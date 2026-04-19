@@ -96,3 +96,6 @@ echo "=== S44-G7 Full Regression ==="
 node --test tests/contracts/ tests/compliance/ tests/programs/ tests/hiring/ 2>&1 | grep -E "^# (pass|fail|tests)"
 
 echo "=== S44-G7 Complete ==="
+
+echo "=== S45-G1 Seeker Integration ==="
+node --test tests/seekers/seeker_profile_lifecycle.integration.test.js

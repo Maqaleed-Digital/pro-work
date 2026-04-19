@@ -30,5 +30,7 @@ COPY infrastructure/migrations/run_migration_offboarding.sh ./
 RUN chmod +x run_migration_esb.sh
 COPY infrastructure/migrations/run_migration_sdp.sh ./
 RUN chmod +x run_migration_offboarding.sh
+COPY infrastructure/migrations/run_migration_seeker_profiles.sh ./
 RUN chmod +x run_migration_sdp.sh
-ENTRYPOINT ["./run_migration_sdp.sh"]
+RUN chmod +x run_migration_seeker_profiles.sh
+ENTRYPOINT ["./run_migration_seeker_profiles.sh"]
