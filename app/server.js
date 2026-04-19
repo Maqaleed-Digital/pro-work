@@ -70,6 +70,8 @@ const { createInvitationRouter }            = require("./api/invitation_router")
 const { createRequisitionService }          = require("./modules/hiring/requisition_service")
 const { createRequisitionRouter }           = require("./api/requisition_router")
 const { createAiMatchingService }           = require("./modules/hiring/ai_matching_service")
+const { createOfferService }               = require("./modules/hiring/offer_service")
+const { createOfferRouter }                = require("./api/offer_router")
 const { createCandidateService }            = require("./modules/hiring/candidate_service")
 const { createApplicationService }          = require("./modules/hiring/application_service")
 
@@ -156,6 +158,8 @@ const _aiMatchingService = _pgPool
   ? createAiMatchingService({ pool: _pgPool })
   : null
 const _candidateService = _pgPool ? createCandidateService({ pool: _pgPool }) : null
+const _offerService = _pgPool ? createOfferService({ pool: _pgPool }) : null
+const _offerRouter = _offerService ? createOfferRouter({ offerService: _offerService }) : null
 const _applicationService = _pgPool ? createApplicationService({ pool: _pgPool }) : null
 const _requisitionRouter = _requisitionService
   ? createRequisitionRouter({
@@ -1548,8 +1552,8 @@ const server = http.createServer(async (req, res) => {
       return serveStatic(res, assetPath, types[ext] || "application/octet-stream")
     }
 
-    // S43: Hiring requisition routes — /api/hiring/*
-    if (_requisitionRouter && pathname.startsWith("/api/hiring/")) {
+    // S43: Hiring routes — /api/hiring/*
+    if (pathname.startsWith("/api/hiring/")) {
       let body = null
       if (req.method === "POST" || req.method === "PATCH") {
         body = await readJson(req, res)
@@ -1558,7 +1562,15 @@ const server = http.createServer(async (req, res) => {
       const user = req._jwtPrincipal
         ? { id: req._jwtPrincipal.id, tenant_id: req._jwtPrincipal.tenant_id, role: req._jwtPrincipal._rbacRole }
         : null
-      return _requisitionRouter.handle(req, res, pathname, req.method, body, user)
+
+      // Offer routes
+      if (_offerRouter && pathname.startsWith("/api/hiring/offers")) {
+        return _offerRouter.handle(req, res, pathname, req.method, body, user)
+      }
+      // Requisition + application + matching routes
+      if (_requisitionRouter) {
+        return _requisitionRouter.handle(req, res, pathname, req.method, body, user)
+      }
     }
 
     // S40-G6: Invitation routes — /api/invitations/*

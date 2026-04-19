@@ -41,6 +41,9 @@ async function run() {
 run().catch(e => console.error(e.message))
 "
 
+echo "=== G6 Integration ==="
+node --test tests/hiring/offer_builder.integration.test.js
+
 echo "=== G5 Smoke Test ==="
 sh /workspace/infrastructure/tests/run_g5_smoke.sh
 

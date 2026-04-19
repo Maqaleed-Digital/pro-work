@@ -22,6 +22,7 @@ import acceptInvite     from "./pages/accept_invite.js"
 import signin           from "./pages/signin.js"
 import postRole         from "./pages/post_role.js"
 import candidates       from "./pages/candidates.js"
+import offerBuilder     from "./pages/offer_builder.js"
 
 // S40-G5/G6/S42: routes that skip auth and hide nav
 const PUBLIC_ROUTES = new Set(["register", "onboarding", "accept-invite", "signin"])
@@ -49,6 +50,7 @@ const ROUTES = {
   "signin":           signin,
   "post-role":        postRole,
   "candidates":       candidates,
+  "offer-builder":    offerBuilder,
 }
 
 const DEFAULT = "dashboard"

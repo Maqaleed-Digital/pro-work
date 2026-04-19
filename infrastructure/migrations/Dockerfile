@@ -17,4 +17,6 @@ RUN chmod +x run_fix_rls_login.sh
 RUN chmod +x run_migration_requisitions.sh
 RUN chmod +x run_migration_candidates.sh
 RUN chmod +x run_fix_audit_log_review_grant.sh
-ENTRYPOINT ["./run_fix_audit_log_review_grant.sh"]
+COPY infrastructure/migrations/run_migration_offers.sh ./
+RUN chmod +x run_migration_offers.sh
+ENTRYPOINT ["./run_migration_offers.sh"]
