@@ -11,6 +11,19 @@ function render(el) {
   const box = document.createElement("div")
   box.className = "onboarding-box"
 
+  // Brand wordmark
+  const brandRow = document.createElement("div")
+  brandRow.style.cssText = "display:flex;align-items:center;gap:8px;margin-bottom:var(--space-3)"
+  const brandMark = document.createElement("div")
+  brandMark.className = "sidebar-brand-mark"
+  brandMark.textContent = "W"
+  const brandName = document.createElement("span")
+  brandName.style.cssText = "font-family:var(--font-display);font-size:var(--text-xl);font-weight:700;color:var(--color-text-primary)"
+  brandName.textContent = "WorkCaptain"
+  brandRow.appendChild(brandMark)
+  brandRow.appendChild(brandName)
+  box.appendChild(brandRow)
+
   const title = document.createElement("h1")
   title.textContent = t("register.title")
   box.appendChild(title)
@@ -64,7 +77,7 @@ function render(el) {
 
   const btn = document.createElement("button")
   btn.type = "submit"
-  btn.className = "btn btn-primary onboarding-btn"
+  btn.className = "btn btn-accent onboarding-btn"
   btn.textContent = t("register.submit")
 
   btn.addEventListener("click", async () => {
@@ -102,7 +115,7 @@ function render(el) {
 
   const loginLink = document.createElement("p")
   loginLink.className = "onboarding-link"
-  loginLink.innerHTML = `${t("register.hasAccount")} <a href="#login">${t("register.signIn")}</a>`
+  loginLink.innerHTML = `${t("register.hasAccount")} <a href="#signin">${t("register.signIn")}</a>`
   form.appendChild(loginLink)
 
   box.appendChild(form)

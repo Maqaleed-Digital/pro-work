@@ -19,9 +19,10 @@ import register         from "./pages/register.js"
 import onboarding       from "./pages/onboarding.js"
 import invite           from "./pages/invite.js"
 import acceptInvite     from "./pages/accept_invite.js"
+import signin           from "./pages/signin.js"
 
-// S40-G5/G6: routes that skip auth and hide nav
-const PUBLIC_ROUTES = new Set(["register", "onboarding", "accept-invite"])
+// S40-G5/G6/S42: routes that skip auth and hide nav
+const PUBLIC_ROUTES = new Set(["register", "onboarding", "accept-invite", "signin"])
 
 const ROUTES = {
   "dashboard":        dashboard,
@@ -43,6 +44,7 @@ const ROUTES = {
   "onboarding":       onboarding,
   "invite":           invite,
   "accept-invite":    acceptInvite,
+  "signin":           signin,
 }
 
 const DEFAULT = "dashboard"
@@ -75,6 +77,7 @@ function navigate(name, pushState = true) {
 
 export function initRouter(appEl, onSignOut) {
   appEl.innerHTML = ""
+  appEl.className = "app-layout"
 
   const navEl = document.createElement("div")
   navEl.id = "nav"
@@ -82,6 +85,7 @@ export function initRouter(appEl, onSignOut) {
 
   _pageEl = document.createElement("div")
   _pageEl.id = "page"
+  _pageEl.className = "main-content"
   // WCAG 2.4.1: skip-link target — "Skip to main content" in index.html jumps here
   _pageEl.setAttribute("id", "main-content")
   _pageEl.setAttribute("tabindex", "-1")

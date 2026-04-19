@@ -101,6 +101,7 @@ function createAuthRouter(opts) {
       if (!password) return fail(res, 'VALIDATION_ERROR', 'password is required', 422)
 
       // If tenantId not provided, look up user's tenant by email
+      // RLS policy allows cross-tenant email lookup when app.current_tenant_id is empty
       let resolvedTenantId = tenantId
       if (!resolvedTenantId) {
         const lookup = await pool.query(

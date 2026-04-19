@@ -1,0 +1,79 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   WorkCaptain Design System — S42
+   Sovereign-first workforce OS for KSA enterprise
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Color palette ─────────────────────────────────────────────────────── */
+  --color-primary:        #0A1628;
+  --color-primary-light:  #1E3A5F;
+  --color-accent:         #C4922A;
+  --color-accent-light:   #E8B84B;
+  --color-surface:        #F8F9FC;
+  --color-surface-raised: #FFFFFF;
+  --color-border:         #E2E8F0;
+  --color-border-strong:  #CBD5E1;
+  --color-text-primary:   #0A1628;
+  --color-text-secondary: #475569;
+  --color-text-muted:     #94A3B8;
+  --color-success:        #059669;
+  --color-warning:        #D97706;
+  --color-danger:         #DC2626;
+  --color-info:           #2563EB;
+
+  /* ── Nitaqat zone status ───────────────────────────────────────────────── */
+  --zone-platinum:     #7C3AED;
+  --zone-high-green:   #059669;
+  --zone-medium-green: #16A34A;
+  --zone-low-green:    #65A30D;
+  --zone-yellow:       #D97706;
+  --zone-red:          #DC2626;
+
+  /* ── Typography ────────────────────────────────────────────────────────── */
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body:    'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-arabic:  'IBM Plex Sans Arabic', 'IBM Plex Sans', sans-serif;
+  --font-mono:    'IBM Plex Mono', 'Consolas', monospace;
+
+  /* ── Font scale ────────────────────────────────────────────────────────── */
+  --text-xs:  0.75rem;
+  --text-sm:  0.875rem;
+  --text-base: 1rem;
+  --text-lg:  1.125rem;
+  --text-xl:  1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+
+  /* ── Spacing (8px base) ────────────────────────────────────────────────── */
+  --space-0: 0.25rem;
+  --space-1: 0.5rem;
+  --space-2: 1rem;
+  --space-3: 1.5rem;
+  --space-4: 2rem;
+  --space-6: 3rem;
+  --space-8: 4rem;
+
+  /* ── Shadows ───────────────────────────────────────────────────────────── */
+  --shadow-sm: 0 1px 2px rgba(10,22,40,0.05);
+  --shadow-md: 0 4px 6px rgba(10,22,40,0.07);
+  --shadow-lg: 0 10px 15px rgba(10,22,40,0.10);
+  --shadow-xl: 0 20px 25px rgba(10,22,40,0.12);
+
+  /* ── Border radius ─────────────────────────────────────────────────────── */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  /* ── Layout ────────────────────────────────────────────────────────────── */
+  --sidebar-width:     240px;
+  --sidebar-collapsed: 64px;
+  --topbar-height:     64px;
+  --content-padding:   32px;
+
+  /* ── Transitions ───────────────────────────────────────────────────────── */
+  --transition-fast: 150ms ease;
+  --transition-base: 200ms ease;
+  --transition-slow: 300ms ease;
+}

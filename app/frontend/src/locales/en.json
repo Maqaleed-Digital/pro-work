@@ -115,6 +115,8 @@
   "onboarding.err.saudiRequired":    "Enter Saudi employee count",
   "onboarding.err.saudiExceedsTotal": "Saudi employees cannot exceed total",
   "onboarding.err.saveFailed":       "Failed to save profile. Try again.",
+  "onboarding.profileSaved":         "Profile saved. Your compliance dashboard is ready.",
+  "onboarding.profileSavedHint":     "Your Nitaqat zone will be visible on the Compliance screen after you sign in.",
 
   "onboarding.nitaqat.title":    "Nitaqat Zone Preview",
   "onboarding.nitaqat.green":    "Green",
@@ -159,5 +161,17 @@
   "invite.accept.accepting":         "Joining…",
   "invite.accept.failed":            "Failed to accept invitation.",
   "invite.accept.noToken":           "Invalid invitation link",
-  "invite.accept.noTokenDesc":       "This link is missing an invitation token. Please check the link you received."
+  "invite.accept.noTokenDesc":       "This link is missing an invitation token. Please check the link you received.",
+
+  "signin.title":              "Sign in",
+  "signin.subtitle":           "Welcome back to WorkCaptain.",
+  "signin.email":              "Email address",
+  "signin.password":           "Password",
+  "signin.submit":             "Sign in",
+  "signin.submitting":         "Signing in…",
+  "signin.noAccount":          "New to WorkCaptain?",
+  "signin.signUp":             "Create an account",
+  "signin.err.emailRequired":  "Email is required",
+  "signin.err.passwordRequired": "Password is required",
+  "signin.err.invalid":        "Invalid email or password"
 }

@@ -65,18 +65,41 @@ function showLogin() {
 
 function boot() {
   const hash = window.location.hash.replace('#', '').split('?')[0]
-  const PUBLIC_ROUTES = ['register', 'onboarding', 'accept-invite']
+  const PUBLIC_ROUTES = ['register', 'onboarding', 'accept-invite', 'signin']
+  const INTERNAL_ROUTES = ['admin-login']
   const app = document.getElementById("app")
 
-  if (PUBLIC_ROUTES.includes(hash)) {
-    // Public route — initialize router without auth check
-    initRouter(app, () => showLogin())
+  // Internal admin token login (for ADMIN_API_TOKEN users)
+  if (INTERNAL_ROUTES.includes(hash)) {
+    showLogin()
     return
   }
 
+  // Public routes — no auth required
+  if (PUBLIC_ROUTES.includes(hash)) {
+    initRouter(app, () => {
+      window.location.hash = 'register'
+      window.location.reload()
+    })
+    return
+  }
+
+  // Has token — load app
   const token = getToken()
-  if (!token) { showLogin(); return }
-  initRouter(app, () => showLogin())
+  if (token) {
+    initRouter(app, () => {
+      window.location.hash = 'register'
+      window.location.reload()
+    })
+    return
+  }
+
+  // No token, no public route — send to register
+  window.location.hash = 'register'
+  initRouter(app, () => {
+    window.location.hash = 'register'
+    window.location.reload()
+  })
 }
 
 initLocale().then(() => boot())

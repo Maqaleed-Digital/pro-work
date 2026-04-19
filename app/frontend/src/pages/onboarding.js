@@ -1,5 +1,5 @@
 // S40-G5: Onboarding flow — Steps 2-4 after registration
-import { apiPost, apiPatch, getToken } from "../api.js"
+import { apiPatch, getToken } from "../api.js"
 import { t } from "../locale.js"
 
 const ACTIVITY_CODES = [
@@ -167,52 +167,22 @@ function renderStep3(el) {
         saudi_employees: saudi,
       })
 
-      // S40-G5: call real Nitaqat service for zone preview
-      try {
-        const nitaqat = await apiPost("/api/admin/compliance/nitaqat/preview", {
-          establishmentProfile: {
-            saudiCount: saudi,
-            totalCount: total,
-            activityCode: activity,
-            region: region,
-          },
-          candidateNationality: null,
-          roleCategory: null,
-          contractType: "FTE",
-          proposedSalary: 0,
-        })
+      // Profile saved confirmation
+      previewEl.innerHTML = ""
+      previewEl.className = "nitaqat-preview nitaqat-green"
+      const checkmark = document.createElement("div")
+      checkmark.style.cssText = "font-size:var(--text-2xl);margin-bottom:var(--space-0)"
+      checkmark.textContent = "\u2705"
+      previewEl.appendChild(checkmark)
+      const savedMsg = document.createElement("p")
+      savedMsg.style.cssText = "font-weight:600;color:var(--color-success)"
+      savedMsg.textContent = t("onboarding.profileSaved")
+      previewEl.appendChild(savedMsg)
+      const savedHint = document.createElement("p")
+      savedHint.className = "nitaqat-hint"
+      savedHint.textContent = t("onboarding.profileSavedHint")
+      previewEl.appendChild(savedHint)
 
-        const nr = nitaqat.result || nitaqat
-        const zone = (nr.currentZone || "").toLowerCase()
-        const pct = nr.saudiPercentageBefore
-        const zoneLabel = { platinum: t("onboarding.nitaqat.platinum"), green: t("onboarding.nitaqat.green"), yellow: t("onboarding.nitaqat.yellow"), "low-green": t("onboarding.nitaqat.lowGreen"), red: t("onboarding.nitaqat.red") }
-
-        previewEl.innerHTML = ""
-        previewEl.className = "nitaqat-preview nitaqat-" + zone
-
-        const previewTitle = document.createElement("h3")
-        previewTitle.textContent = t("onboarding.nitaqat.title")
-        previewEl.appendChild(previewTitle)
-
-        const zoneText = document.createElement("div")
-        zoneText.className = "nitaqat-zone"
-        zoneText.textContent = (zoneLabel[zone] || zone) + " — " + pct + "% " + t("onboarding.nitaqat.saudiPct")
-        previewEl.appendChild(zoneText)
-
-        const hint = document.createElement("p")
-        hint.className = "nitaqat-hint"
-        hint.textContent = t("onboarding.nitaqat.hint")
-        previewEl.appendChild(hint)
-      } catch {
-        // Preview is informational — failure does not block step advancement
-        previewEl.innerHTML = ""
-        const unavail = document.createElement("p")
-        unavail.className = "nitaqat-hint"
-        unavail.textContent = t("onboarding.nitaqat.unavailable")
-        previewEl.appendChild(unavail)
-      }
-
-      // Always show Continue — preview is not a blocker
       btn.textContent = t("onboarding.continue")
       btn.disabled = false
       btn.onclick = () => { _step = 4; render(el) }

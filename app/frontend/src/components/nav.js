@@ -19,33 +19,46 @@ export function clearTenantOptions() {
   _tenantOptions = null
 }
 
-const TABS = [
-  { key: "dashboard",        label: "Dashboard"   },
-  { key: "workers",          label: "Workers"      },
-  { key: "pods",             label: "Pods"         },
-  { key: "assignments",      label: "Assignments"  },
-  { key: "evidence",         label: "Evidence"     },
-  { key: "scheduler",        label: "Scheduler"    },
-  { key: "governance",       label: "Governance"   },
-  { key: "tenants",          label: "Tenants"      },
-  { key: "analytics",        label: "Analytics"    },
-  { key: "system",           label: "System"       },
-  { key: "ai",               label: "AI Control", badge: () => _aiPendingCount },
-  { key: "data-privacy",     label: "Data Privacy" },
-  { key: "fee-transparency", label: "Fee Transparency" },
-  { key: "identity",         label: "Work Identity" },
-  { key: "beta-dashboard",   label: "Beta / GTM" },
+// S42: Nav tabs with icons, grouped by workflow section
+const NAV_SECTIONS = [
+  {
+    label: null, // primary — no label
+    items: [
+      { key: "dashboard",        label: "Command Center",   icon: "\u2302" },
+      { key: "workers",          label: "Workers",          icon: "\u{1F465}" },
+      { key: "governance",       label: "Compliance",       icon: "\u{1F6E1}" },
+      { key: "ai",               label: "AI Control",       icon: "\u2728",    badge: () => _aiPendingCount },
+    ]
+  },
+  {
+    label: "Operations",
+    items: [
+      { key: "evidence",         label: "Evidence",         icon: "\u{1F4C2}" },
+      { key: "pods",             label: "Pods",             icon: "\u2B1A" },
+      { key: "assignments",      label: "Assignments",      icon: "\u2611" },
+      { key: "scheduler",        label: "Scheduler",        icon: "\u23F1" },
+    ]
+  },
+  {
+    label: "Configuration",
+    items: [
+      { key: "tenants",          label: "Tenants",          icon: "\u{1F3E2}" },
+      { key: "analytics",        label: "Analytics",        icon: "\u{1F4CA}" },
+      { key: "system",           label: "System",           icon: "\u2699" },
+      { key: "data-privacy",     label: "Data Privacy",     icon: "\u{1F512}" },
+      { key: "fee-transparency", label: "Fee Transparency", icon: "\u{1F4B0}" },
+      { key: "identity",         label: "Work Identity",    icon: "\u{1FAAA}" },
+      { key: "beta-dashboard",   label: "Beta / GTM",       icon: "\u{1F680}" },
+    ]
+  },
 ]
 
 let _signOutCb = null
-let _tenantChangeCb = null
 
-export function renderNav(activeKey, onSignOut, onTenantChange) {
+export function renderNav(activeKey, onSignOut) {
   if (onSignOut) _signOutCb = onSignOut
-  if (onTenantChange) _tenantChangeCb = onTenantChange
 
-  // S36-G2: refresh pending count on every nav render (polling on navigation)
-  // S40: skip on public routes to avoid 401 noise
+  // S40: skip AI pending count on public routes
   const _hash = window.location.hash.replace('#', '').split('?')[0]
   if (!['register', 'onboarding', 'accept-invite'].includes(_hash)) {
     refreshAiPendingCount()
@@ -54,126 +67,108 @@ export function renderNav(activeKey, onSignOut, onTenantChange) {
   const nav = document.getElementById("nav")
   if (!nav) return
   nav.innerHTML = ""
-  // WCAG 4.1.2: navigation landmark with accessible name
+  nav.className = "sidebar"
   nav.setAttribute("role", "navigation")
   nav.setAttribute("aria-label", "Main navigation")
 
-  // brand
+  // ── Brand ─────────────────────────────────────────────────────────────
   const brand = document.createElement("div")
-  brand.className = "brand"
-  brand.setAttribute("aria-hidden", "true")  // decorative duplicate of page title
-  brand.textContent = "WorkCaptain Admin"
+  brand.className = "sidebar-brand"
+
+  const mark = document.createElement("div")
+  mark.className = "sidebar-brand-mark"
+  mark.textContent = "W"
+
+  const brandText = document.createElement("div")
+  brandText.className = "sidebar-brand-text"
+  const companyName = (() => { try { return localStorage.getItem("pw_company") } catch { return null } })()
+  brandText.innerHTML = `${companyName || "WorkCaptain"}<small>Workforce OS</small>`
+
+  brand.appendChild(mark)
+  brand.appendChild(brandText)
   nav.appendChild(brand)
 
-  // tabs
-  const tabs = document.createElement("div")
-  tabs.className = "tabs"
-  tabs.setAttribute("role", "list")
-  TABS.forEach(({ key, label, badge }) => {
-    const li = document.createElement("div")
-    li.setAttribute("role", "listitem")
-    const a = document.createElement("a")
-    a.className = "tab" + (key === activeKey ? " active" : "")
-    a.href = "#" + key
-    // WCAG 1.3.1 / 4.1.2: active page state communicated to assistive technology
-    if (key === activeKey) a.setAttribute("aria-current", "page")
+  // ── Nav sections ──────────────────────────────────────────────────────
+  const navWrap = document.createElement("div")
+  navWrap.className = "sidebar-nav"
 
-    const labelSpan = document.createElement("span")
-    labelSpan.textContent = label
-    a.appendChild(labelSpan)
+  NAV_SECTIONS.forEach(section => {
+    const sectionEl = document.createElement("div")
+    sectionEl.className = "nav-section"
 
-    // Pending badge — red dot with count, shown when count > 0
-    if (badge) {
-      const count = badge()
-      if (count > 0) {
-        const dot = document.createElement("span")
-        dot.style.cssText = [
-          "display:inline-flex",
-          "align-items:center",
-          "justify-content:center",
-          "background:#ef4444",
-          "color:#fff",
-          "font-size:10px",
-          "font-weight:700",
-          "border-radius:999px",
-          "min-width:16px",
-          "height:16px",
-          "padding:0 4px",
-          "margin-inline-start:4px",
-          "vertical-align:middle",
-          "line-height:1",
-        ].join(";")
-        dot.setAttribute("aria-label", `${count} pending`)
-        dot.textContent = count > 99 ? "99+" : String(count)
-        a.appendChild(dot)
-      }
+    if (section.label) {
+      const sectionLabel = document.createElement("div")
+      sectionLabel.className = "nav-section-label"
+      sectionLabel.textContent = section.label
+      sectionEl.appendChild(sectionLabel)
     }
 
-    li.appendChild(a)
-    tabs.appendChild(li)
-  })
-  nav.appendChild(tabs)
+    section.items.forEach(({ key, label, icon, badge }) => {
+      const a = document.createElement("a")
+      a.className = "nav-item" + (key === activeKey ? " active" : "")
+      a.href = "#" + key
+      if (key === activeKey) a.setAttribute("aria-current", "page")
 
-  // token + sign-out
-  const right = document.createElement("div")
-  right.style.display = "flex"
-  right.style.gap = "8px"
-  right.style.alignItems = "center"
+      const iconEl = document.createElement("span")
+      iconEl.className = "nav-item-icon"
+      iconEl.textContent = icon
+      a.appendChild(iconEl)
 
-  // tenant / company display
-  const companyName = (() => { try { return localStorage.getItem("pw_company") } catch { return null } })()
-  const tenantWrap = document.createElement("div")
-  tenantWrap.style.cssText = "display:flex;align-items:center;gap:4px;font-size:12px;color:#888"
+      const labelEl = document.createElement("span")
+      labelEl.className = "nav-item-label"
+      labelEl.textContent = label
+      a.appendChild(labelEl)
 
-  if (companyName) {
-    // JWT user — show company name
-    const companyLabel = document.createElement("span")
-    companyLabel.textContent = companyName
-    companyLabel.style.cssText = "font-weight:600;color:#555"
-    tenantWrap.appendChild(companyLabel)
-  } else {
-    // Legacy admin — show tenant selector
-    const tenantLabel = document.createElement("span")
-    tenantLabel.textContent = "Tenant:"
-    const tenantSel = document.createElement("select")
-    tenantSel.style.cssText = "font-size:12px;padding:2px 4px;border-radius:4px;border:1px solid #ccc;cursor:pointer"
-    const currentTenant = getTenant()
-    const base = _tenantOptions || ["default", "t1", "t2", "t3"]
-    const tenantOptions = [...base]
-    if (!tenantOptions.includes(currentTenant)) tenantOptions.unshift(currentTenant)
-    tenantOptions.forEach(tid => {
-      const opt = document.createElement("option")
-      opt.value = tid
-      opt.textContent = tid
-      if (tid === currentTenant) opt.selected = true
-      tenantSel.appendChild(opt)
+      if (badge) {
+        const count = badge()
+        if (count > 0) {
+          const badgeEl = document.createElement("span")
+          badgeEl.className = "nav-item-badge"
+          badgeEl.textContent = count > 99 ? "99+" : String(count)
+          a.appendChild(badgeEl)
+        }
+      }
+
+      sectionEl.appendChild(a)
     })
-    tenantSel.addEventListener("change", () => {
-      setTenant(tenantSel.value)
-      if (_tenantChangeCb) _tenantChangeCb(tenantSel.value)
-    })
-    tenantWrap.appendChild(tenantLabel)
-    tenantWrap.appendChild(tenantSel)
-  }
-  right.appendChild(tenantWrap)
 
-  const token = getToken()
-  if (token) {
-    const userLabel = document.createElement("div")
-    userLabel.className = "token-badge"
-    const email = (() => { try { return localStorage.getItem('pw_email') } catch { return null } })()
-    userLabel.textContent = email || 'My Account'
-    right.appendChild(userLabel)
-  }
-
-  const btn = document.createElement("button")
-  btn.className = "signout-btn"
-  btn.textContent = "Sign out"
-  btn.addEventListener("click", () => {
-    setToken("")
-    clearTenantOptions()
-    if (_signOutCb) _signOutCb()
+    navWrap.appendChild(sectionEl)
   })
-  right.appendChild(btn)
-  nav.appendChild(right)
+
+  nav.appendChild(navWrap)
+
+  // ── Footer: user + sign out ───────────────────────────────────────────
+  const footer = document.createElement("div")
+  footer.className = "sidebar-footer"
+
+  const userEl = document.createElement("div")
+  userEl.className = "sidebar-user"
+
+  const avatar = document.createElement("div")
+  avatar.className = "sidebar-user-avatar"
+  const email = (() => { try { return localStorage.getItem("pw_email") || "" } catch { return "" } })()
+  avatar.textContent = email ? email.charAt(0).toUpperCase() : "U"
+
+  const userInfo = document.createElement("div")
+  userInfo.className = "sidebar-user-info"
+  userInfo.textContent = email || "My Account"
+
+  userEl.appendChild(avatar)
+  userEl.appendChild(userInfo)
+  footer.appendChild(userEl)
+
+  const signOutBtn = document.createElement("button")
+  signOutBtn.className = "sidebar-signout"
+  signOutBtn.textContent = "Sign out"
+  signOutBtn.addEventListener("click", () => {
+    try { localStorage.removeItem("pw_token") } catch {}
+    try { localStorage.removeItem("pw_company") } catch {}
+    try { localStorage.removeItem("pw_email") } catch {}
+    try { localStorage.removeItem("pw_tenant") } catch {}
+    window.location.hash = "register"
+    window.location.reload()
+  })
+  footer.appendChild(signOutBtn)
+
+  nav.appendChild(footer)
 }

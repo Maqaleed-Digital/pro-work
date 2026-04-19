@@ -236,46 +236,52 @@ export default {
     container.innerHTML = ""
     container.setAttribute("data-page", "command-center")
 
+    const content = document.createElement("div")
+    content.className = "content-area"
+
+    // Page header
     const header = document.createElement("div")
-    header.style.cssText = "display:flex;align-items:center;justify-content:space-between;padding:16px 16px 0"
+    header.className = "page-header"
+    const headerText = document.createElement("div")
+    headerText.className = "page-header-text"
     const title = document.createElement("h1")
-    title.className = "page-title"
-    title.style.cssText = "font-size:16px;font-weight:700;margin:0"
     title.textContent = "Command Center"
-    const tenantEl = document.createElement("span")
-    tenantEl.style.cssText = "font-size:12px;color:#9ca3af"
-    tenantEl.textContent = (() => { try { return localStorage.getItem('pw_company') } catch { return null } })() || getTenant()
-    header.appendChild(title)
-    header.appendChild(tenantEl)
-    container.appendChild(header)
+    const subtitle = document.createElement("p")
+    subtitle.textContent = "Your workforce at a glance"
+    headerText.appendChild(title)
+    headerText.appendChild(subtitle)
+    header.appendChild(headerText)
+    content.appendChild(header)
 
     // Section A: KPI Strip
-    container.appendChild(sectionTitle("Live KPIs"))
     const { el: kpiEl, stop } = createKpiStrip({ autoStart: true })
     this._kpiStrip = stop
-    container.appendChild(kpiEl)
+    content.appendChild(kpiEl)
 
     // Section C: Quick Actions
-    container.appendChild(sectionTitle("Quick Actions"))
-    container.appendChild(buildQuickActions())
+    content.appendChild(sectionTitle("Quick Actions"))
+    content.appendChild(buildQuickActions())
 
-    // Section B: Risk Board — loaded after KPI fetch
-    container.appendChild(sectionTitle("Entity Risk"))
+    // Section B: Risk Board
+    content.appendChild(sectionTitle("Entity Risk"))
     const riskPlaceholder = document.createElement("div")
-    riskPlaceholder.style.cssText = "padding:0 16px;font-size:12px;color:#9ca3af"
-    riskPlaceholder.textContent = "Loading risk data…"
-    container.appendChild(riskPlaceholder)
+    riskPlaceholder.className = "wc-card"
+    riskPlaceholder.style.cssText = "font-size:var(--text-sm);color:var(--color-text-muted)"
+    riskPlaceholder.textContent = "Loading risk data\u2026"
+    content.appendChild(riskPlaceholder)
 
     apiGetJson("/api/admin/dashboard/kpi", {})
       .then(data => {
         riskPlaceholder.remove()
-        container.appendChild(createRiskBoard((data && data.entities) || {}))
+        content.appendChild(createRiskBoard((data && data.entities) || {}))
       })
       .catch(() => { riskPlaceholder.textContent = "Risk data unavailable." })
 
-    // Section D: AI Insight Panel
-    container.appendChild(sectionTitle("AI Insights"))
-    container.appendChild(buildAiInsightPanel())
+    // Section D: AI Insights
+    content.appendChild(sectionTitle("AI Insights"))
+    content.appendChild(buildAiInsightPanel())
+
+    container.appendChild(content)
   },
 
   destroy() {
