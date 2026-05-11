@@ -1,0 +1,360 @@
+/*
+ * Landing page — apex public surface styles
+ *
+ * Consumes canonical --maq-* tokens exclusively. No literal hex /
+ * literal font / literal spacing values. Logical properties only
+ * (margin-inline-start/end, padding-inline-start/end) per UX-G2 V1.1
+ * §3.3 (RTL primary).
+ *
+ * Brand-neutral per PROPOSAL §11.A5: no WorkCaptain-specific values.
+ * Same stylesheet drives Maqaleed Workforce variant.
+ *
+ * Accessibility:
+ *   - Skip link for WCAG 2.4.1
+ *   - Focus-visible: 2px outline on all interactive elements
+ *   - WCAG 2.5.8 min target 24x24 (most CTAs are 44x44 — comfortable)
+ */
+
+/* ── Reset (minimal — only what the landing needs) ────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--maq-font-arabic), var(--maq-font-latin);
+  font-size: var(--maq-text-base);
+  color: var(--maq-neutral-800);
+  background: var(--maq-neutral-0);
+  line-height: var(--maq-leading-normal);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Skip link (WCAG 2.4.1) ────────────────────────────────────────── */
+.skip-link {
+  position: absolute;
+  inset-block-start: -200px;
+  inset-inline-start: var(--maq-space-2);
+  padding: var(--maq-space-3) var(--maq-space-4);
+  background: var(--maq-brand-primary);
+  color: var(--maq-brand-on-primary);
+  border-radius: var(--maq-radius-md);
+  text-decoration: none;
+  font-weight: var(--maq-weight-semibold);
+  z-index: 1000;
+}
+.skip-link:focus { inset-block-start: var(--maq-space-2); }
+
+/* ── Buttons (used by hero) ──────────────────────────────────────── */
+.wc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--maq-space-2);
+  font-family: inherit;
+  font-size: var(--maq-text-base);
+  font-weight: var(--maq-weight-semibold);
+  line-height: var(--maq-leading-tight);
+  padding-block: var(--maq-space-3);
+  padding-inline: var(--maq-space-6);
+  border-radius: var(--maq-radius-md);
+  cursor: pointer;
+  min-height: 44px;
+  min-width: 120px;
+  transition: var(--transition-fast);
+  border: 1px solid transparent;
+}
+.wc-btn:focus-visible {
+  outline: 2px solid var(--maq-brand-primary);
+  outline-offset: 2px;
+}
+.wc-btn--primary {
+  background: var(--maq-brand-primary);
+  color: var(--maq-brand-on-primary);
+}
+.wc-btn--primary:hover { background: var(--maq-brand-primary-hover); }
+.wc-btn--primary:active { background: var(--maq-brand-primary-active); }
+.wc-btn--secondary {
+  background: transparent;
+  color: var(--maq-brand-primary);
+  border-color: var(--maq-neutral-300);
+}
+.wc-btn--secondary:hover { background: var(--maq-brand-primary-bg); }
+
+/* ── Header ───────────────────────────────────────────────────────── */
+.wc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-block: var(--maq-space-4);
+  padding-inline: var(--maq-space-8);
+  border-block-end: 1px solid var(--maq-neutral-200);
+  max-inline-size: var(--maq-container-2xl);
+  margin-inline: auto;
+}
+.wc-header__wordmark {
+  font-family: var(--maq-font-arabic), var(--maq-font-latin);
+  font-size: var(--maq-text-xl);
+  font-weight: var(--maq-weight-bold);
+  color: var(--maq-brand-primary);
+  text-decoration: none;
+  letter-spacing: var(--maq-tracking-tight);
+}
+.wc-header__nav { display: flex; align-items: center; gap: var(--maq-space-3); }
+
+/* ── Hero ─────────────────────────────────────────────────────────── */
+.wc-hero {
+  padding-block: var(--maq-space-16);
+  padding-inline: var(--maq-space-8);
+  background: var(--maq-brand-primary-bg);
+  border-block-end: 1px solid var(--maq-neutral-200);
+}
+.wc-hero__inner {
+  max-inline-size: var(--maq-container-xl);
+  margin-inline: auto;
+}
+.wc-hero__eyebrow {
+  font-size: var(--maq-text-sm);
+  font-weight: var(--maq-weight-semibold);
+  color: var(--maq-brand-primary);
+  letter-spacing: var(--maq-tracking-wide);
+  text-transform: uppercase;
+  margin: 0 0 var(--maq-space-4);
+}
+.wc-hero__title {
+  font-size: var(--maq-text-3xl);
+  font-weight: var(--maq-weight-bold);
+  color: var(--maq-neutral-900);
+  line-height: var(--maq-leading-tight);
+  letter-spacing: var(--maq-tracking-tight);
+  margin: 0 0 var(--maq-space-6);
+  max-inline-size: 28ch;
+}
+.wc-hero__lede {
+  font-size: var(--maq-text-lg);
+  color: var(--maq-neutral-700);
+  line-height: var(--maq-leading-relaxed);
+  margin: 0 0 var(--maq-space-8);
+  max-inline-size: 60ch;
+}
+.wc-hero__ctas {
+  display: flex;
+  gap: var(--maq-space-3);
+  flex-wrap: wrap;
+  margin-block-end: var(--maq-space-4);
+}
+.wc-hero__fine-print {
+  font-size: var(--maq-text-xs);
+  color: var(--maq-neutral-500);
+  margin: 0;
+}
+
+/* ── Trust band ───────────────────────────────────────────────────── */
+.wc-trust {
+  padding-block: var(--maq-space-8);
+  padding-inline: var(--maq-space-8);
+  background: var(--maq-neutral-50);
+  border-block-end: 1px solid var(--maq-neutral-200);
+}
+.wc-trust__list {
+  list-style: none;
+  padding: 0;
+  margin: 0 auto;
+  max-inline-size: var(--maq-container-xl);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--maq-space-6);
+  justify-content: center;
+}
+.wc-trust__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--maq-space-2);
+  font-size: var(--maq-text-sm);
+  color: var(--maq-neutral-700);
+}
+.wc-trust__icon { font-size: var(--maq-icon-md); }
+.wc-trust__label { font-weight: var(--maq-weight-medium); }
+.wc-trust__disclaimer {
+  max-inline-size: var(--maq-container-md);
+  margin: var(--maq-space-6) auto 0;
+  text-align: center;
+  font-size: var(--maq-text-xs);
+  color: var(--maq-neutral-500);
+  line-height: var(--maq-leading-relaxed);
+}
+
+/* ── Features ─────────────────────────────────────────────────────── */
+.wc-features {
+  padding-block: var(--maq-space-16);
+  padding-inline: var(--maq-space-8);
+}
+.wc-features__heading {
+  max-inline-size: var(--maq-container-xl);
+  margin: 0 auto var(--maq-space-8);
+  font-size: var(--maq-text-2xl);
+  font-weight: var(--maq-weight-bold);
+  color: var(--maq-neutral-900);
+}
+.wc-features__grid {
+  max-inline-size: var(--maq-container-xl);
+  margin-inline: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--maq-space-6);
+}
+.wc-feature-card {
+  background: var(--maq-neutral-0);
+  border: 1px solid var(--maq-neutral-200);
+  border-radius: var(--maq-radius-lg);
+  padding: var(--maq-space-6);
+  box-shadow: var(--maq-elevation-sm);
+  transition: var(--transition-fast);
+}
+.wc-feature-card:hover { box-shadow: var(--maq-elevation-md); }
+.wc-feature-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--maq-space-3);
+  margin-block-end: var(--maq-space-4);
+}
+.wc-feature-card__id {
+  font-family: var(--maq-font-mono);
+  font-size: var(--maq-text-xs);
+  font-weight: var(--maq-weight-semibold);
+  color: var(--maq-neutral-500);
+  letter-spacing: var(--maq-tracking-wide);
+  margin: 0;
+}
+.wc-feature-card__title {
+  font-size: var(--maq-text-lg);
+  font-weight: var(--maq-weight-semibold);
+  color: var(--maq-neutral-900);
+  margin: 0 0 var(--maq-space-3);
+  line-height: var(--maq-leading-tight);
+}
+.wc-feature-card__body {
+  font-size: var(--maq-text-sm);
+  color: var(--maq-neutral-600);
+  line-height: var(--maq-leading-relaxed);
+  margin: 0;
+}
+.wc-feature-card__note {
+  font-size: var(--maq-text-xs);
+  color: var(--maq-mode-d);
+  background: var(--maq-mode-d-bg);
+  padding: var(--maq-space-2) var(--maq-space-3);
+  border-radius: var(--maq-radius-sm);
+  margin: var(--maq-space-4) 0 0;
+  font-style: italic;
+}
+
+/* ── Pricing ──────────────────────────────────────────────────────── */
+.wc-pricing {
+  padding-block: var(--maq-space-16);
+  padding-inline: var(--maq-space-8);
+  background: var(--maq-neutral-50);
+}
+.wc-pricing__heading {
+  max-inline-size: var(--maq-container-xl);
+  margin: 0 auto var(--maq-space-4);
+  font-size: var(--maq-text-2xl);
+  font-weight: var(--maq-weight-bold);
+  color: var(--maq-neutral-900);
+}
+.wc-pricing__disclaimer {
+  max-inline-size: var(--maq-container-xl);
+  margin: 0 auto var(--maq-space-8);
+  font-size: var(--maq-text-sm);
+  color: var(--maq-mode-d);
+  background: var(--maq-mode-d-bg);
+  padding: var(--maq-space-3) var(--maq-space-4);
+  border-radius: var(--maq-radius-md);
+  border-inline-start: 4px solid var(--maq-mode-d);
+}
+.wc-pricing__grid {
+  max-inline-size: var(--maq-container-xl);
+  margin-inline: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--maq-space-6);
+}
+.wc-pricing-card {
+  background: var(--maq-neutral-0);
+  border: 1px solid var(--maq-neutral-200);
+  border-radius: var(--maq-radius-lg);
+  padding: var(--maq-space-6);
+}
+.wc-pricing-card__key {
+  font-family: var(--maq-font-mono);
+  font-size: var(--maq-text-xs);
+  color: var(--maq-neutral-500);
+  margin: 0 0 var(--maq-space-2);
+}
+.wc-pricing-card__name {
+  font-size: var(--maq-text-xl);
+  font-weight: var(--maq-weight-bold);
+  color: var(--maq-neutral-900);
+  margin: 0 0 var(--maq-space-2);
+}
+.wc-pricing-card__audience {
+  font-size: var(--maq-text-sm);
+  color: var(--maq-neutral-600);
+  margin: 0 0 var(--maq-space-4);
+}
+.wc-pricing-card__caps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.wc-pricing-card__caps li {
+  font-size: var(--maq-text-sm);
+  color: var(--maq-neutral-700);
+  padding-block: var(--maq-space-1);
+  padding-inline-start: var(--maq-space-4);
+  position: relative;
+}
+.wc-pricing-card__caps li::before {
+  content: '✓';
+  position: absolute;
+  inset-inline-start: 0;
+  color: var(--maq-semantic-success);
+  font-weight: var(--maq-weight-bold);
+}
+
+/* ── Footer ───────────────────────────────────────────────────────── */
+.wc-footer {
+  padding-block: var(--maq-space-8);
+  padding-inline: var(--maq-space-8);
+  border-block-start: 1px solid var(--maq-neutral-200);
+  text-align: center;
+}
+.wc-footer__copy,
+.wc-footer__links {
+  max-inline-size: var(--maq-container-lg);
+  margin: 0 auto;
+  font-size: var(--maq-text-sm);
+  color: var(--maq-neutral-500);
+}
+.wc-footer__links { margin-block-start: var(--maq-space-2); }
+.wc-footer__links a {
+  text-decoration: none;
+}
+
+/* ── Brand theming hooks (consumed by src/brand/*.themeClass) ─────── */
+.theme-workcaptain { /* navy + gold defaults already provided by --maq-brand-* */ }
+.theme-maqaleed-workforce {
+  /* B2G variant — same canonical brand tokens; reserved for future
+     overlay specifics post-D15+41. */
+}
+
+/* ── Responsive: tighter padding on narrow viewports ─────────────── */
+@media (max-width: 640px) {
+  .wc-header,
+  .wc-hero,
+  .wc-trust,
+  .wc-features,
+  .wc-pricing,
+  .wc-footer { padding-inline: var(--maq-space-4); }
+  .wc-hero { padding-block: var(--maq-space-12); }
+  .wc-hero__title { font-size: var(--maq-text-2xl); }
+  .wc-hero__lede { font-size: var(--maq-text-base); }
+}
