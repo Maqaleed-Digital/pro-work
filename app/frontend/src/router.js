@@ -22,6 +22,7 @@ import invite           from "./pages/invite.js"
 import acceptInvite     from "./pages/accept_invite.js"
 import signin           from "./pages/signin.js"
 import betaAcknowledgement from "./pages/beta_acknowledgement.js"
+import settings           from "./pages/settings.js"
 import postRole         from "./pages/post_role.js"
 import candidates       from "./pages/candidates.js"
 import offerBuilder     from "./pages/offer_builder.js"
@@ -74,6 +75,7 @@ const ROUTES = {
   "beta-acknowledgement": betaAcknowledgement, // WC-CB Day 3 — one-time
                                                 // controlled-beta posture
                                                 // screen post-onboarding
+  "settings":             settings,             // WC-CB Day 4 — brief §3.6
   "post-role":        postRole,
   "candidates":       candidates,
   "offer-builder":    offerBuilder,

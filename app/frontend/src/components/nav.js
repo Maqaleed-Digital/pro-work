@@ -24,7 +24,7 @@ const NAV_SECTIONS = [
   {
     label: null, // primary — no label
     items: [
-      { key: "dashboard",        label: "Command Center",   icon: "\u2302" },
+      { key: "dashboard",        label: "Dashboard",        icon: "\u2302" },
       { key: "workers",          label: "Workers",          icon: "\u{1F465}" },
       { key: "post-role",       label: "Post a Role",      icon: "\u{1F4DD}" },
       { key: "candidates",      label: "Candidates",       icon: "\u{1F464}" },
@@ -51,6 +51,8 @@ const NAV_SECTIONS = [
       { key: "fee-transparency", label: "Fee Transparency", icon: "\u{1F4B0}" },
       { key: "identity",         label: "Work Identity",    icon: "\u{1FAAA}" },
       { key: "beta-dashboard",   label: "Beta / GTM",       icon: "\u{1F680}" },
+      // WC-CB Day 4 (brief §3.6) — customer-facing settings surface.
+      { key: "settings",         label: "Settings",         icon: "⚙" },
     ]
   },
 ]
