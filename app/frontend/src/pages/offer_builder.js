@@ -42,7 +42,7 @@ async function render(el) {
   // Path selector
   const pathRow = document.createElement("div")
   pathRow.className = "quick-actions"
-  pathRow.style.cssText = "margin-bottom:var(--space-3)"
+  pathRow.style.cssText = "margin-bottom:var(--maq-space-6)"
   const paths = [
     { key: "FTE", label: t("offer.pathFTE") },
     { key: "FREELANCER", label: t("offer.pathFreelancer") },
@@ -51,7 +51,7 @@ async function render(el) {
   paths.forEach(p => {
     const btn = document.createElement("button")
     btn.className = "quick-action-btn" + (_offerType === p.key ? " active" : "")
-    btn.style.cssText += _offerType === p.key ? ";border-color:var(--color-accent);color:var(--color-accent);font-weight:600" : ""
+    btn.style.cssText += _offerType === p.key ? ";border-color:var(--maq-brand-accent);color:var(--maq-brand-accent);font-weight:600" : ""
     btn.textContent = p.label
     btn.addEventListener("click", () => { _offerType = p.key; _complianceResult = null; render(el) })
     pathRow.appendChild(btn)
@@ -66,7 +66,7 @@ async function render(el) {
 
   const formCard = document.createElement("div")
   formCard.className = "wc-card"
-  formCard.style.cssText = "margin-bottom:var(--space-2)"
+  formCard.style.cssText = "margin-bottom:var(--maq-space-4)"
 
   if (_offerType === "FTE") renderFTEPath(formCard)
   else if (_offerType === "FREELANCER") renderFreelancerPath(formCard)
@@ -77,7 +77,7 @@ async function render(el) {
   // Compliance preview section
   const compCard = document.createElement("div")
   compCard.className = "wc-card"
-  compCard.style.cssText = "margin-bottom:var(--space-2)"
+  compCard.style.cssText = "margin-bottom:var(--maq-space-4)"
   renderComplianceSection(compCard, content, el)
   content.appendChild(compCard)
 
@@ -90,7 +90,7 @@ function renderFTEPath(card) {
   card.innerHTML = ""
   const title = document.createElement("h3")
   title.textContent = t("offer.pathFTE")
-  title.style.cssText = "margin-bottom:var(--space-2)"
+  title.style.cssText = "margin-bottom:var(--maq-space-4)"
   card.appendChild(title)
 
   const salaryField = field("offer-salary", t("offer.baseSalary"), "number")
@@ -99,12 +99,12 @@ function renderFTEPath(card) {
   // Allowances
   const allowLabel = document.createElement("label")
   allowLabel.textContent = t("offer.allowances")
-  allowLabel.style.cssText = "display:block;font-size:var(--text-sm);font-weight:500;color:var(--color-text-secondary);margin-bottom:6px"
+  allowLabel.style.cssText = "display:block;font-size:var(--maq-text-sm);font-weight:500;color:var(--maq-neutral-600);margin-bottom:6px"
   card.appendChild(allowLabel)
   const allowances = ["housing", "transport", "food", "communication"]
   allowances.forEach(a => {
     const wrap = document.createElement("label")
-    wrap.style.cssText = "display:flex;align-items:center;gap:6px;font-size:var(--text-sm);cursor:pointer;margin-bottom:4px"
+    wrap.style.cssText = "display:flex;align-items:center;gap:6px;font-size:var(--maq-text-sm);cursor:pointer;margin-bottom:4px"
     const cb = document.createElement("input")
     cb.type = "checkbox"
     cb.id = "allow-" + a
@@ -115,10 +115,10 @@ function renderFTEPath(card) {
 
   // GOSI estimate
   const gosiEl = document.createElement("div")
-  gosiEl.style.cssText = "margin-top:var(--space-2);padding:var(--space-2);background:var(--color-surface);border-radius:var(--radius-md)"
-  gosiEl.innerHTML = `<div style="font-size:var(--text-xs);color:var(--color-text-muted)">${t("offer.gosiEstimate")}</div>
-    <div id="offer-gosi" style="font-family:var(--font-display);font-size:var(--text-xl);font-weight:700">—</div>
-    <div style="font-size:var(--text-xs);color:var(--color-text-muted);margin-top:4px">${t("offer.totalCost")}: <span id="offer-total" style="font-weight:600">—</span></div>`
+  gosiEl.style.cssText = "margin-top:var(--maq-space-4);padding:var(--maq-space-4);background:var(--maq-neutral-50);border-radius:var(--maq-radius-md)"
+  gosiEl.innerHTML = `<div style="font-size:var(--maq-text-xs);color:var(--maq-neutral-400)">${t("offer.gosiEstimate")}</div>
+    <div id="offer-gosi" style="font-family:var(--maq-font-latin);font-size:var(--maq-text-xl);font-weight:700">—</div>
+    <div style="font-size:var(--maq-text-xs);color:var(--maq-neutral-400);margin-top:4px">${t("offer.totalCost")}: <span id="offer-total" style="font-weight:600">—</span></div>`
   card.appendChild(gosiEl)
 
   salaryField.input.addEventListener("input", () => {
@@ -130,7 +130,7 @@ function renderFTEPath(card) {
 
   // Qiwa badge
   const qiwa = document.createElement("div")
-  qiwa.style.cssText = "margin-top:var(--space-2);font-size:var(--text-sm);color:var(--color-text-muted)"
+  qiwa.style.cssText = "margin-top:var(--maq-space-4);font-size:var(--maq-text-sm);color:var(--maq-neutral-400)"
   qiwa.textContent = t("offer.qiwaBadge") + ": 60%"
   card.appendChild(qiwa)
 
@@ -155,26 +155,26 @@ function renderFreelancerPath(card) {
   // 0% COMMISSION BADGE — structural, non-dismissible, non-collapsible
   const badge = document.createElement("div")
   badge.className = "commission-badge"
-  badge.style.cssText = "background:rgba(196,146,42,0.1);border:2px solid var(--color-accent);border-radius:var(--radius-lg);padding:var(--space-2);margin-bottom:var(--space-3);text-align:center"
+  badge.style.cssText = "background:rgba(196,146,42,0.1);border:2px solid var(--maq-brand-accent);border-radius:var(--maq-radius-lg);padding:var(--maq-space-4);margin-bottom:var(--maq-space-6);text-align:center"
   const badgeIcon = document.createElement("div")
-  badgeIcon.style.cssText = "font-size:var(--text-2xl);margin-bottom:var(--space-0)"
+  badgeIcon.style.cssText = "font-size:var(--maq-text-2xl);margin-bottom:var(--maq-space-1)"
   badgeIcon.textContent = "\u{1F4B0}"
   badge.appendChild(badgeIcon)
   const badgeText = document.createElement("div")
-  badgeText.style.cssText = "font-size:var(--text-base);font-weight:700;color:var(--color-accent)"
+  badgeText.style.cssText = "font-size:var(--maq-text-base);font-weight:700;color:var(--maq-brand-accent)"
   badgeText.textContent = t("offer.commissionBadge")
   badge.appendChild(badgeText)
   card.appendChild(badge)
 
   const title = document.createElement("h3")
   title.textContent = t("offer.pathFreelancer")
-  title.style.cssText = "margin-bottom:var(--space-2)"
+  title.style.cssText = "margin-bottom:var(--maq-space-4)"
   card.appendChild(title)
 
   // Milestones
   const msLabel = document.createElement("label")
   msLabel.textContent = t("offer.milestones")
-  msLabel.style.cssText = "display:block;font-size:var(--text-sm);font-weight:500;margin-bottom:6px"
+  msLabel.style.cssText = "display:block;font-size:var(--maq-text-sm);font-weight:500;margin-bottom:6px"
   card.appendChild(msLabel)
 
   const msContainer = document.createElement("div")
@@ -186,35 +186,35 @@ function renderFreelancerPath(card) {
   const addBtn = document.createElement("button")
   addBtn.className = "btn btn-secondary btn-sm"
   addBtn.textContent = t("offer.addMilestone")
-  addBtn.style.cssText = "margin-top:var(--space-1)"
+  addBtn.style.cssText = "margin-top:var(--maq-space-2)"
   addBtn.addEventListener("click", () => addMilestoneRow(msContainer))
   card.appendChild(addBtn)
 
   // Escrow terms
   const escrowField = field("offer-escrow", t("offer.escrowTerms"), "text")
-  escrowField.group.style.cssText += ";margin-top:var(--space-2)"
+  escrowField.group.style.cssText += ";margin-top:var(--maq-space-4)"
   card.appendChild(escrowField.group)
 
   // Fee breakdown
   const feeCard = document.createElement("div")
-  feeCard.style.cssText = "margin-top:var(--space-2);padding:var(--space-2);background:var(--color-surface);border-radius:var(--radius-md)"
-  feeCard.innerHTML = `<div style="font-size:var(--text-sm);font-weight:600;margin-bottom:var(--space-0)">${t("offer.platformFee")}</div>
-    <div style="font-size:var(--text-xs);color:var(--color-text-muted)">5% employer-side platform fee</div>
-    <div style="font-size:var(--text-sm);font-weight:700;margin-top:var(--space-1)">${t("offer.totalClientPays")}: <span id="total-client-pays">—</span></div>`
+  feeCard.style.cssText = "margin-top:var(--maq-space-4);padding:var(--maq-space-4);background:var(--maq-neutral-50);border-radius:var(--maq-radius-md)"
+  feeCard.innerHTML = `<div style="font-size:var(--maq-text-sm);font-weight:600;margin-bottom:var(--maq-space-1)">${t("offer.platformFee")}</div>
+    <div style="font-size:var(--maq-text-xs);color:var(--maq-neutral-400)">5% employer-side platform fee</div>
+    <div style="font-size:var(--maq-text-sm);font-weight:700;margin-top:var(--maq-space-2)">${t("offer.totalClientPays")}: <span id="total-client-pays">—</span></div>`
   card.appendChild(feeCard)
 }
 
 function addMilestoneRow(container) {
   const row = document.createElement("div")
-  row.style.cssText = "display:flex;gap:var(--space-1);margin-bottom:var(--space-0)"
+  row.style.cssText = "display:flex;gap:var(--maq-space-2);margin-bottom:var(--maq-space-1)"
   const nameInput = document.createElement("input")
   nameInput.type = "text"
   nameInput.placeholder = t("offer.milestoneName")
-  nameInput.style.cssText = "flex:2;padding:8px;border:1px solid var(--color-border);border-radius:var(--radius-md);font-size:var(--text-sm)"
+  nameInput.style.cssText = "flex:2;padding:8px;border:1px solid var(--maq-neutral-200);border-radius:var(--maq-radius-md);font-size:var(--maq-text-sm)"
   const amtInput = document.createElement("input")
   amtInput.type = "number"
   amtInput.placeholder = t("offer.milestoneAmount")
-  amtInput.style.cssText = "flex:1;padding:8px;border:1px solid var(--color-border);border-radius:var(--radius-md);font-size:var(--text-sm)"
+  amtInput.style.cssText = "flex:1;padding:8px;border:1px solid var(--maq-neutral-200);border-radius:var(--maq-radius-md);font-size:var(--maq-text-sm)"
   row.appendChild(nameInput)
   row.appendChild(amtInput)
   container.appendChild(row)
@@ -226,7 +226,7 @@ function renderAIPath(card) {
   card.innerHTML = ""
   const title = document.createElement("h3")
   title.textContent = t("offer.pathAI")
-  title.style.cssText = "margin-bottom:var(--space-2)"
+  title.style.cssText = "margin-bottom:var(--maq-space-4)"
   card.appendChild(title)
 
   // Delivery window
@@ -242,7 +242,7 @@ function renderAIPath(card) {
   wtLabel.textContent = t("offer.windowType")
   wtGroup.appendChild(wtLabel)
   const wtSelect = document.createElement("select")
-  wtSelect.style.cssText = "width:100%;padding:8px;border:1px solid var(--color-border);border-radius:var(--radius-md);font-size:var(--text-sm)"
+  wtSelect.style.cssText = "width:100%;padding:8px;border:1px solid var(--maq-neutral-200);border-radius:var(--maq-radius-md);font-size:var(--maq-text-sm)"
   ;[
     { value: "recurring_daily", label: t("offer.recurring") },
     { value: "weekly_milestones", label: t("offer.weeklyMilestones") },
@@ -259,7 +259,7 @@ function renderAIPath(card) {
   // Outcome criteria
   const ocLabel = document.createElement("label")
   ocLabel.textContent = t("offer.outcomeCriteria")
-  ocLabel.style.cssText = "display:block;font-size:var(--text-sm);font-weight:500;margin-bottom:6px;margin-top:var(--space-2)"
+  ocLabel.style.cssText = "display:block;font-size:var(--maq-text-sm);font-weight:500;margin-bottom:6px;margin-top:var(--maq-space-4)"
   card.appendChild(ocLabel)
 
   const ocContainer = document.createElement("div")
@@ -267,7 +267,7 @@ function renderAIPath(card) {
   const ocInput = document.createElement("input")
   ocInput.type = "text"
   ocInput.placeholder = t("offer.addCriterion")
-  ocInput.style.cssText = "width:100%;padding:8px;border:1px solid var(--color-border);border-radius:var(--radius-md);font-size:var(--text-sm);margin-bottom:var(--space-0)"
+  ocInput.style.cssText = "width:100%;padding:8px;border:1px solid var(--maq-neutral-200);border-radius:var(--maq-radius-md);font-size:var(--maq-text-sm);margin-bottom:var(--maq-space-1)"
   ocInput.addEventListener("keydown", e => {
     if (e.key === "Enter" && ocInput.value.trim()) {
       e.preventDefault()
@@ -296,7 +296,7 @@ function renderAIPath(card) {
 
   // Audit statement
   const audit = document.createElement("div")
-  audit.style.cssText = "margin-top:var(--space-2);padding:var(--space-2);background:rgba(37,99,235,0.05);border:1px solid var(--color-info);border-radius:var(--radius-md);font-size:var(--text-sm);color:var(--color-info)"
+  audit.style.cssText = "margin-top:var(--maq-space-4);padding:var(--maq-space-4);background:rgba(37,99,235,0.05);border:1px solid var(--maq-semantic-info);border-radius:var(--maq-radius-md);font-size:var(--maq-text-sm);color:var(--maq-semantic-info)"
   audit.textContent = t("offer.auditStatement")
   card.appendChild(audit)
 }
@@ -307,7 +307,7 @@ function renderComplianceSection(card, content, el) {
   card.innerHTML = ""
   const title = document.createElement("h3")
   title.textContent = t("offer.compliancePreview")
-  title.style.cssText = "margin-bottom:var(--space-2)"
+  title.style.cssText = "margin-bottom:var(--maq-space-4)"
   card.appendChild(title)
 
   const checksEl = document.createElement("div")
@@ -317,10 +317,10 @@ function renderComplianceSection(card, content, el) {
     const checks = _complianceResult.checks || {}
     Object.entries(checks).forEach(([key, check]) => {
       const row = document.createElement("div")
-      row.style.cssText = "display:flex;align-items:center;gap:var(--space-1);margin-bottom:var(--space-0);font-size:var(--text-sm)"
+      row.style.cssText = "display:flex;align-items:center;gap:var(--maq-space-2);margin-bottom:var(--maq-space-1);font-size:var(--maq-text-sm)"
       const dot = document.createElement("span")
       dot.style.cssText = "width:10px;height:10px;border-radius:50%;flex-shrink:0;background:" +
-        (check.status === "GREEN" ? "var(--color-success)" : check.status === "AMBER" ? "var(--color-warning)" : "var(--color-danger)")
+        (check.status === "GREEN" ? "var(--maq-semantic-success)" : check.status === "AMBER" ? "var(--maq-semantic-warning)" : "var(--maq-semantic-danger)")
       const label = document.createElement("span")
       label.textContent = t("offer.check" + key.charAt(0).toUpperCase() + key.slice(1).replace(/_([a-z])/g, (_, c) => c.toUpperCase())) + ": " + check.message
       row.appendChild(dot)
@@ -329,7 +329,7 @@ function renderComplianceSection(card, content, el) {
     })
   } else {
     checksEl.textContent = t("offer.runPreview")
-    checksEl.style.cssText = "color:var(--color-text-muted);font-size:var(--text-sm)"
+    checksEl.style.cssText = "color:var(--maq-neutral-400);font-size:var(--maq-text-sm)"
   }
   card.appendChild(checksEl)
 
@@ -338,7 +338,7 @@ function renderComplianceSection(card, content, el) {
   card.appendChild(errEl)
 
   const btnRow = document.createElement("div")
-  btnRow.style.cssText = "display:flex;gap:var(--space-1);margin-top:var(--space-2);flex-wrap:wrap"
+  btnRow.style.cssText = "display:flex;gap:var(--maq-space-2);margin-top:var(--maq-space-4);flex-wrap:wrap"
 
   // Run preview button
   const previewBtn = document.createElement("button")

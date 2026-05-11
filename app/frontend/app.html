@@ -12,8 +12,11 @@
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=IBM+Plex+Mono&display=swap" rel="stylesheet">
     <!-- Canonical tokens — must load first so all consumers see --maq-* vars -->
     <link rel="stylesheet" href="/src/tokens/index.css" />
-    <!-- Legacy alias bridge — temporary; removed by D-1 per PROPOSAL §5.4 -->
-    <link rel="stylesheet" href="/src/styles/legacy-alias.css" />
+    <!-- WC-CB Day 6 (2026-05-15): legacy-alias.css bridge REMOVED.
+         Compile-time verify confirmed zero `var(--color-*)` / `--font-*` /
+         `--space-*` / `--shadow-*` / `--radius-*` / `--text-*` / `--zone-*`
+         references remain. All consumers now resolve through canonical
+         --maq-* tokens directly. -->
     <link rel="stylesheet" href="/src/styles/design-system.css" />
     <link rel="stylesheet" href="/src/styles/global.css" />
     <link rel="stylesheet" href="/src/styles/layout.css" />

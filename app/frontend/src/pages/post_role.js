@@ -81,10 +81,10 @@ function renderStep1(el) {
   ctGroup.appendChild(ctLabel)
 
   const ctWrap = document.createElement("div")
-  ctWrap.style.cssText = "display:flex;gap:var(--space-2);flex-wrap:wrap;margin-top:var(--space-0)"
+  ctWrap.style.cssText = "display:flex;gap:var(--maq-space-4);flex-wrap:wrap;margin-top:var(--maq-space-1)"
   CONTRACT_TYPES.forEach(ct => {
     const lbl = document.createElement("label")
-    lbl.style.cssText = "display:flex;align-items:center;gap:6px;cursor:pointer;font-size:var(--text-sm)"
+    lbl.style.cssText = "display:flex;align-items:center;gap:6px;cursor:pointer;font-size:var(--maq-text-sm)"
     const radio = document.createElement("input")
     radio.type = "radio"
     radio.name = "contractType"
@@ -103,7 +103,7 @@ function renderStep1(el) {
   card.appendChild(errEl)
 
   const btnRow = document.createElement("div")
-  btnRow.style.cssText = "display:flex;justify-content:flex-end;gap:var(--space-1);margin-top:var(--space-2)"
+  btnRow.style.cssText = "display:flex;justify-content:flex-end;gap:var(--maq-space-2);margin-top:var(--maq-space-4)"
   const nextBtn = document.createElement("button")
   nextBtn.className = "btn btn-accent"
   nextBtn.textContent = t("postRole.next")
@@ -167,7 +167,7 @@ function renderStep2(el) {
   skillGroup.appendChild(skillLabel)
 
   const tagsEl = document.createElement("div")
-  tagsEl.style.cssText = "display:flex;flex-wrap:wrap;gap:4px;margin-bottom:var(--space-0)"
+  tagsEl.style.cssText = "display:flex;flex-wrap:wrap;gap:4px;margin-bottom:var(--maq-space-1)"
   function renderTags() {
     tagsEl.innerHTML = ""
     _skills.forEach((s, i) => {
@@ -224,14 +224,14 @@ function renderStep2(el) {
       if (suggestion) {
         const sCard = document.createElement("div")
         sCard.className = "wc-card"
-        sCard.style.cssText = "margin-top:var(--space-1);padding:var(--space-2)"
-        sCard.innerHTML = `<div style="font-size:var(--text-sm)"><strong>${t("postRole.step2.suggested")}:</strong> ${suggestion.code || suggestion.occupationCode || "—"}</div>
-          <div style="font-size:var(--text-xs);color:var(--color-text-muted)">${t("postRole.step2.confidence")}: ${suggestion.confidence || suggestion.confidenceScore || "—"}%</div>`
+        sCard.style.cssText = "margin-top:var(--maq-space-2);padding:var(--maq-space-4)"
+        sCard.innerHTML = `<div style="font-size:var(--maq-text-sm)"><strong>${t("postRole.step2.suggested")}:</strong> ${suggestion.code || suggestion.occupationCode || "—"}</div>
+          <div style="font-size:var(--maq-text-xs);color:var(--maq-neutral-400)">${t("postRole.step2.confidence")}: ${suggestion.confidence || suggestion.confidenceScore || "—"}%</div>`
 
         const useBtn = document.createElement("button")
         useBtn.className = "btn btn-accent btn-sm"
         useBtn.textContent = t("postRole.step2.useThis")
-        useBtn.style.cssText = "margin-top:var(--space-0);margin-right:var(--space-0)"
+        useBtn.style.cssText = "margin-top:var(--maq-space-1);margin-right:var(--maq-space-1)"
         useBtn.addEventListener("click", () => {
           _occupationCode = suggestion.code || suggestion.occupationCode || ""
           codeField.input.value = _occupationCode
@@ -241,7 +241,7 @@ function renderStep2(el) {
         const overrideBtn = document.createElement("button")
         overrideBtn.className = "btn btn-secondary btn-sm"
         overrideBtn.textContent = t("postRole.step2.override")
-        overrideBtn.style.cssText = "margin-top:var(--space-0)"
+        overrideBtn.style.cssText = "margin-top:var(--maq-space-1)"
         overrideBtn.addEventListener("click", () => {
           suggestBox.innerHTML = ""
           // Override logged via audit service on server side
@@ -263,7 +263,7 @@ function renderStep2(el) {
   card.appendChild(errEl)
 
   const btnRow = document.createElement("div")
-  btnRow.style.cssText = "display:flex;justify-content:space-between;margin-top:var(--space-2)"
+  btnRow.style.cssText = "display:flex;justify-content:space-between;margin-top:var(--maq-space-4)"
   const backBtn = document.createElement("button")
   backBtn.className = "btn btn-secondary"
   backBtn.textContent = t("postRole.back")
@@ -330,7 +330,7 @@ function renderStep3(el) {
   ]
   allowances.forEach(a => {
     const wrap = document.createElement("label")
-    wrap.style.cssText = "display:flex;align-items:center;gap:6px;font-size:var(--text-sm);cursor:pointer"
+    wrap.style.cssText = "display:flex;align-items:center;gap:6px;font-size:var(--maq-text-sm);cursor:pointer"
     const cb = document.createElement("input")
     cb.type = "checkbox"
     cb.id = a.id
@@ -343,10 +343,10 @@ function renderStep3(el) {
   // GOSI estimate display
   const gosiEl = document.createElement("div")
   gosiEl.className = "wc-card"
-  gosiEl.style.cssText = "margin-top:var(--space-1);padding:var(--space-2);background:var(--color-surface)"
-  gosiEl.innerHTML = `<div style="font-size:var(--text-xs);color:var(--color-text-muted)">${t("postRole.step3.gosiEstimate")}</div>
-    <div id="gosi-value" style="font-family:var(--font-display);font-size:var(--text-xl);font-weight:700">—</div>
-    <div style="font-size:var(--text-xs);color:var(--color-text-muted);margin-top:var(--space-0)">${t("postRole.step3.totalCost")}: <span id="total-cost" style="font-weight:600">—</span></div>`
+  gosiEl.style.cssText = "margin-top:var(--maq-space-2);padding:var(--maq-space-4);background:var(--maq-neutral-50)"
+  gosiEl.innerHTML = `<div style="font-size:var(--maq-text-xs);color:var(--maq-neutral-400)">${t("postRole.step3.gosiEstimate")}</div>
+    <div id="gosi-value" style="font-family:var(--maq-font-latin);font-size:var(--maq-text-xl);font-weight:700">—</div>
+    <div style="font-size:var(--maq-text-xs);color:var(--maq-neutral-400);margin-top:var(--maq-space-1)">${t("postRole.step3.totalCost")}: <span id="total-cost" style="font-weight:600">—</span></div>`
   card.appendChild(gosiEl)
 
   // Live GOSI calculation on salary change
@@ -366,7 +366,7 @@ function renderStep3(el) {
   card.appendChild(errEl)
 
   const btnRow = document.createElement("div")
-  btnRow.style.cssText = "display:flex;justify-content:space-between;margin-top:var(--space-2)"
+  btnRow.style.cssText = "display:flex;justify-content:space-between;margin-top:var(--maq-space-4)"
   const backBtn = document.createElement("button")
   backBtn.className = "btn btn-secondary"
   backBtn.textContent = t("postRole.back")
@@ -458,7 +458,7 @@ function renderStep4(el) {
 
       if (_previewResult.confidenceBand) {
         const band = document.createElement("div")
-        band.style.cssText = "font-size:var(--text-sm);color:var(--color-text-muted);margin-top:var(--space-1)"
+        band.style.cssText = "font-size:var(--maq-text-sm);color:var(--maq-neutral-400);margin-top:var(--maq-space-2)"
         band.textContent = `${t("postRole.step4.confidenceBand")}: ${_previewResult.confidenceBand.lower}% – ${_previewResult.confidenceBand.upper}%`
         previewEl.appendChild(band)
       }
@@ -472,7 +472,7 @@ function renderStep4(el) {
   }
 
   const btnRow = document.createElement("div")
-  btnRow.style.cssText = "display:flex;justify-content:space-between;align-items:center;margin-top:var(--space-2);gap:var(--space-1)"
+  btnRow.style.cssText = "display:flex;justify-content:space-between;align-items:center;margin-top:var(--maq-space-4);gap:var(--maq-space-2)"
 
   const backBtn = document.createElement("button")
   backBtn.className = "btn btn-secondary"
