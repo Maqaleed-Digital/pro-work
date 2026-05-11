@@ -30,15 +30,7 @@ import trust              from "./pages/trust.js"
 import postRole         from "./pages/post_role.js"
 import candidates       from "./pages/candidates.js"
 import offerBuilder     from "./pages/offer_builder.js"
-import seekerHome       from "./pages/seeker_home.js"
-import marketplace      from "./pages/marketplace.js"
-import seekerApply      from "./pages/seeker_apply.js"
-import seekerContract   from "./pages/seeker_contract.js"
 import compliance       from "./pages/compliance.js"
-import complianceNitaqat   from "./pages/compliance_nitaqat_detail.js"
-import complianceWps       from "./pages/compliance_wps_list.js"
-import complianceProbation from "./pages/compliance_probation_list.js"
-import complianceEsb       from "./pages/compliance_esb_list.js"
 
 // S40-G5/G6/S42 + WC-CB Day 3: routes that skip auth and hide nav.
 // `register` is preserved as a redirect-only stub to `request-access`
@@ -87,15 +79,7 @@ const ROUTES = {
   "post-role":        postRole,
   "candidates":       candidates,
   "offer-builder":    offerBuilder,
-  "seeker-home":      seekerHome,
-  "marketplace":      marketplace,
-  "seeker-apply":     seekerApply,
-  "seeker-contract":  seekerContract,
   "compliance":          compliance,
-  "compliance-nitaqat":  complianceNitaqat,
-  "compliance-wps":      complianceWps,
-  "compliance-probation": complianceProbation,
-  "compliance-esb":      complianceEsb,
 }
 
 const DEFAULT = "dashboard"
@@ -103,10 +87,6 @@ const DEFAULT = "dashboard"
 function currentRoute() {
   const hash = location.hash.replace(/^#\/?/, "").split("?")[0].trim()
   if (ROUTES[hash]) return hash
-  // S45-G5: parameterized route for apply flow
-  if (/^marketplace\/role\/[a-f0-9-]+\/apply$/.test(hash)) return "seeker-apply"
-  // S45-G6: parameterized route for contract detail
-  if (/^seeker-home\/contracts\/[a-f0-9-]+$/.test(hash)) return "seeker-contract"
   return DEFAULT
 }
 
