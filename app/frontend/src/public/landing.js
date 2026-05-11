@@ -226,16 +226,25 @@ async function mount() {
  * CTA handlers.
  *
  * Day 3 (2026-05-13) repoints "Request access" from the killed self-serve
- * /app/#register route to the cohort intake at /app/#request-access. The
- * cohort flow posts to POST /api/cohort/request (cohort_router.js); no
- * account is auto-created per brief §2 + WC Controlled-Launch Memo V1.1.
+ * /app/#register route to the cohort intake. The cohort flow posts to
+ * POST /api/cohort/request (cohort_router.js); no account is auto-created
+ * per brief §2 + WC Controlled-Launch Memo V1.1.
+ *
+ * Day 7 fix #4 (2026-05-16 — Finding 2 deploy blocker):
+ *   The Vite multi-entry build (vite.config.js rollupOptions.input) emits
+ *   `dist/app.html` at /app.html, NOT /app/index.html. Previous CTAs used
+ *   /app/#request-access which 404s on the Vite preview server (and any
+ *   static host without a rewrite). Production Cloud Run / nginx should
+ *   rewrite `/app/*` → `/app.html` for the prettier URL (documented in
+ *   DEPLOYMENT.md); local preview works directly via /app.html. The
+ *   hash routing inside the SPA is unchanged.
  */
 function handleRequestAccess() {
-  window.location.href = '/app/#request-access'
+  window.location.href = '/app.html#request-access'
 }
 
 function handleSignIn() {
-  window.location.href = '/app/#signin'
+  window.location.href = '/app.html#signin'
 }
 
 mount().catch(err => {

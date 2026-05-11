@@ -26,6 +26,21 @@ export default {
     en: 'Sovereign workforce platform for KSA government entities and large enterprises.',
     ar: 'منصة قوى عاملة سيادية للجهات الحكومية والمؤسسات الكبرى في المملكة.',
   },
+
+  // Hero copy — B2G variant (parallel to workcaptain.js hero field).
+  // Day 7 fix #4 (2026-05-16): same commercial framing pattern, targeted
+  // at government and large-enterprise audience. Pilot-only language
+  // honoured per WC Controlled-Launch Memo V1.1.
+  hero: {
+    title: {
+      en: 'The sovereign workforce platform for KSA government and large enterprise.',
+      ar: 'منصة القوى العاملة السيادية للجهات الحكومية والمؤسسات الكبرى في المملكة.',
+    },
+    lede: {
+      en: 'Programme orchestration for Saudisation, payroll, GOSI, Mudad and Qiwa filings, workforce analytics, and HR record-keeping — Saudi-resident, audit-evidenced. Pilot engagements by invitation only.',
+      ar: 'تنسيق برامج السعودة، والرواتب، وإيداعات التأمينات وقِوى ومُدد، وتحليلات القوى العاملة، وحفظ سجلات الموارد البشرية — مُستضاف داخل المملكة، مُوثَّق بالأدلة. التكليفات التجريبية بدعوة فقط.',
+    },
+  },
   // Backend identifier preserved per BA-001 §6 (Pattern B retains backend id).
   backendIdentifier: 'prowork',
 
