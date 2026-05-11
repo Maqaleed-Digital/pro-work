@@ -1,0 +1,34 @@
+/*
+ * Maqaleed Design Tokens — Spacing
+ * Per UX-G1-TOKENS-V1.0 §5
+ * Base unit: 4px. Modular scale: multiples of 4.
+ *
+ * NOTE: Components MUST use CSS logical properties (margin-inline-start /
+ * padding-inline-start / border-inline-start / inset-inline-start) per §5.2.
+ * Tokens stay direction-neutral; the browser resolves direction via dir="rtl".
+ */
+
+:root {
+  /* ============================================================
+   * §5.1 — Spacing scale
+   * ============================================================ */
+  --maq-space-1: 4px;     /* Tightest — icon to label */
+  --maq-space-2: 8px;     /* Compact element spacing */
+  --maq-space-3: 12px;    /* Form field internal padding */
+  --maq-space-4: 16px;    /* Default element spacing */
+  --maq-space-6: 24px;    /* Section internal */
+  --maq-space-8: 32px;    /* Section-to-section */
+  --maq-space-12: 48px;   /* Container vertical rhythm */
+  --maq-space-16: 64px;   /* Page-level section breaks */
+  --maq-space-24: 96px;   /* Major dividers */
+  --maq-space-32: 128px;  /* Hero rhythm */
+
+  /* ============================================================
+   * §5.3 — Container max-widths
+   * ============================================================ */
+  --maq-container-sm: 640px;    /* Forms, modals */
+  --maq-container-md: 768px;    /* Reading content */
+  --maq-container-lg: 1024px;   /* Standard application */
+  --maq-container-xl: 1280px;   /* Wide dashboard */
+  --maq-container-2xl: 1536px;  /* Maximum content width */
+}

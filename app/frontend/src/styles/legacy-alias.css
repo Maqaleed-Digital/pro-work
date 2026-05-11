@@ -1,0 +1,94 @@
+/*
+ * Legacy alias bridge — TEMPORARY (removed by D-1 / 2026-05-15)
+ *
+ * Per PROPOSAL §5.4: the existing styles/components/pages reference
+ * --color-*, --font-*, --space-*, --shadow-*, --radius-* tokens. The
+ * canonical G1 V1.1.1 namespace is --maq-*. This file aliases the
+ * legacy names to canonical values so existing code keeps rendering
+ * while consumers are migrated mechanically Day-by-Day.
+ *
+ * Drift resolution per PROPOSAL §5.2 audit:
+ * - Brand primary: existing #0A1628 yields to canonical #1E3A5F
+ * - Brand accent: #C4922A yields to #C9A227
+ * - Semantic success/warning/danger/info: WCAG-tested canonical values win
+ * - Playfair Display: REMOVED; --font-display now aliases IBM Plex Latin
+ *
+ * REMOVAL CHECKLIST (D-1):
+ *  [ ] grep -r "var(--color-" /opt/prowork/app/frontend/src/ returns zero
+ *  [ ] grep -r "var(--font-display\|var(--font-body\|var(--font-arabic\|var(--font-mono" returns zero (allow --maq-font-*)
+ *  [ ] grep -r "var(--space-\|var(--shadow-\|var(--radius-\|var(--text-" returns zero (allow --maq-*)
+ *  [ ] grep -r "var(--zone-" returns zero (allow --maq-wc-zone-*)
+ *  [ ] Delete this file; remove <link> from index.html
+ *  [ ] WCAG axe-core audit clean post-removal
+ */
+
+:root {
+  /* ── Brand colour aliases ────────────────────────────────────────────── */
+  --color-primary:        var(--maq-brand-primary);
+  --color-primary-light:  var(--maq-brand-primary-hover);
+  --color-accent:         var(--maq-brand-accent);
+  --color-accent-light:   #E8B84B;  /* legacy — no direct canonical match; consumers migrate to --maq-brand-accent + opacity */
+
+  /* ── Surface / border / text aliases (mapped to canonical neutrals) ──── */
+  --color-surface:        var(--maq-neutral-50);
+  --color-surface-raised: var(--maq-neutral-0);
+  --color-border:         var(--maq-neutral-200);
+  --color-border-strong:  var(--maq-neutral-300);
+  --color-text-primary:   var(--maq-neutral-900);
+  --color-text-secondary: var(--maq-neutral-600);
+  --color-text-muted:     var(--maq-neutral-400);
+
+  /* ── Semantic aliases ───────────────────────────────────────────────── */
+  --color-success: var(--maq-semantic-success);
+  --color-warning: var(--maq-semantic-warning);
+  --color-danger:  var(--maq-semantic-danger);
+  --color-info:    var(--maq-semantic-info);
+
+  /* ── Nitaqat zone aliases — WC-local ─────────────────────────────────── */
+  --zone-platinum:     var(--maq-wc-zone-platinum);
+  --zone-high-green:   var(--maq-wc-zone-high-green);
+  --zone-medium-green: var(--maq-wc-zone-medium-green);
+  --zone-low-green:    var(--maq-wc-zone-low-green);
+  --zone-yellow:       var(--maq-wc-zone-yellow);
+  --zone-red:          var(--maq-wc-zone-red);
+
+  /* ── Font aliases (Playfair Display REMOVED per G1 binding) ──────────── */
+  /* Old --font-display rendered Playfair Display for English headings.
+     Canonical G1 binds IBM Plex Sans family only. Display roles fall back
+     to IBM Plex Sans with weight 700. */
+  --font-display: var(--maq-font-latin);
+  --font-body:    var(--maq-font-latin);
+  --font-arabic:  var(--maq-font-arabic);
+  --font-mono:    var(--maq-font-mono);
+
+  /* ── Font-size aliases (rem→px scale; canonical is px) ───────────────── */
+  --text-xs:   var(--maq-text-xs);    /* 12px */
+  --text-sm:   var(--maq-text-sm);    /* 14px */
+  --text-base: var(--maq-text-base);  /* 16px */
+  --text-lg:   var(--maq-text-lg);    /* 20px (was 18px) */
+  --text-xl:   var(--maq-text-xl);    /* 24px (was 20px) */
+  --text-2xl:  var(--maq-text-2xl);   /* 30px (was 24px) */
+  --text-3xl:  var(--maq-text-2xl);   /* maps to 30px (was 30px) */
+  --text-4xl:  var(--maq-text-3xl);   /* maps to 36px (was 36px) */
+
+  /* ── Spacing aliases (rem→px equivalence) ────────────────────────────── */
+  --space-0: var(--maq-space-1);   /* 4px */
+  --space-1: var(--maq-space-2);   /* 8px */
+  --space-2: var(--maq-space-4);   /* 16px */
+  --space-3: var(--maq-space-6);   /* 24px */
+  --space-4: var(--maq-space-8);   /* 32px */
+  --space-6: var(--maq-space-12);  /* 48px */
+  --space-8: var(--maq-space-16);  /* 64px */
+
+  /* ── Elevation aliases ──────────────────────────────────────────────── */
+  --shadow-sm: var(--maq-elevation-sm);
+  --shadow-md: var(--maq-elevation-md);
+  --shadow-lg: var(--maq-elevation-lg);
+  --shadow-xl: var(--maq-elevation-xl);
+
+  /* ── Radius aliases (already 4/8/12/16 px in both) ──────────────────── */
+  --radius-sm: var(--maq-radius-sm);
+  --radius-md: var(--maq-radius-md);
+  --radius-lg: var(--maq-radius-lg);
+  --radius-xl: var(--maq-radius-xl);
+}
