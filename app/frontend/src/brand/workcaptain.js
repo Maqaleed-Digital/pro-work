@@ -30,6 +30,31 @@ export default {
     en: 'Saudi workforce decision-support — Saudisation, Payroll, Compliance.',
     ar: 'دعم قرارات القوى العاملة في المملكة — السعودة، الرواتب، الامتثال.',
   },
+
+  // ── Hero copy (consumed by components/hero.js) ──────────────────────
+  //
+  // Day 7 fix #4 (2026-05-16 — Finding 1, commercial framing):
+  //   Sponsor walkthrough: prior hero copy was operational/AI-leaning.
+  //   Buyer language calls for portfolio-of-HR-services framing led by
+  //   outcomes. Lede explicitly enumerates the service portfolio +
+  //   Saudi-resident posture. Controlled-beta context is signalled by
+  //   the banner above the hero AND a closing clause in the lede (no
+  //   marketing-as-launched overclaiming).
+  //
+  // Brand-neutral pattern: hero.js falls back to its hardcoded en/ar
+  // copy if brand.hero is missing, so other platforms (Crédito,
+  // Società, S2PPRO, VetiCare) can adopt the same component with
+  // their own hero strings via this pattern.
+  hero: {
+    title: {
+      en: 'The workforce platform built for Saudi employers.',
+      ar: 'منصة القوى العاملة المُصمَّمة لأصحاب العمل في المملكة.',
+    },
+    lede: {
+      en: 'Run Saudisation, payroll, GOSI, Mudad and Qiwa filings, workforce analytics, and HR record-keeping — in one Saudi-resident system. Currently in controlled beta with a limited cohort of employers.',
+      ar: 'أدِر السعودة، والرواتب، وإيداعات التأمينات وقِوى ومُدد، وتحليلات القوى العاملة، وحفظ سجلات الموارد البشرية — في نظام واحد مُستضاف داخل المملكة. حاليًا في مرحلة تجريبية مُدارة مع مجموعة محدودة من أصحاب العمل.',
+    },
+  },
   // Backend identifier preserved per BA-001 §6 (PROPOSAL §1.1).
   backendIdentifier: 'prowork',
 

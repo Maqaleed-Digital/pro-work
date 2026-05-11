@@ -77,21 +77,30 @@ function renderFeatureCard(f, locale) {
   const card = document.createElement('article')
   card.setAttribute('role', 'listitem')
   card.setAttribute('data-component', 'feature-card')
+  // data-capability retains the internal code (WC-SAUD / WC-PYR / ...)
+  // for testing + analytics selectors. It is NOT rendered as visible
+  // text — per Day 7 fix #4 Finding 4 (capability codes are internal
+  // MPP-MON-001 §7.2 identifiers and must not surface to customers).
   card.setAttribute('data-capability', f.id)
   card.className = 'wc-feature-card'
 
-  // Header row: capability ID + mode chip
+  // Commercial title used as both the h3 heading and the screen-reader
+  // capabilityName for the chip's aria-label. Replaces the prior pattern
+  // that passed f.id (e.g., "WC-SAUD") to the chip.
+  const commercialTitle = (f.title && f.title[locale]) || (f.title && f.title.en) || ''
+
+  // Header row: mode chip only (capability code removed from visible UI
+  // per Day 7 fix #4 Finding 4 — was an h3-prefixed <p class="wc-feature-
+  // card__id"> rendering "WC-SAUD" etc.). The .wc-feature-card__id CSS
+  // rule in landing.css becomes inert; left in place for now in case any
+  // brand variant wants to reintroduce a visible internal code under an
+  // explicit governance decision.
   const header = document.createElement('div')
   header.className = 'wc-feature-card__header'
 
-  const idEl = document.createElement('p')
-  idEl.className = 'wc-feature-card__id'
-  idEl.textContent = f.id
-  header.appendChild(idEl)
-
   header.appendChild(renderModeStatusChip({
     mode: f.mode,
-    capabilityName: f.id,
+    capabilityName: commercialTitle,   // commercial name, not f.id
     locale,
   }))
   card.appendChild(header)
@@ -99,7 +108,7 @@ function renderFeatureCard(f, locale) {
   // Title
   const title = document.createElement('h3')
   title.className = 'wc-feature-card__title'
-  title.textContent = (f.title && f.title[locale]) || (f.title && f.title.en) || f.id
+  title.textContent = commercialTitle || f.id
   card.appendChild(title)
 
   // Body

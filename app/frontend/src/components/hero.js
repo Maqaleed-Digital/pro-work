@@ -49,20 +49,31 @@ export function renderHero(opts = {}) {
   inner.appendChild(eyebrow)
 
   // ── H1 ──────────────────────────────────────────────────────────────
+  //
+  // Day 7 fix #4 (2026-05-16 — Finding 1, commercial framing):
+  //   Title + lede now sourced from brand.hero.{title,lede} (set in
+  //   src/brand/<variant>.js) so the same component renders the right
+  //   commercial copy per brand variant (workcaptain vs maqaleed-
+  //   workforce). Component retains a fallback hardcoded string for
+  //   any brand variant that omits a hero block.
   const h1 = document.createElement('h1')
   h1.id = 'hero-heading'
   h1.className = 'wc-hero__title'
-  h1.textContent = locale === 'ar'
-    ? 'دعم قرارات القوى العاملة في المملكة — السعودة، الرواتب، والامتثال.'
-    : 'Saudi workforce decision-support — Saudisation, Payroll, and Compliance.'
+  h1.textContent = (brand && brand.hero && brand.hero.title && brand.hero.title[locale])
+    || (brand && brand.hero && brand.hero.title && brand.hero.title.en)
+    || (locale === 'ar'
+        ? 'منصة القوى العاملة المُصمَّمة لأصحاب العمل في المملكة.'
+        : 'The workforce platform built for Saudi employers.')
   inner.appendChild(h1)
 
   // ── Lede sentence (the 30-second-rule sentence) ─────────────────────
   const lede = document.createElement('p')
   lede.className = 'wc-hero__lede'
-  lede.textContent = locale === 'ar'
-    ? 'وورك كابتن يساعد أصحاب العمل في المملكة على إدارة السعودة (نطاقات)، والرواتب، وتحليلات القوى العاملة، والتكامل مع التأمينات (GOSI)، ومُدد، وقوى — عبر شركاء مرخّصين.'
-    : 'WorkCaptain helps Saudi employers manage Saudisation (Nitaqat), Payroll, Workforce Analytics, and integrations with GOSI, Mudad, and Qiwa — through licensed partners.'
+  lede.textContent = (brand && brand.hero && brand.hero.lede && brand.hero.lede[locale])
+    || (brand && brand.hero && brand.hero.lede && brand.hero.lede.en)
+    || (locale === 'ar'
+        ? 'أدِر السعودة، والرواتب، وإيداعات التأمينات وقِوى ومُدد، وتحليلات القوى العاملة، وحفظ سجلات الموارد البشرية — في نظام واحد مُستضاف داخل المملكة.'
+        : 'Run Saudisation, payroll, GOSI, Mudad and Qiwa filings, workforce analytics, and HR record-keeping — in one Saudi-resident system.')
   inner.appendChild(lede)
 
   // ── CTAs ────────────────────────────────────────────────────────────
