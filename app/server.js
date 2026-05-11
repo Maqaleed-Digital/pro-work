@@ -76,9 +76,17 @@ const { createContractService }            = require("./modules/contracts/contra
 const { createContractRouter }             = require("./api/contract_router")
 const { createCandidateService }            = require("./modules/hiring/candidate_service")
 const { createApplicationService }          = require("./modules/hiring/application_service")
+// WC-CB Day 3 (D-3, 2026-05-13): Cohort access request intake
+//   brief §2 — "Submission stored for sponsor review and manual
+//   invitation issuance (no auto-approval)."
+const { createCohortRouter }               = require("./api/cohort_router")
 
 // S38-G3: evidence pack router — shared store across all requests
 const _evidencePackRouter = createEvidencePackRouter()
+
+// WC-CB Day 3: cohort request router — in-memory store; persistence is
+// a known post-D15+41 follow-up (acceptable for ~25–30 cohort window).
+const _cohortRouter = createCohortRouter()
 
 validateProductionConfig()
 
@@ -1601,6 +1609,22 @@ const server = http.createServer(async (req, res) => {
         ? { id: req._jwtPrincipal.id, tenant_id: req._jwtPrincipal.tenant_id, role: req._jwtPrincipal._rbacRole }
         : null
       return _invitationRouter.handle(req, res, pathname, req.method, body, user)
+    }
+
+    // WC-CB Day 3: Cohort request intake — /api/cohort/*
+    //   POST /api/cohort/request  is PUBLIC (no auth) — cohort intake form;
+    //   GET  /api/cohort/requests is auth-gated for sponsor review;
+    //   POST /api/cohort/requests/:id/mark-reviewed is auth-gated.
+    if (_cohortRouter && pathname.startsWith("/api/cohort")) {
+      let body = null
+      if (req.method === "POST") {
+        body = await readJson(req, res)
+        if (body === null) return
+      }
+      const user = req._jwtPrincipal
+        ? { id: req._jwtPrincipal.id, tenant_id: req._jwtPrincipal.tenant_id, role: req._jwtPrincipal._rbacRole }
+        : null
+      return _cohortRouter.handle(req, res, pathname, req.method, body, user)
     }
 
     // S40-G5: Employer onboarding routes — profile, status, resend-verification

@@ -1,126 +1,42 @@
-// S40-G5: Registration page — Step 1 of employer onboarding
-import { apiPostPublic, setToken } from "../api.js"
-import { t } from "../locale.js"
+// WC-CB Day 3 (D-3, 2026-05-13): Self-serve registration is DISABLED.
+//
+// Authority: WC Controlled-Launch Memo V1.1 + brief §2 — "Submission stored
+// for sponsor review and manual invitation issuance (no auto-approval)."
+// PROPOSAL §11.A2 stricter-interpretation rule: kill self-serve account
+// creation during the controlled-beta window.
+//
+// The /#register hash route now redirects to /#request-access. Anyone
+// arriving here via a bookmarked or shared link is routed to the cohort
+// intake form, not to instant account creation.
+//
+// The historic self-serve flow (apiPostPublic /api/auth/register then
+// setToken + redirect to onboarding) violated brief §2 and §11.A4
+// (no phantom features). Backend POST /api/auth/register is preserved
+// for invitation-redemption flows (/accept-invite) and admin use.
+//
+// Post-D15+41 disposition: if controlled-beta gating is lifted by
+// Sponsor decision, restore the self-serve form OR fold its content
+// into accept_invite.js as the only post-invitation account
+// completion path.
 
 function render(el) {
+  // Immediate redirect — no flash of disabled UI.
+  if (typeof window !== "undefined") {
+    window.location.hash = "request-access"
+  }
+  // Render a minimal note in case the redirect is observable (Safari
+  // sometimes paints the previous route's contents briefly).
   el.innerHTML = ""
-
-  const wrap = document.createElement("div")
-  wrap.className = "onboarding-screen"
-
-  const box = document.createElement("div")
-  box.className = "onboarding-box"
-
-  // Brand wordmark
-  const brandRow = document.createElement("div")
-  brandRow.style.cssText = "display:flex;align-items:center;gap:8px;margin-bottom:var(--space-3)"
-  const brandMark = document.createElement("div")
-  brandMark.className = "sidebar-brand-mark"
-  brandMark.textContent = "W"
-  const brandName = document.createElement("span")
-  brandName.style.cssText = "font-family:var(--font-display);font-size:var(--text-xl);font-weight:700;color:var(--color-text-primary)"
-  brandName.textContent = "WorkCaptain"
-  brandRow.appendChild(brandMark)
-  brandRow.appendChild(brandName)
-  box.appendChild(brandRow)
-
-  const title = document.createElement("h1")
-  title.textContent = t("register.title")
-  box.appendChild(title)
-
-  const subtitle = document.createElement("p")
-  subtitle.className = "onboarding-subtitle"
-  subtitle.textContent = t("register.subtitle")
-  box.appendChild(subtitle)
-
-  const form = document.createElement("form")
-  form.autocomplete = "on"
-  form.addEventListener("submit", e => e.preventDefault())
-
-  const errEl = document.createElement("div")
-  errEl.className = "onboarding-err"
-  errEl.setAttribute("role", "alert")
-  errEl.setAttribute("aria-live", "polite")
-
-  const fields = [
-    { id: "reg-company",  label: t("register.companyName"), type: "text",     auto: "organization", key: "companyName" },
-    { id: "reg-email",    label: t("register.email"),       type: "email",    auto: "email",        key: "email" },
-    { id: "reg-password", label: t("register.password"),    type: "password", auto: "new-password",  key: "password" },
-    { id: "reg-confirm",  label: t("register.confirmPassword"), type: "password", auto: "new-password", key: "confirmPassword" },
-  ]
-
-  const inputs = {}
-
-  fields.forEach(f => {
-    const group = document.createElement("div")
-    group.className = "field-group"
-
-    const label = document.createElement("label")
-    label.htmlFor = f.id
-    label.textContent = f.label
-    group.appendChild(label)
-
-    const input = document.createElement("input")
-    input.type = f.type
-    input.id = f.id
-    input.name = f.key
-    input.placeholder = f.label
-    input.autocomplete = f.auto
-    input.required = true
-    group.appendChild(input)
-
-    inputs[f.key] = input
-    form.appendChild(group)
-  })
-
-  form.appendChild(errEl)
-
-  const btn = document.createElement("button")
-  btn.type = "submit"
-  btn.className = "btn btn-accent onboarding-btn"
-  btn.textContent = t("register.submit")
-
-  btn.addEventListener("click", async () => {
-    errEl.textContent = ""
-
-    const email       = (inputs.email.value || "").trim()
-    const password    = inputs.password.value || ""
-    const confirm     = inputs.confirmPassword.value || ""
-    const companyName = (inputs.companyName.value || "").trim()
-
-    if (!companyName) { errEl.textContent = t("register.err.companyRequired"); return }
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { errEl.textContent = t("register.err.emailInvalid"); return }
-    if (password.length < 8) { errEl.textContent = t("register.err.passwordShort"); return }
-    if (password !== confirm) { errEl.textContent = t("register.err.passwordMismatch"); return }
-
-    btn.disabled = true
-    btn.textContent = t("register.submitting")
-
-    try {
-      const data = await apiPostPublic("/api/auth/register", { email, password, companyName })
-      setToken(data.token)
-      try { localStorage.setItem("pw_company", data.tenant && data.tenant.name || companyName) } catch {}
-      try { localStorage.setItem("pw_tenant", data.user && data.user.tenant_id || "default") } catch {}
-      try { localStorage.setItem("pw_email", data.user && data.user.email || email) } catch {}
-      // Navigate to onboarding step 2
-      location.hash = "onboarding"
-    } catch (e) {
-      errEl.textContent = e.message || t("register.err.failed")
-      btn.disabled = false
-      btn.textContent = t("register.submit")
-    }
-  })
-
-  form.appendChild(btn)
-
-  const loginLink = document.createElement("p")
-  loginLink.className = "onboarding-link"
-  loginLink.innerHTML = `${t("register.hasAccount")} <a href="#signin">${t("register.signIn")}</a>`
-  form.appendChild(loginLink)
-
-  box.appendChild(form)
-  wrap.appendChild(box)
-  el.appendChild(wrap)
+  const note = document.createElement("p")
+  note.setAttribute("role", "status")
+  note.style.cssText = [
+    "padding: var(--maq-space-8)",
+    "text-align: center",
+    "color: var(--maq-neutral-600)",
+    "font-family: var(--maq-font-arabic), var(--maq-font-latin)",
+  ].join(";")
+  note.textContent = "Redirecting to controlled-beta access request…"
+  el.appendChild(note)
 }
 
 export default { render }
