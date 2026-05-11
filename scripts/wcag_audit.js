@@ -55,12 +55,23 @@ const AUDIT_ROUTES = [
 ];
 
 /**
- * axe-core rule configuration for WCAG 2.2 AA.
+ * axe-core RUN options for WCAG 2.2 AA.
  * Explicitly includes WCAG 2.2 criteria:
  *   - 2.4.11 Focus Appearance: focus-visible rule
  *   - 2.5.8  Target Size: target-size rule
+ *
+ * Shape note (WC-CB Day 7 fix, 2026-05-16):
+ *   This object is the `axe.run(context, options)` shape — `rules` is
+ *   an OBJECT keyed by rule id ({ 'rule-id': { enabled: true } }). It
+ *   is consumed via `AxePuppeteer.options(opts)`, NOT `.configure(spec)`.
+ *   The previous implementation chained `.configure(AXE_CONFIG)`, which
+ *   passes the same data to axe.configure() — but axe.configure() expects
+ *   spec.rules to be an ARRAY of full rule definitions (for registering
+ *   custom rules), not a keyed enable/disable map. That mismatch yielded
+ *   "Rules property must be an array" on the first route. See line 178
+ *   for the corrected `.options()` call.
  */
-const AXE_CONFIG = {
+const AXE_OPTIONS = {
   runOnly: {
     type: 'tag',
     values: [
@@ -88,6 +99,9 @@ const AXE_CONFIG = {
     'bypass':                   { enabled: true },
   },
 };
+
+// Backwards-compatible alias for callers that still reference the old name.
+const AXE_CONFIG = AXE_OPTIONS;
 
 /**
  * Impact levels that trigger exit(1) and block CI deploys.
@@ -160,10 +174,17 @@ async function runAudit() {
       // WCAG audit viewport — standard desktop
       await page.setViewport({ width: 1280, height: 800 });
 
-      // Inject CI token so app renders past login gate for auth-required routes
+      // Inject CI token so app renders past login gate for auth-required routes.
+      //
+      // FIX (WC-CB Day 7, 2026-05-16): localStorage key is `pw_token`, not
+      // `prowork_token`. See app/frontend/src/api.js:2 — getToken() reads
+      // `pw_token`. The previous wrong key meant auth-required routes
+      // silently fell through to the signin page, so axe-core would
+      // measure signin DOM for every protected route. Now corrected so
+      // the audit measures the intended route's rendered DOM.
       if (route.requiresAuth) {
         await page.evaluateOnNewDocument((token) => {
-          localStorage.setItem('prowork_token', token);
+          localStorage.setItem('pw_token', token);
         }, CI_TOKEN);
       }
 
@@ -173,8 +194,15 @@ async function runAudit() {
       await page.waitForFunction(() => document.getElementById('app') !== null, { timeout: 5000 })
         .catch(() => {}); // login page may render differently
 
-      // Run axe-core analysis
-      const results = await new axe.AxePuppeteer(page).configure(AXE_CONFIG).analyze();
+      // Run axe-core analysis.
+      //
+      // FIX (WC-CB Day 7, 2026-05-16): `.options()` not `.configure()`.
+      // AXE_OPTIONS is the `axe.run()` options shape (rules-as-object);
+      // `.configure(spec)` expects rules-as-array per axe.configure()
+      // contract. Chaining .configure(AXE_OPTIONS) triggered:
+      //   "Audit failed: Rules property must be an array"
+      // on the first route. See AXE_OPTIONS doc-comment for detail.
+      const results = await new axe.AxePuppeteer(page).options(AXE_OPTIONS).analyze();
 
       const blocking = results.violations.filter(v => BLOCKING_IMPACTS.has(v.impact));
       const nonBlocking = results.violations.filter(v => !BLOCKING_IMPACTS.has(v.impact));
@@ -283,4 +311,6 @@ if (require.main === module) {
 }
 
 // ── Export audit config for unit testing (no browser required) ──────────────
-module.exports = { AUDIT_ROUTES, AXE_CONFIG, BLOCKING_IMPACTS, BASE_URL };
+// Both AXE_OPTIONS (new name) and AXE_CONFIG (legacy alias) exported for
+// backwards-compatible require()-style introspection.
+module.exports = { AUDIT_ROUTES, AXE_OPTIONS, AXE_CONFIG, BLOCKING_IMPACTS, BASE_URL };
