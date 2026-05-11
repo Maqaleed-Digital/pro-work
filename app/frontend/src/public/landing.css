@@ -141,8 +141,14 @@ body {
   margin-block-end: var(--maq-space-4);
 }
 .wc-hero__fine-print {
+  /* Day 7 fix #3 (2026-05-16): foreground was --maq-neutral-500 (#6B7280)
+     paired with the hero's --maq-brand-primary-bg (#E7EBF1) — measured 4.04:1
+     in axe-core, below WCAG AA 4.5:1. This text is the controlled-beta
+     cohort gate copy ("Sign-in available to invited cohort members only.")
+     and must remain legible per Sponsor stricter rule. Bumped to
+     --maq-neutral-700 (#374151) — clears 4.5:1 with ~8.4:1 margin. */
   font-size: var(--maq-text-xs);
-  color: var(--maq-neutral-500);
+  color: var(--maq-neutral-700);
   margin: 0;
 }
 
@@ -238,8 +244,16 @@ body {
   margin: 0;
 }
 .wc-feature-card__note {
+  /* Day 7 fix #3 (2026-05-16): foreground was --maq-mode-d (#7A6F8A) on
+     --maq-mode-d-bg (#F0EEF5) — measured 4.08:1 in axe-core, below
+     WCAG AA 4.5:1. V1.0 anti-mutation forbids changing either token's
+     value, so text colour switched to --maq-neutral-800 (#1F2937) for
+     ~11.5:1 against the lavender bg. The Mode-D semantic remains
+     conveyed by the --maq-mode-d-bg background + italic style.
+     Do NOT revert to --maq-mode-d as the text colour without a runtime
+     contrast re-verification. */
   font-size: var(--maq-text-xs);
-  color: var(--maq-mode-d);
+  color: var(--maq-neutral-800);
   background: var(--maq-mode-d-bg);
   padding: var(--maq-space-2) var(--maq-space-3);
   border-radius: var(--maq-radius-sm);
@@ -261,10 +275,16 @@ body {
   color: var(--maq-neutral-900);
 }
 .wc-pricing__disclaimer {
+  /* Day 7 fix #3 (2026-05-16): foreground was --maq-mode-d (#7A6F8A) on
+     --maq-mode-d-bg (#F0EEF5) — measured 4.08:1 in axe-core, below
+     WCAG AA 4.5:1. Text colour switched to --maq-neutral-800 (#1F2937)
+     for ~11.5:1 against the lavender bg. The Mode-D semantic remains
+     conveyed by the 4px border-inline-start in --maq-mode-d AND the
+     lavender bg. See .wc-feature-card__note for parallel fix + rationale. */
   max-inline-size: var(--maq-container-xl);
   margin: 0 auto var(--maq-space-8);
   font-size: var(--maq-text-sm);
-  color: var(--maq-mode-d);
+  color: var(--maq-neutral-800);
   background: var(--maq-mode-d-bg);
   padding: var(--maq-space-3) var(--maq-space-4);
   border-radius: var(--maq-radius-md);
