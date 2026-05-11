@@ -86,18 +86,45 @@ export function renderModeStatusChip(opts = {}) {
   if (variant === 'block') baseStyle.push('display: flex', 'width: 100%')
 
   if (mode === 'A') {
+    // Mode-A: brand-success bg + on-success foreground (V1.1.1 §3.2
+    // verified 5.30:1 white-on---maq-mode-a). Dot inherits chip text
+    // colour and renders white on green.
     baseStyle.push('background: var(--maq-mode-a)', 'color: var(--maq-neutral-0)')
   } else {
-    baseStyle.push('background: var(--maq-mode-d-bg)', 'color: var(--maq-mode-d)', 'border: 1px solid var(--maq-mode-d)')
+    // Mode-D: lavender-bg + DARK NEUTRAL text + mode-d border.
+    //
+    // Day 7 fix #3 (2026-05-16): text foreground was --maq-mode-d
+    // (#7A6F8A) on --maq-mode-d-bg (#F0EEF5) — measured 4.08:1 in
+    // axe-core, below WCAG AA 4.5:1 (failed across all 5 feature-card
+    // chips on the apex landing). V1.0 anti-mutation forbids changing
+    // either canonical token value, so we pair the lavender bg with
+    // --maq-neutral-800 (#1F2937) for ~11.5:1 contrast. The Mode-D
+    // SEMANTIC remains conveyed by:
+    //   - the lavender background tint
+    //   - the --maq-mode-d border
+    //   - the dot indicator (explicit colour below)
+    // Do NOT revert the text colour to --maq-mode-d without a runtime
+    // axe-core contrast re-verification.
+    baseStyle.push(
+      'background: var(--maq-mode-d-bg)',
+      'color: var(--maq-neutral-800)',
+      'border: 1px solid var(--maq-mode-d)',
+    )
   }
 
   el.style.cssText = baseStyle.join(';')
 
-  // Dot indicator (decorative; meaning conveyed via text)
+  // Dot indicator (decorative; meaning conveyed via text + aria-label).
+  // Day 7 fix #3: explicit dot colour preserves the Mode-D visual
+  // identity now that the chip text colour is a dark neutral, not the
+  // mode-d hue. Mode-A's dot inherits (white on green) and remains
+  // visible at WCAG AA without an override.
   const dot = document.createElement('span')
   dot.setAttribute('aria-hidden', 'true')
   dot.textContent = '●'
-  dot.style.cssText = 'font-size: 0.6em; line-height: 1'
+  dot.style.cssText = mode === 'D'
+    ? 'font-size: 0.6em; line-height: 1; color: var(--maq-mode-d)'
+    : 'font-size: 0.6em; line-height: 1'
   el.appendChild(dot)
 
   // Label
