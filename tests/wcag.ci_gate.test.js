@@ -66,6 +66,15 @@ describe('Suite 1: route coverage — 9 spec routes', () => {
 // ── Suite 2: WCAG 2.2 criteria ────────────────────────────────────────────────
 
 describe('Suite 2: WCAG 2.2 criteria explicitly included', () => {
+  // Day 7 fix #2 (2026-05-16): suite revised to validate the tag-based
+  // filter strategy, not a manual rule whitelist. The previous
+  // assertions on AXE_CONFIG.rules[<id>].enabled were structurally
+  // satisfied while the runtime audit failed with
+  // `"unknown rule \`focus-visible\` in options.rules"` because
+  // focus-visible is not a valid axe-core rule id. Suite 5 below covers
+  // 2.4.11 (Focus Appearance) at the CSS level. WCAG 2.5.8 (target-size)
+  // is auto-included by the wcag22aa tag in axe-core 4.10+.
+
   it('wcag22aa tag is in runOnly values', () => {
     const tags = AXE_CONFIG.runOnly.values;
     assert.ok(tags.includes('wcag22aa'), 'wcag22aa tag required for WCAG 2.2 coverage');
@@ -81,31 +90,22 @@ describe('Suite 2: WCAG 2.2 criteria explicitly included', () => {
     assert.ok(tags.includes('wcag21aa'), 'wcag21aa tag required');
   });
 
-  it('2.4.11 Focus Appearance: focus-visible rule explicitly enabled', () => {
+  it('wcag2a tag is included for A-level rules whose violation blocks AA', () => {
+    const tags = AXE_CONFIG.runOnly.values;
+    assert.ok(tags.includes('wcag2a'), 'wcag2a tag required');
+  });
+
+  it('NO manual rules whitelist — tag-based filter is the contract', () => {
+    // The previous whitelist included `focus-visible`, which is not a
+    // real axe-core rule and caused runtime failure. Day 7 strategy:
+    // rely on tag-based default ruleset (covers all WCAG 2.2 AA rules
+    // via wcag22aa + wcag21aa + wcag2aa). Any reintroduction of a
+    // hand-written `rules` whitelist needs explicit Sponsor approval +
+    // a runtime smoke test before merging.
     assert.equal(
-      AXE_CONFIG.rules['focus-visible']?.enabled, true,
-      'focus-visible rule must be explicitly enabled (WCAG 2.4.11)',
+      AXE_CONFIG.rules, undefined,
+      'AXE_OPTIONS must NOT carry a manual rules whitelist; use tags only',
     );
-  });
-
-  it('2.5.8 Target Size: target-size rule explicitly enabled', () => {
-    assert.equal(
-      AXE_CONFIG.rules['target-size']?.enabled, true,
-      'target-size rule must be explicitly enabled (WCAG 2.5.8)',
-    );
-  });
-
-  it('color-contrast rule is enabled', () => {
-    assert.equal(AXE_CONFIG.rules['color-contrast']?.enabled, true);
-  });
-
-  it('label rule is enabled (catches missing form labels)', () => {
-    assert.equal(AXE_CONFIG.rules['label']?.enabled, true);
-  });
-
-  it('skip-link / bypass rule is enabled (WCAG 2.4.1)', () => {
-    const bypassEnabled = AXE_CONFIG.rules['bypass']?.enabled || AXE_CONFIG.rules['skip-link']?.enabled;
-    assert.ok(bypassEnabled, 'bypass or skip-link rule must be enabled');
   });
 });
 
