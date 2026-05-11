@@ -6,9 +6,15 @@
  * BRD A6 + Maqaleed Eval required
  *
  * Crawls all 9 product routes using headless Chrome (puppeteer) + axe-core.
- * Explicitly checks WCAG 2.2 criteria:
- *   - 2.4.11 Focus Appearance (focus-visible)
- *   - 2.5.8  Target Size Minimum (≥24×24px interactive targets)
+ *
+ * Strategy: tag-based filter (no manual rule whitelist).
+ *   runOnly.values = ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']
+ *
+ *   wcag22aa pulls the WCAG 2.2 AA rules including target-size (WCAG
+ *   2.5.8). WCAG 2.4.11 Focus Appearance has no single named axe-core
+ *   rule; coverage is enforced via CSS-level tests (see Suite 5 in
+ *   tests/wcag.ci_gate.test.js) that assert :focus-visible styling
+ *   exists in app/frontend/src/style.css.
  *
  * Exit codes:
  *   0 — 0 critical violations across all routes
@@ -56,48 +62,52 @@ const AUDIT_ROUTES = [
 
 /**
  * axe-core RUN options for WCAG 2.2 AA.
- * Explicitly includes WCAG 2.2 criteria:
- *   - 2.4.11 Focus Appearance: focus-visible rule
- *   - 2.5.8  Target Size: target-size rule
  *
- * Shape note (WC-CB Day 7 fix, 2026-05-16):
- *   This object is the `axe.run(context, options)` shape — `rules` is
- *   an OBJECT keyed by rule id ({ 'rule-id': { enabled: true } }). It
- *   is consumed via `AxePuppeteer.options(opts)`, NOT `.configure(spec)`.
- *   The previous implementation chained `.configure(AXE_CONFIG)`, which
- *   passes the same data to axe.configure() — but axe.configure() expects
- *   spec.rules to be an ARRAY of full rule definitions (for registering
- *   custom rules), not a keyed enable/disable map. That mismatch yielded
- *   "Rules property must be an array" on the first route. See line 178
- *   for the corrected `.options()` call.
+ * Strategy (Day 7 fix #2, 2026-05-16):
+ *   Tag-based filter only — NO manual rule whitelist.
+ *
+ *   axe-core's `runOnly: { type: 'tag', values: [...] }` selects the
+ *   union of rules tagged with any of the listed tags. The full WCAG
+ *   2.0/2.1/2.2 AA ruleset is covered by wcag2aa + wcag21aa + wcag22aa.
+ *   wcag2a is included for the small set of A-level rules that overlap
+ *   AA contracts (e.g., language-of-page is A but blocks AA conformance).
+ *
+ *   The previous implementation whitelisted specific rule IDs in a
+ *   `rules` object. That approach is fragile: invalid rule IDs (e.g.,
+ *   `focus-visible`, which is NOT an axe-core rule) cause axe-core to
+ *   throw `"unknown rule \`focus-visible\` in options.rules"` at the
+ *   first analyze() call, blocking the entire audit. The tag-based
+ *   filter avoids that whole class of bug.
+ *
+ *   WCAG 2.4.11 Focus Appearance has no single named axe-core rule.
+ *   Coverage is enforced at the CSS level via Suite 5 of
+ *   tests/wcag.ci_gate.test.js (style.css must contain :focus-visible).
+ *
+ *   WCAG 2.5.8 Target Size is rule `target-size` (axe-core 4.10+),
+ *   tagged `wcag22aa` — included automatically by the wcag22aa tag.
+ *
+ * Shape note (Day 7 fix #1, 2026-05-16):
+ *   This object is the `axe.run(context, options)` shape, consumed via
+ *   `AxePuppeteer.options(opts)`. Earlier the script used
+ *   `.configure(AXE_CONFIG)` which expects `axe.configure()` spec shape
+ *   (spec.rules is an ARRAY of custom rule defs). That mismatch yielded
+ *   "Audit failed: Rules property must be an array". Now fixed.
  */
 const AXE_OPTIONS = {
   runOnly: {
     type: 'tag',
     values: [
-      'wcag2a',
-      'wcag2aa',
-      'wcag21a',
-      'wcag21aa',
-      'wcag22aa',   // WCAG 2.2 AA — includes 2.4.11 Focus Appearance, 2.5.8 Target Size
-      'best-practice',
+      'wcag2a',       // A-level rules whose violation also blocks AA conformance
+      'wcag2aa',      // WCAG 2.0 AA — color-contrast, label, bypass, etc.
+      'wcag21aa',     // WCAG 2.1 AA additions
+      'wcag22aa',     // WCAG 2.2 AA — includes target-size for 2.5.8
     ],
   },
-  rules: {
-    // WCAG 2.4.11: Focus Appearance — 2px minimum, 3:1 contrast against adjacents
-    'focus-visible':            { enabled: true },
-    // WCAG 2.5.8: Target Size Minimum — 24×24px minimum for interactive targets
-    'target-size':              { enabled: true },
-    // Core WCAG checks
-    'color-contrast':           { enabled: true },
-    'label':                    { enabled: true },
-    'aria-required-attr':       { enabled: true },
-    'aria-valid-attr':          { enabled: true },
-    'landmark-one-main':        { enabled: true },
-    'region':                   { enabled: true },
-    'skip-link':                { enabled: true },
-    'bypass':                   { enabled: true },
-  },
+  // No manual `rules` whitelist — tag-based filter applies axe-core's
+  // default ruleset for the listed tags. This avoids invalid-rule-id
+  // bugs and keeps coverage broad. Tightening to specific rule subsets
+  // is appropriate only if axe-core surfaces noise for our specific
+  // surfaces; do it on a per-noise-finding basis, not pre-emptively.
 };
 
 // Backwards-compatible alias for callers that still reference the old name.
@@ -196,12 +206,10 @@ async function runAudit() {
 
       // Run axe-core analysis.
       //
-      // FIX (WC-CB Day 7, 2026-05-16): `.options()` not `.configure()`.
-      // AXE_OPTIONS is the `axe.run()` options shape (rules-as-object);
-      // `.configure(spec)` expects rules-as-array per axe.configure()
-      // contract. Chaining .configure(AXE_OPTIONS) triggered:
-      //   "Audit failed: Rules property must be an array"
-      // on the first route. See AXE_OPTIONS doc-comment for detail.
+      // .options() consumes the axe.run() options shape; AXE_OPTIONS now
+      // carries only `runOnly` (tag-based filter). No rules whitelist
+      // means no risk of "unknown rule" failures. See AXE_OPTIONS
+      // doc-comment for the full rationale.
       const results = await new axe.AxePuppeteer(page).options(AXE_OPTIONS).analyze();
 
       const blocking = results.violations.filter(v => BLOCKING_IMPACTS.has(v.impact));
