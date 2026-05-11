@@ -30,6 +30,8 @@ const NAV_SECTIONS = [
       { key: "saudisation",      label: "Saudisation",      icon: "\u{1F30D}" },
       { key: "payroll",          label: "Payroll",          icon: "\u{1F4B5}" },
       { key: "compliance",       label: "Compliance",       icon: "\u{1F6E1}" },
+      // WC-CB Day 6 (brief \u00a76) \u2014 trust surfaces (audit / consent / export / residency).
+      { key: "trust",            label: "Trust",            icon: "\u{1F6E1}\ufe0f" },
       { key: "ai",               label: "AI Control",       icon: "\u2728",    badge: () => _aiPendingCount },
     ]
   },

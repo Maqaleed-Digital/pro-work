@@ -26,6 +26,7 @@ import settings           from "./pages/settings.js"
 import employees          from "./pages/employees.js"
 import saudisation        from "./pages/saudisation.js"
 import payroll            from "./pages/payroll.js"
+import trust              from "./pages/trust.js"
 import postRole         from "./pages/post_role.js"
 import candidates       from "./pages/candidates.js"
 import offerBuilder     from "./pages/offer_builder.js"
@@ -82,6 +83,7 @@ const ROUTES = {
   "employees":            employees,            // WC-CB Day 5 — brief §3.2
   "saudisation":          saudisation,          // WC-CB Day 5 — brief §3.3
   "payroll":              payroll,              // WC-CB Day 5 — brief §3.4
+  "trust":                trust,                // WC-CB Day 6 — brief §6
   "post-role":        postRole,
   "candidates":       candidates,
   "offer-builder":    offerBuilder,

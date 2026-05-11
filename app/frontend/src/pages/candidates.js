@@ -3,14 +3,14 @@ import { apiGet, apiPost, apiPatch } from "../api.js"
 import { t } from "../locale.js"
 
 const COLUMNS = [
-  { key: "APPLIED",      labelKey: "candidates.col.applied",      color: "var(--color-info)" },
-  { key: "SCREENING",    labelKey: "candidates.col.screening",    color: "var(--color-warning)" },
-  { key: "SHORTLISTED",  labelKey: "candidates.col.shortlisted",  color: "var(--color-accent)" },
-  { key: "INTERVIEWED",  labelKey: "candidates.col.interviewed",  color: "var(--zone-medium-green)" },
-  { key: "OFFERED",      labelKey: "candidates.col.offered",      color: "var(--zone-platinum)" },
-  { key: "HIRED",        labelKey: "candidates.col.hired",        color: "var(--color-success)" },
-  { key: "REJECTED",     labelKey: "candidates.col.rejected",     color: "var(--color-danger)" },
-  { key: "WITHDRAWN",    labelKey: "candidates.col.withdrawn",    color: "var(--color-text-muted)" },
+  { key: "APPLIED",      labelKey: "candidates.col.applied",      color: "var(--maq-semantic-info)" },
+  { key: "SCREENING",    labelKey: "candidates.col.screening",    color: "var(--maq-semantic-warning)" },
+  { key: "SHORTLISTED",  labelKey: "candidates.col.shortlisted",  color: "var(--maq-brand-accent)" },
+  { key: "INTERVIEWED",  labelKey: "candidates.col.interviewed",  color: "var(--maq-wc-zone-medium-green)" },
+  { key: "OFFERED",      labelKey: "candidates.col.offered",      color: "var(--maq-wc-zone-platinum)" },
+  { key: "HIRED",        labelKey: "candidates.col.hired",        color: "var(--maq-semantic-success)" },
+  { key: "REJECTED",     labelKey: "candidates.col.rejected",     color: "var(--maq-semantic-danger)" },
+  { key: "WITHDRAWN",    labelKey: "candidates.col.withdrawn",    color: "var(--maq-neutral-400)" },
 ]
 
 const TRANSITIONS = {
@@ -61,7 +61,7 @@ async function render(el) {
 
   const reqSelect = document.createElement("select")
   reqSelect.className = "field-group"
-  reqSelect.style.cssText = "padding:8px 12px;border:1px solid var(--color-border);border-radius:var(--radius-md);font-size:var(--text-sm);min-width:200px"
+  reqSelect.style.cssText = "padding:8px 12px;border:1px solid var(--maq-neutral-200);border-radius:var(--maq-radius-md);font-size:var(--maq-text-sm);min-width:200px"
   const emptyOpt = document.createElement("option")
   emptyOpt.value = ""
   emptyOpt.textContent = "— " + t("candidates.selectRequisition") + " —"
@@ -109,16 +109,16 @@ async function render(el) {
   const board = document.createElement("div")
   board.id = "kanban-board"
   board.className = "kanban-board"
-  board.style.cssText = "display:flex;gap:var(--space-1);overflow-x:auto;padding-bottom:var(--space-2);min-height:400px"
+  board.style.cssText = "display:flex;gap:var(--maq-space-2);overflow-x:auto;padding-bottom:var(--maq-space-4);min-height:400px"
 
   COLUMNS.forEach(col => {
     const column = document.createElement("div")
     column.className = "kanban-column"
     column.dataset.status = col.key
-    column.style.cssText = "min-width:180px;flex:1;background:var(--color-surface);border-radius:var(--radius-md);padding:var(--space-1)"
+    column.style.cssText = "min-width:180px;flex:1;background:var(--maq-neutral-50);border-radius:var(--maq-radius-md);padding:var(--maq-space-2)"
 
     const colHeader = document.createElement("div")
-    colHeader.style.cssText = "font-size:var(--text-xs);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;padding:var(--space-0) var(--space-1);margin-bottom:var(--space-1);display:flex;align-items:center;gap:6px"
+    colHeader.style.cssText = "font-size:var(--maq-text-xs);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;padding:var(--maq-space-1) var(--maq-space-2);margin-bottom:var(--maq-space-2);display:flex;align-items:center;gap:6px"
     const dot = document.createElement("span")
     dot.style.cssText = "width:8px;height:8px;border-radius:50%;background:" + col.color
     colHeader.appendChild(dot)
@@ -127,7 +127,7 @@ async function render(el) {
     const countBadge = document.createElement("span")
     countBadge.className = "kanban-count"
     countBadge.dataset.status = col.key
-    countBadge.style.cssText = "font-size:10px;color:var(--color-text-muted);margin-left:auto"
+    countBadge.style.cssText = "font-size:10px;color:var(--maq-neutral-400);margin-left:auto"
     colHeader.appendChild(countBadge)
 
     column.appendChild(colHeader)
@@ -135,7 +135,7 @@ async function render(el) {
     const cardContainer = document.createElement("div")
     cardContainer.className = "kanban-cards"
     cardContainer.dataset.status = col.key
-    cardContainer.style.cssText = "display:flex;flex-direction:column;gap:var(--space-0);min-height:60px"
+    cardContainer.style.cssText = "display:flex;flex-direction:column;gap:var(--maq-space-1);min-height:60px"
 
     // Drop target
     cardContainer.addEventListener("dragover", e => {
@@ -211,7 +211,7 @@ async function loadPipeline(content) {
     if (board) {
       const empty = document.createElement("div")
       empty.className = "empty-state"
-      empty.style.cssText = "grid-column:1/-1;text-align:center;padding:var(--space-6)"
+      empty.style.cssText = "grid-column:1/-1;text-align:center;padding:var(--maq-space-12)"
       empty.textContent = t("candidates.noApplications")
       board.appendChild(empty)
     }
@@ -221,7 +221,7 @@ async function loadPipeline(content) {
 function renderCard(app, content) {
   const card = document.createElement("div")
   card.className = "wc-card kanban-card"
-  card.style.cssText = "padding:var(--space-1);cursor:grab;font-size:var(--text-sm)"
+  card.style.cssText = "padding:var(--maq-space-2);cursor:grab;font-size:var(--maq-text-sm)"
   card.draggable = true
   card.dataset.appId = app.id
 
@@ -279,7 +279,7 @@ async function toggleDetail(card, app, content) {
 
   const detail = document.createElement("div")
   detail.className = "kanban-card-detail"
-  detail.style.cssText = "margin-top:var(--space-1);padding-top:var(--space-1);border-top:1px solid var(--color-border);font-size:var(--text-xs)"
+  detail.style.cssText = "margin-top:var(--maq-space-2);padding-top:var(--maq-space-2);border-top:1px solid var(--maq-neutral-200);font-size:var(--maq-text-xs)"
 
   // Load recommendation detail if AI-matched
   if (app.ai_recommendation_log_id) {
@@ -289,32 +289,32 @@ async function toggleDetail(card, app, content) {
       const rationale = snapshot.rationale || {}
 
       const sigTitle = document.createElement("div")
-      sigTitle.style.cssText = "font-weight:600;margin-bottom:2px;color:var(--color-text-secondary)"
+      sigTitle.style.cssText = "font-weight:600;margin-bottom:2px;color:var(--maq-neutral-600)"
       sigTitle.textContent = t("candidates.signals")
       detail.appendChild(sigTitle)
 
       if (rationale.top_contributing_signals) {
         rationale.top_contributing_signals.forEach(s => {
           const sig = document.createElement("div")
-          sig.style.cssText = "color:var(--color-text-muted);padding-left:var(--space-1)"
+          sig.style.cssText = "color:var(--maq-neutral-400);padding-left:var(--maq-space-2)"
           sig.textContent = s.signal + ": " + s.value + " (w=" + s.weight + ")"
           detail.appendChild(sig)
         })
       }
 
       const confLine = document.createElement("div")
-      confLine.style.cssText = "margin-top:4px;color:var(--color-text-muted)"
+      confLine.style.cssText = "margin-top:4px;color:var(--maq-neutral-400)"
       confLine.textContent = t("candidates.confidence") + ": " + rec.confidence_score + " | " + t("candidates.biasScore") + ": " + rec.bias_score
       detail.appendChild(confLine)
 
       if (rationale.concerns && rationale.concerns.length) {
         const cTitle = document.createElement("div")
-        cTitle.style.cssText = "font-weight:600;margin-top:4px;color:var(--color-warning)"
+        cTitle.style.cssText = "font-weight:600;margin-top:4px;color:var(--maq-semantic-warning)"
         cTitle.textContent = t("candidates.concerns")
         detail.appendChild(cTitle)
         rationale.concerns.forEach(c => {
           const cl = document.createElement("div")
-          cl.style.cssText = "color:var(--color-text-muted);padding-left:var(--space-1)"
+          cl.style.cssText = "color:var(--maq-neutral-400);padding-left:var(--maq-space-2)"
           cl.textContent = c
           detail.appendChild(cl)
         })
@@ -328,12 +328,12 @@ async function toggleDetail(card, app, content) {
     const events = (tl.events || []).slice(-3)
     if (events.length) {
       const tlTitle = document.createElement("div")
-      tlTitle.style.cssText = "font-weight:600;margin-top:6px;color:var(--color-text-secondary)"
+      tlTitle.style.cssText = "font-weight:600;margin-top:6px;color:var(--maq-neutral-600)"
       tlTitle.textContent = t("candidates.timeline")
       detail.appendChild(tlTitle)
       events.forEach(ev => {
         const evLine = document.createElement("div")
-        evLine.style.cssText = "color:var(--color-text-muted);padding-left:var(--space-1)"
+        evLine.style.cssText = "color:var(--maq-neutral-400);padding-left:var(--maq-space-2)"
         evLine.textContent = (ev.previous_status || "—") + " → " + ev.new_status + " (" + ev.actor_type + ")"
         detail.appendChild(evLine)
       })
@@ -349,15 +349,15 @@ function showRejectModal(content, appId) {
 
   const modal = document.createElement("div")
   modal.className = "wc-card"
-  modal.style.cssText = "width:400px;max-width:90vw;padding:var(--space-3)"
+  modal.style.cssText = "width:400px;max-width:90vw;padding:var(--maq-space-6)"
 
   const title = document.createElement("h3")
-  title.style.cssText = "margin-bottom:var(--space-2)"
+  title.style.cssText = "margin-bottom:var(--maq-space-4)"
   title.textContent = t("candidates.rejectReason")
   modal.appendChild(title)
 
   const textarea = document.createElement("textarea")
-  textarea.style.cssText = "width:100%;min-height:80px;padding:8px;border:1px solid var(--color-border);border-radius:var(--radius-md);font-family:inherit;font-size:var(--text-sm);resize:vertical"
+  textarea.style.cssText = "width:100%;min-height:80px;padding:8px;border:1px solid var(--maq-neutral-200);border-radius:var(--maq-radius-md);font-family:inherit;font-size:var(--maq-text-sm);resize:vertical"
   modal.appendChild(textarea)
 
   const errEl = document.createElement("div")
@@ -365,7 +365,7 @@ function showRejectModal(content, appId) {
   modal.appendChild(errEl)
 
   const btnRow = document.createElement("div")
-  btnRow.style.cssText = "display:flex;gap:var(--space-1);justify-content:flex-end;margin-top:var(--space-2)"
+  btnRow.style.cssText = "display:flex;gap:var(--maq-space-2);justify-content:flex-end;margin-top:var(--maq-space-4)"
 
   const cancelBtn = document.createElement("button")
   cancelBtn.className = "btn btn-secondary btn-sm"
@@ -401,18 +401,18 @@ function renderDrawer(content, rankData) {
 
   const drawer = document.createElement("div")
   drawer.id = "ai-drawer"
-  drawer.style.cssText = "position:fixed;top:0;right:0;bottom:0;width:400px;max-width:90vw;background:var(--color-surface-raised);box-shadow:var(--shadow-xl);z-index:100;overflow-y:auto;padding:var(--space-3)"
+  drawer.style.cssText = "position:fixed;top:0;right:0;bottom:0;width:400px;max-width:90vw;background:var(--maq-neutral-0);box-shadow:var(--maq-elevation-xl);z-index:100;overflow-y:auto;padding:var(--maq-space-6)"
 
   const closeBtn = document.createElement("button")
   closeBtn.className = "btn btn-secondary btn-sm"
   closeBtn.textContent = "\u2715"
-  closeBtn.style.cssText = "position:absolute;top:var(--space-2);right:var(--space-2)"
+  closeBtn.style.cssText = "position:absolute;top:var(--maq-space-4);right:var(--maq-space-4)"
   closeBtn.addEventListener("click", () => drawer.remove())
   drawer.appendChild(closeBtn)
 
   const title = document.createElement("h3")
   title.textContent = t("candidates.drawerTitle")
-  title.style.cssText = "margin-bottom:var(--space-2)"
+  title.style.cssText = "margin-bottom:var(--maq-space-4)"
   drawer.appendChild(title)
 
   const candidates = rankData.ranked_candidates || []
@@ -423,7 +423,7 @@ function renderDrawer(content, rankData) {
   candidates.forEach(c => {
     const item = document.createElement("div")
     item.className = "wc-card"
-    item.style.cssText = "margin-bottom:var(--space-1);padding:var(--space-2)"
+    item.style.cssText = "margin-bottom:var(--maq-space-2);padding:var(--maq-space-4)"
 
     const nameEl = document.createElement("div")
     nameEl.style.cssText = "font-weight:600"
@@ -431,7 +431,7 @@ function renderDrawer(content, rankData) {
     item.appendChild(nameEl)
 
     const scoreEl = document.createElement("div")
-    scoreEl.style.cssText = "font-size:var(--text-sm);color:var(--color-text-muted)"
+    scoreEl.style.cssText = "font-size:var(--maq-text-sm);color:var(--maq-neutral-400)"
     scoreEl.textContent = t("candidates.matchScore") + ": " + c.match_score + "% | " + t("candidates.confidence") + ": " + c.match_confidence
     item.appendChild(scoreEl)
 
@@ -442,7 +442,7 @@ function renderDrawer(content, rankData) {
     item.appendChild(recBadge)
 
     const btnRow = document.createElement("div")
-    btnRow.style.cssText = "display:flex;gap:var(--space-0);margin-top:var(--space-1)"
+    btnRow.style.cssText = "display:flex;gap:var(--maq-space-1);margin-top:var(--maq-space-2)"
 
     const approveBtn = document.createElement("button")
     approveBtn.className = "btn btn-accent btn-sm"
