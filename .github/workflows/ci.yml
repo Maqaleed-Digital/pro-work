@@ -105,13 +105,13 @@ jobs:
         run: npm ci
         # puppeteer auto-downloads Chromium on install
 
+      - name: Setup frontend preview deps
+        run: cd app/frontend && npm ci
+
       - name: Build frontend
         # WCAG audit runs against the BUILT frontend, not source — catches
         # any build-time transformation issues that affect accessibility
         run: npm run build:ui
-
-      - name: Setup frontend preview deps
-        run: cd app/frontend && npm ci
 
       - name: Start vite preview server
         run: |
@@ -172,12 +172,12 @@ jobs:
       - name: Install root deps
         run: npm ci
 
+      - name: Setup frontend preview deps
+        run: cd app/frontend && npm ci
+
       - name: Build frontend
         # CWV audit runs against BUILT bundle — bundle size determines estimated LCP
         run: npm run build:ui
-
-      - name: Setup frontend preview deps
-        run: cd app/frontend && npm ci
 
       - name: Start vite preview server
         run: |
