@@ -25,10 +25,11 @@ const NAV_SECTIONS = [
     label: null, // primary — no label
     items: [
       { key: "dashboard",        label: "Dashboard",        icon: "\u2302" },
-      { key: "workers",          label: "Workers",          icon: "\u{1F465}" },
-      { key: "post-role",       label: "Post a Role",      icon: "\u{1F4DD}" },
-      { key: "candidates",      label: "Candidates",       icon: "\u{1F464}" },
-      { key: "governance",       label: "Compliance",       icon: "\u{1F6E1}" },
+      // WC-CB Day 5 (brief \u00a73.2-\u00a73.5) \u2014 customer-facing module routes.
+      { key: "employees",        label: "Employees",        icon: "\u{1F465}" },
+      { key: "saudisation",      label: "Saudisation",      icon: "\u{1F30D}" },
+      { key: "payroll",          label: "Payroll",          icon: "\u{1F4B5}" },
+      { key: "compliance",       label: "Compliance",       icon: "\u{1F6E1}" },
       { key: "ai",               label: "AI Control",       icon: "\u2728",    badge: () => _aiPendingCount },
     ]
   },
