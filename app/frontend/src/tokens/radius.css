@@ -1,0 +1,31 @@
+/*
+ * Maqaleed Design Tokens — Radius
+ * Per UX-G1-TOKENS-V1.1.1 §3.5 (additive amendment, DL-PENDING-CONFIRMATION-G1)
+ *
+ * Four-step typographic-scale-aligned series consistent with V1.0
+ * spacing scale's 4px base unit. Specified values 4 / 8 / 12 / 16 px
+ * are BINDING per V1.1.1 §3.5 (not "indicative").
+ *
+ * RTL: rounding symmetry on inline-axis edges preserved by browser
+ * direction resolution; tokens are direction-neutral.
+ *
+ * SEMANTIC BOUNDARY (V1.1.1 amendment 2, binding): radius communicates
+ * grouping and containment semantics only. Radius does NOT encode risk
+ * classification, legal severity, or evidentiary weighting. Where risk
+ * or severity must be expressed, colour semantics
+ * (semantic-success / -warning / -danger / -info), telemetry tier
+ * classification, or higher-order runtime policy govern that — not
+ * radius choice. Component authors must not select rounded-maq-xl as
+ * a substitute for danger-state expression, and must not infer risk
+ * classification from a peer component's radius value.
+ */
+
+:root {
+  /* ============================================================
+   * §1 — Radius tokens (binding values per V1.1.1 §3.5)
+   * ============================================================ */
+  --maq-radius-sm: 4px;     /* chips, badges, inline pills */
+  --maq-radius-md: 8px;     /* buttons, inputs, cards */
+  --maq-radius-lg: 12px;    /* modals, prominent panels */
+  --maq-radius-xl: 16px;    /* hero containers, full-bleed surfaces */
+}

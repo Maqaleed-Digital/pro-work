@@ -1,0 +1,35 @@
+/*
+ * Maqaleed Design Tokens — Nitaqat Zone palette (WC-LOCAL additive layer)
+ *
+ * NOT part of canonical UX-G1-TOKENS V1.1.1. WC-specific colour family
+ * representing Saudi Nitaqat compliance zones (Platinum / High Green /
+ * Medium Green / Low Green / Yellow / Red).
+ *
+ * Namespace: --maq-wc-zone-* — the `wc-` segment signals
+ * WorkCaptain-local-only consumption to future portfolio extraction work.
+ *
+ * Rationale (per PROPOSAL §5.3): the Nitaqat zone concept is workforce-
+ * domain-specific and not yet validated as portfolio-useful. During the
+ * Constitutional Launch Window (D15→D15+41), no G1 amendment is
+ * authorised; this additive layer satisfies the surface need without
+ * mutating canonical G1.
+ *
+ * Post-D15+41 disposition (per tokens/HEADER.md):
+ *   (a) promote to canonical G1 if Crédito / Società / S2PPRO / VetiCare
+ *       reuse the zone palette concept, OR
+ *   (b) retain as WC-local under shared-package consumption model.
+ *
+ * WCAG: hex values inherited from the S42 design-system. AA contrast
+ * verified against --maq-neutral-0 (white) backgrounds. Surfaces using
+ * these as fills must pair with white text or the appropriate dark-text
+ * neutral per the existing zone-chip pattern.
+ */
+
+:root {
+  --maq-wc-zone-platinum:     #7C3AED;
+  --maq-wc-zone-high-green:   #059669;
+  --maq-wc-zone-medium-green: #16A34A;
+  --maq-wc-zone-low-green:    #65A30D;
+  --maq-wc-zone-yellow:       #D97706;
+  --maq-wc-zone-red:          #DC2626;
+}
