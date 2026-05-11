@@ -14,7 +14,6 @@ data/tenants/
 # Node artifacts
 node_modules/
 npm-debug.log*
-package-lock.json
 
 # OS / editor noise
 .DS_Store
