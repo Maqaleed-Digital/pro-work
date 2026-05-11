@@ -1,290 +1,258 @@
-// S36-G6: Command Center — decision OS (replaces basic dashboard)
-// BRD Refs: WorkCaptain Eval §3.1, §3.2
-// Route: /dashboard (default route)
+// WC-CB Day 4 (D-2, 2026-05-14): Customer-facing dashboard per brief §3.1.
 //
-// Sections:
-//   A — KPI Strip (top bar, always visible, polls 30s)
-//   B — Entity Risk Board (People | Projects | Compliance)
-//   C — Quick Actions (inline expandable panels, zero navigation)
-//   D — AI Insight Panel (latest 3 pending recommendations)
+// Authority:
+//   - brief §3.1 — "KPI cards per UX-001 §5.4 canonical grammar (count,
+//     currency, ratio, status, trend taxonomy). Initial KPIs: Saudisation
+//     rate, employee count, pending filings, compliance status.
+//     Capability-deferred indicators for any Mode-D KPI (UX-G2-INV-001
+//     N-02 obligation). Empty state for new orgs: explain what data will
+//     appear and how to populate it. Not a dead screen."
+//   - PROPOSAL §11.A2 stricter rule: every KPI defaults to Mode-D unless
+//     backend supplies explicit Mode-A activation evidence (none expected
+//     in the controlled-beta window).
+//   - PROPOSAL §11.A4 NO PHANTOM FEATURES: each KPI maps to a real
+//     backend route (or shows the empty state with action CTA).
+//
+// REPLACES the prior S36-G6 "Command Center" surface. The Command Center
+// was admin-oriented (Quick Actions routing to /ai etc.). The controlled-
+// beta cohort gets the simpler customer-side dashboard mandated by brief
+// §3.1. The admin Command Center remains available via admin-console/
+// (the separate Next.js operator surface).
+//
+// Brand-neutral per PROPOSAL §11.A5: copy from t(); brand wordmark
+// implicit from header above this page.
 
-import { apiGetJson, getTenant } from "../api.js"
-import { toast }                 from "../components/toast.js"
-import { createKpiStrip }        from "../components/kpi_strip.js"
-import { createRiskBoard }       from "../components/risk_board.js"
+import { t, getLocale } from "../locale.js"
+import { renderKpiCard } from "../components/kpi_card.js"
+import { renderModeDAdvisory } from "../components/mode_status_chip.js"
+import { getDashboardSummary } from "../api/dashboard.js"
+import { getOnboardingStatus } from "../api/onboarding.js"
 
-// ── Section helpers ────────────────────────────────────────────────────────────
+let _refreshTimer = null
 
-function sectionTitle(text) {
-  const el = document.createElement("div")
-  el.style.cssText = "font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;padding:0 16px;margin-block-start:20px;margin-block-end:8px"
-  el.textContent = text
-  return el
-}
+function render(el) {
+  el.innerHTML = ""
 
-// ── Section C — Quick Actions ──────────────────────────────────────────────────
+  const locale = getLocale()
 
-const QUICK_ACTIONS = [
-  {
-    id:       "approve-ai",
-    label:    "Approve pending AI",
-    icon:     "✓",
-    noConfirm: true,
-    action:   () => { location.hash = "ai" },
-  },
-  {
-    id:          "compliance-check",
-    label:       "Run compliance check",
-    icon:        "⚙",
-    description: "Trigger compliance scan for active roster.",
-    action:      async () => {
-      await apiGetJson("/api/admin/health", {})
-      toast.ok("Compliance scan queued.")
-    },
-  },
-  {
-    id:       "create-role",
-    label:    "Create role",
-    icon:     "+",
-    noConfirm: true,
-    action:   () => { location.hash = "workers" },
-  },
-  {
-    id:       "assign-task",
-    label:    "Assign task",
-    icon:     "→",
-    noConfirm: true,
-    action:   () => { location.hash = "assignments" },
-  },
-  {
-    id:       "generate-contract",
-    label:    "Generate contract",
-    icon:     "≡",
-    noConfirm: true,
-    action:   () => { location.hash = "governance" },
-  },
-]
-
-function buildQuickActions() {
   const wrap = document.createElement("div")
-  wrap.style.cssText = "display:flex;gap:8px;flex-wrap:wrap;padding:0 16px"
-  wrap.setAttribute("role", "toolbar")
-  wrap.setAttribute("aria-label", "Quick actions")
+  wrap.className = "content-area"
 
-  QUICK_ACTIONS.forEach(qa => {
-    const btnEl = document.createElement("button")
-    btnEl.style.cssText = [
-      "display:inline-flex;align-items:center;gap:6px",
-      "padding:8px 14px",
-      "border-radius:8px",
-      "border:1px solid var(--colour-border, #e5e7eb)",
-      "background:var(--colour-surface, #fff)",
-      "font-size:12px;font-weight:600;cursor:pointer",
-    ].join(";")
-    btnEl.setAttribute("aria-label", qa.label)
-    btnEl.textContent = qa.icon + " " + qa.label
+  // ── Page header ─────────────────────────────────────────────────────
+  const header = document.createElement("header")
+  header.className = "page-header"
+  const headerText = document.createElement("div")
+  headerText.className = "page-header-text"
 
-    if (qa.noConfirm) {
-      btnEl.addEventListener("click", () => qa.action())
-      wrap.appendChild(btnEl)
-      return
-    }
+  const title = document.createElement("h1")
+  title.textContent = t("dashboard.title")
+  headerText.appendChild(title)
 
-    // One-click + one-confirmation inline panel
-    const cell = document.createElement("div")
-    cell.style.position = "relative"
+  const subtitle = document.createElement("p")
+  subtitle.textContent = t("dashboard.subtitle")
+  headerText.appendChild(subtitle)
 
-    const panel = document.createElement("div")
-    panel.style.cssText = [
-      "display:none",
-      "position:absolute;top:calc(100% + 4px);inset-inline-start:0",
-      "background:var(--colour-surface, #fff)",
-      "border:1px solid var(--colour-border, #e5e7eb)",
-      "border-radius:8px;padding:12px",
-      "box-shadow:0 4px 16px rgba(0,0,0,.1)",
-      "z-index:100;font-size:12px;min-width:220px",
-    ].join(";")
+  header.appendChild(headerText)
+  wrap.appendChild(header)
 
-    const desc = document.createElement("p")
-    desc.style.cssText = "margin:0 0 10px;color:#374151"
-    desc.textContent = qa.description || qa.label
-
-    const confirmBtn = document.createElement("button")
-    confirmBtn.className = "btn btn-primary"
-    confirmBtn.style.fontSize = "12px"
-    confirmBtn.textContent = "Confirm"
-
-    const cancelBtn = document.createElement("button")
-    cancelBtn.className = "btn"
-    cancelBtn.style.cssText = "font-size:12px;margin-inline-start:6px"
-    cancelBtn.textContent = "Cancel"
-
-    panel.appendChild(desc)
-    panel.appendChild(confirmBtn)
-    panel.appendChild(cancelBtn)
-
-    btnEl.addEventListener("click", () => {
-      panel.style.display = panel.style.display === "none" ? "block" : "none"
-    })
-    confirmBtn.addEventListener("click", async () => {
-      panel.style.display = "none"
-      confirmBtn.disabled = true
-      confirmBtn.textContent = "Running…"
-      try { await qa.action() }
-      catch (e) { toast.err((e && e.message) || "Action failed") }
-      finally { confirmBtn.disabled = false; confirmBtn.textContent = "Confirm" }
-    })
-    cancelBtn.addEventListener("click", () => { panel.style.display = "none" })
-
-    cell.appendChild(btnEl)
-    cell.appendChild(panel)
-    wrap.appendChild(cell)
-  })
-
-  return wrap
-}
-
-// ── Section D — AI Insight Panel ──────────────────────────────────────────────
-
-function buildAiInsightPanel() {
-  const panel = document.createElement("div")
-  panel.style.cssText = [
-    "background:var(--colour-surface, #fff)",
-    "border:1px solid var(--colour-border, #e5e7eb)",
-    "border-radius:8px;margin:0 16px;padding:12px 16px",
+  // ── KPI grid (renders skeletons immediately; updates with data) ────
+  const grid = document.createElement("section")
+  grid.setAttribute("aria-label", t("dashboard.kpiGrid"))
+  grid.setAttribute("data-component", "kpi-grid")
+  grid.style.cssText = [
+    "display: grid",
+    "grid-template-columns: repeat(auto-fit, minmax(260px, 1fr))",
+    "gap: var(--maq-space-4)",
+    "padding-inline: var(--maq-space-4)",
+    "padding-block-end: var(--maq-space-6)",
   ].join(";")
-  panel.setAttribute("role", "complementary")
-  panel.setAttribute("aria-label", "AI insight panel")
 
-  const hdr = document.createElement("div")
-  hdr.style.cssText = "font-size:12px;font-weight:700;color:#374151;display:flex;justify-content:space-between;align-items:center;margin-block-end:10px"
-  const hdrText = document.createElement("span")
-  hdrText.textContent = "Latest AI Recommendations"
-  const viewAll = document.createElement("a")
-  viewAll.href = "#ai"
-  viewAll.style.cssText = "font-size:11px;color:#1e40af;text-decoration:none"
-  viewAll.textContent = "View all"
-  hdr.appendChild(hdrText)
-  hdr.appendChild(viewAll)
-  panel.appendChild(hdr)
+  // Loading skeletons — 4 placeholder cards while we fetch.
+  for (let i = 0; i < 4; i++) {
+    grid.appendChild(renderSkeleton(locale))
+  }
+  wrap.appendChild(grid)
 
-  const list = document.createElement("div")
-  list.textContent = "Loading…"
-  list.style.cssText = "font-size:12px;color:#9ca3af"
-  panel.appendChild(list)
+  // ── Mode-D banner (transverse — brief §4) ─────────────────────────
+  // Rendered once at section level rather than per-card to avoid noise.
+  const advisoryBanner = renderModeDAdvisory({ locale })
+  advisoryBanner.style.cssText += ";padding-inline:var(--maq-space-4);margin-block:0"
+  wrap.appendChild(advisoryBanner)
 
-  apiGetJson("/api/admin/ai/audit-log", { reviewerDecision: "PENDING", limit: 3 })
-    .then(data => {
-      list.innerHTML = ""
-      const items = (data && data.items) || []
-      if (items.length === 0) {
-        list.textContent = "No pending AI recommendations."
-        return
-      }
-      items.forEach(entry => {
-        const row = document.createElement("div")
-        row.style.cssText = "display:flex;gap:8px;align-items:center;padding:6px 0;border-block-end:1px solid #f3f4f6"
+  el.appendChild(wrap)
 
-        const typeTag = document.createElement("span")
-        typeTag.style.cssText = "background:#1e40af;color:#fff;font-size:10px;padding:1px 6px;border-radius:4px;white-space:nowrap"
-        typeTag.textContent = entry.action_type || entry.actionType || "AI"
+  // ── Fetch + render ─────────────────────────────────────────────────
+  fetchAndRender(grid, locale)
 
-        const cs = typeof entry.confidence_score === "number"
-          ? Math.round(entry.confidence_score * 100) + "%"
-          : "—"
-        const confEl = document.createElement("span")
-        confEl.style.cssText = "font-size:11px;color:#6b7280;flex:1"
-        confEl.textContent = `Confidence: ${cs}`
-
-        const approveBtn = document.createElement("button")
-        approveBtn.style.cssText = "font-size:10px;padding:2px 8px;border-radius:4px;background:#22c55e;color:#fff;border:none;cursor:pointer"
-        approveBtn.textContent = "✓"
-        approveBtn.setAttribute("aria-label", "Approve recommendation")
-        approveBtn.addEventListener("click", async () => {
-          approveBtn.disabled = true
-          try {
-            await fetch(`/api/admin/ai/audit-log/${entry.id}/decision`, {
-              method: "PATCH",
-              headers: { "content-type": "application/json" },
-              body: JSON.stringify({ decision: "ACCEPTED" }),
-            })
-            row.remove()
-            toast.ok("Approved.")
-          } catch (e) {
-            toast.err("Approve failed: " + (e && e.message || e))
-            approveBtn.disabled = false
-          }
-        })
-
-        row.appendChild(typeTag)
-        row.appendChild(confEl)
-        row.appendChild(approveBtn)
-        list.appendChild(row)
-      })
-    })
-    .catch(() => { list.textContent = "AI data unavailable." })
-
-  return panel
+  // Auto-refresh every 60s while page is visible.
+  if (_refreshTimer) { clearInterval(_refreshTimer); _refreshTimer = null }
+  _refreshTimer = setInterval(() => {
+    if (document.visibilityState === "visible") {
+      fetchAndRender(grid, locale, /* silent */ true)
+    }
+  }, 60_000)
 }
 
-// ── Page export ───────────────────────────────────────────────────────────────
+function renderSkeleton(locale) {
+  const card = document.createElement("article")
+  card.setAttribute("aria-busy", "true")
+  card.style.cssText = [
+    "background: var(--maq-neutral-0)",
+    "border: 1px solid var(--maq-neutral-200)",
+    "border-radius: var(--maq-radius-lg)",
+    "padding: var(--maq-space-4)",
+    "min-block-size: 140px",
+    "display: flex",
+    "flex-direction: column",
+    "gap: var(--maq-space-3)",
+  ].join(";")
+  const bar1 = document.createElement("div")
+  bar1.style.cssText = "block-size:14px;inline-size:60%;background:var(--maq-neutral-100);border-radius:var(--maq-radius-sm)"
+  const bar2 = document.createElement("div")
+  bar2.style.cssText = "block-size:36px;inline-size:40%;background:var(--maq-neutral-100);border-radius:var(--maq-radius-sm)"
+  card.appendChild(bar1)
+  card.appendChild(bar2)
+  const srOnly = document.createElement("span")
+  srOnly.style.cssText = "position:absolute;width:1px;height:1px;overflow:hidden"
+  srOnly.textContent = locale === "ar" ? "جارٍ التحميل" : "Loading"
+  card.appendChild(srOnly)
+  return card
+}
+
+async function fetchAndRender(grid, locale, silent = false) {
+  let summary
+  let onboarding
+  try {
+    const [s, o] = await Promise.all([
+      getDashboardSummary(),
+      getOnboardingStatus().catch(() => ({ completedAt: null, profile: {} })),
+    ])
+    summary = s
+    onboarding = o
+  } catch (e) {
+    if (!silent) renderError(grid, e, locale)
+    return
+  }
+
+  // Determine if this is a brand-new tenant with no data yet.
+  const isNewOrg = !summary ||
+    (summary.saudiPercent === null && summary.employeeCount === null && summary.pendingFilings === null)
+
+  grid.innerHTML = ""
+
+  // ── KPI 1: Saudisation rate (ratio) ────────────────────────────────
+  grid.appendChild(renderKpiCard({
+    id: "saudisation-rate",
+    label: { en: "Saudisation rate", ar: "نسبة السعودة" },
+    variant: "ratio",
+    value: summary?.saudiPercent ?? null,
+    mode: "D",
+    capabilityName: "WC-SAUD",
+    citation: summary?.lastUpdated ? {
+      sourceType: "nitaqat",
+      sourceAuthority: locale === "ar" ? "نظام نطاقات" : "Nitaqat",
+      timestamp: summary.lastUpdated,
+    } : null,
+    emptyState: isNewOrg ? {
+      title: { en: "No employees added yet", ar: "لم تتم إضافة موظفين بعد" },
+      body:  { en: "Once you add employees with their nationality, your Nitaqat-aligned Saudisation rate will appear here.",
+               ar: "بعد إضافة الموظفين مع الجنسية، ستظهر هنا نسبة السعودة وفقًا لنطاقات." },
+      actionLabel: { en: "Add employees", ar: "إضافة موظفين" },
+      actionHref: "#workers",
+    } : null,
+    locale,
+  }))
+
+  // ── KPI 2: Employee count (count) ──────────────────────────────────
+  grid.appendChild(renderKpiCard({
+    id: "employee-count",
+    label: { en: "Employees", ar: "الموظفون" },
+    variant: "count",
+    value: summary?.employeeCount ?? null,
+    unit: { en: "total", ar: "الإجمالي" },
+    mode: "D",
+    capabilityName: "WC-REC",
+    emptyState: isNewOrg ? {
+      title: { en: "No employees yet", ar: "لا يوجد موظفون بعد" },
+      body:  { en: "Add your first employees to see headcount here.", ar: "أضف أول الموظفين لعرض العدد هنا." },
+      actionLabel: { en: "Add employees", ar: "إضافة موظفين" },
+      actionHref: "#workers",
+    } : null,
+    locale,
+  }))
+
+  // ── KPI 3: Pending filings (count) ─────────────────────────────────
+  grid.appendChild(renderKpiCard({
+    id: "pending-filings",
+    label: { en: "Pending filings", ar: "الإيداعات المعلَّقة" },
+    variant: "count",
+    value: summary?.pendingFilings ?? null,
+    unit: { en: "this month", ar: "هذا الشهر" },
+    mode: "D",
+    capabilityName: "WC-REC",
+    emptyState: isNewOrg ? {
+      title: { en: "No filings yet", ar: "لا توجد إيداعات بعد" },
+      body:  { en: "Your GOSI / Qiwa / Mudad filing calendar appears here once your profile is connected.",
+               ar: "سيظهر تقويم الإيداعات (التأمينات / قِوى / مُدد) هنا بعد ربط ملف المؤسسة." },
+      actionLabel: { en: "View compliance", ar: "عرض الامتثال" },
+      actionHref: "#compliance",
+    } : null,
+    locale,
+  }))
+
+  // ── KPI 4: Compliance status (status) ──────────────────────────────
+  grid.appendChild(renderKpiCard({
+    id: "compliance-status",
+    label: { en: "Compliance status", ar: "حالة الامتثال" },
+    variant: "status",
+    value: summary?.complianceStatus || "unknown",
+    mode: "D",
+    capabilityName: "WC-REC",
+    emptyState: isNewOrg ? {
+      title: { en: "Status pending", ar: "الحالة قيد التحديد" },
+      body:  { en: "Once data flows in, your overall compliance status (green / amber / red) will appear here.",
+               ar: "بعد تدفق البيانات، ستظهر هنا حالة الامتثال الإجمالية (سليم / مراقبة / عرضة للخطر)." },
+      actionLabel: { en: "Complete onboarding", ar: "إكمال إعداد الحساب" },
+      actionHref: onboarding?.completedAt ? "#compliance" : "#onboarding",
+    } : null,
+    locale,
+  }))
+}
+
+function renderError(grid, e, locale) {
+  grid.innerHTML = ""
+  const card = document.createElement("article")
+  card.setAttribute("role", "alert")
+  card.style.cssText = [
+    "background: var(--maq-semantic-danger-bg)",
+    "color: var(--maq-semantic-danger)",
+    "border: 1px solid var(--maq-semantic-danger)",
+    "border-radius: var(--maq-radius-md)",
+    "padding: var(--maq-space-4)",
+    "grid-column: 1 / -1",
+  ].join(";")
+  const h = document.createElement("p")
+  h.style.cssText = "margin:0 0 var(--maq-space-2);font-weight:var(--maq-weight-semibold)"
+  h.textContent = locale === "ar" ? "تعذّر تحميل لوحة البيانات" : "Couldn't load the dashboard"
+  card.appendChild(h)
+  const body = document.createElement("p")
+  body.style.cssText = "margin:0;font-size:var(--maq-text-sm)"
+  body.textContent = (e && e.code === "FORBIDDEN")
+    ? (locale === "ar" ? "ليس لديك صلاحية لعرض هذه البيانات. تواصل مع مسؤول مؤسستك." : "You don't have permission to view this data. Contact your organisation admin.")
+    : (locale === "ar" ? "حدث خطأ في الخادم. حاول التحديث، أو راجع الحالة لاحقًا." : "A server error occurred. Try refreshing, or check status later.")
+  card.appendChild(body)
+  if (e && e.code) {
+    const code = document.createElement("p")
+    code.style.cssText = "margin:var(--maq-space-2) 0 0;font-family:var(--maq-font-mono);font-size:var(--maq-text-xs);opacity:0.7"
+    code.textContent = `${locale === "ar" ? "رمز الخطأ" : "Error code"}: ${e.code}`
+    card.appendChild(code)
+  }
+  grid.appendChild(card)
+}
 
 export default {
-  _kpiStrip: null,
-
-  render(container) {
-    container.innerHTML = ""
-    container.setAttribute("data-page", "command-center")
-
-    const content = document.createElement("div")
-    content.className = "content-area"
-
-    // Page header
-    const header = document.createElement("div")
-    header.className = "page-header"
-    const headerText = document.createElement("div")
-    headerText.className = "page-header-text"
-    const title = document.createElement("h1")
-    title.textContent = "Command Center"
-    const subtitle = document.createElement("p")
-    subtitle.textContent = "Your workforce at a glance"
-    headerText.appendChild(title)
-    headerText.appendChild(subtitle)
-    header.appendChild(headerText)
-    content.appendChild(header)
-
-    // Section A: KPI Strip
-    const { el: kpiEl, stop } = createKpiStrip({ autoStart: true })
-    this._kpiStrip = stop
-    content.appendChild(kpiEl)
-
-    // Section C: Quick Actions
-    content.appendChild(sectionTitle("Quick Actions"))
-    content.appendChild(buildQuickActions())
-
-    // Section B: Risk Board
-    content.appendChild(sectionTitle("Entity Risk"))
-    const riskPlaceholder = document.createElement("div")
-    riskPlaceholder.className = "wc-card"
-    riskPlaceholder.style.cssText = "font-size:var(--text-sm);color:var(--color-text-muted)"
-    riskPlaceholder.textContent = "Loading risk data\u2026"
-    content.appendChild(riskPlaceholder)
-
-    apiGetJson("/api/admin/dashboard/kpi", {})
-      .then(data => {
-        riskPlaceholder.remove()
-        content.appendChild(createRiskBoard((data && data.entities) || {}))
-      })
-      .catch(() => { riskPlaceholder.textContent = "Risk data unavailable." })
-
-    // Section D: AI Insights
-    content.appendChild(sectionTitle("AI Insights"))
-    content.appendChild(buildAiInsightPanel())
-
-    container.appendChild(content)
-  },
-
+  render,
   destroy() {
-    if (this._kpiStrip) { this._kpiStrip(); this._kpiStrip = null }
+    if (_refreshTimer) { clearInterval(_refreshTimer); _refreshTimer = null }
   },
 }
