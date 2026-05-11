@@ -1,88 +1,54 @@
-// S40-G5: Onboarding flow — Steps 2-4 after registration
-import { apiPatch, getToken } from "../api.js"
-import { t } from "../locale.js"
+// WC-CB Day 3 (D-3, 2026-05-13): Lean first-time onboarding wizard.
+//
+// Authority: brief §2 + Sponsor stricter rule (2026-05-13):
+//   "keep onboarding wizard lean — only the fields defined in brief §2
+//   (org name, CR format-only, contact, primary use case, team size,
+//   locale, beta acknowledgement). No additions."
+//
+// PROPOSAL §11.A2 stricter-interpretation rule binding. Fields beyond
+// brief §2 (activity_code, region, saudi_employees from the prior S40-G5
+// wizard) are REMOVED here. They can be collected later in the SPA
+// (Compliance / Settings surfaces) where they belong, not in the lean
+// first-time onboarding.
+//
+// PDPL-relevant processing consent is captured per brief §2 last clause:
+// "Captures consent for PDPL-relevant processing." This is a single
+// checkbox plus a link to the privacy notice (placeholder for now;
+// Day 6 wires the consent ledger view at /app/#data-privacy).
+//
+// Flow:
+//   1. Single screen with 5 fields + PDPL consent checkbox.
+//   2. Submit → PATCH /api/onboarding/profile with WC-relevant subset of
+//      tenant config. The backend tenant config schema accepts
+//      establishment_name etc.; we map orgName→establishment_name and
+//      teamSize→total_employees. Custom fields (crNumber, primaryUseCase,
+//      locale, pdplConsent) are stored under tenant.config additively.
+//   3. Success → /#beta-acknowledgement (one-time controlled-beta posture
+//      screen per brief §2 last sub-deliverable).
+//
+// Brand-neutral per PROPOSAL §11.A5: copy from t(); brand wordmark
+// from getBrand().
 
-const ACTIVITY_CODES = [
-  { value: "construction",  en: "Construction",    ar: "\u0625\u0646\u0634\u0627\u0621\u0627\u062a" },
-  { value: "tech",          en: "Technology",       ar: "\u062a\u0642\u0646\u064a\u0629" },
-  { value: "healthcare",    en: "Healthcare",       ar: "\u0631\u0639\u0627\u064a\u0629 \u0635\u062d\u064a\u0629" },
-  { value: "retail",        en: "Retail",           ar: "\u062a\u062c\u0632\u0626\u0629" },
-  { value: "hospitality",   en: "Hospitality",      ar: "\u0636\u064a\u0627\u0641\u0629" },
-  { value: "other",         en: "Other",            ar: "\u0623\u062e\u0631\u0649" },
+import { apiPatch } from "../api.js"
+import { t, getLocale, setLocale } from "../locale.js"
+import { applyLocaleToDocument } from "../components/language_toggle.js"
+import { getBrand } from "../brand/index.js"
+
+const USE_CASES = [
+  { value: "saudisation", en: "Saudisation (Nitaqat)", ar: "السعودة (نطاقات)" },
+  { value: "payroll",     en: "Payroll",                ar: "الرواتب" },
+  { value: "both",        en: "Both",                   ar: "كلاهما" },
 ]
 
-const REGIONS = [
-  { value: "riyadh",  en: "Riyadh",  ar: "\u0627\u0644\u0631\u064a\u0627\u0636" },
-  { value: "jeddah",  en: "Jeddah",  ar: "\u062c\u062f\u0629" },
-  { value: "dammam",  en: "Dammam",  ar: "\u0627\u0644\u062f\u0645\u0627\u0645" },
-  { value: "other",   en: "Other KSA", ar: "\u0645\u0646\u0627\u0637\u0642 \u0623\u062e\u0631\u0649" },
+const LOCALES = [
+  { value: "en", en: "English", ar: "الإنجليزية" },
+  { value: "ar", en: "Arabic",  ar: "العربية" },
 ]
 
-let _step = 2
-
-function renderStep2(el) {
+function render(el) {
   el.innerHTML = ""
-
-  const wrap = document.createElement("div")
-  wrap.className = "onboarding-screen"
-
-  const box = document.createElement("div")
-  box.className = "onboarding-box"
-
-  const icon = document.createElement("div")
-  icon.className = "onboarding-icon"
-  icon.innerHTML = '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#1a8a7a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>'
-  box.appendChild(icon)
-
-  const title = document.createElement("h2")
-  title.textContent = t("onboarding.verifyTitle")
-  box.appendChild(title)
-
-  const desc = document.createElement("p")
-  desc.className = "onboarding-subtitle"
-  desc.textContent = t("onboarding.verifyDesc")
-  box.appendChild(desc)
-
-  const msg = document.createElement("div")
-  msg.className = "onboarding-msg"
-  msg.setAttribute("role", "status")
-
-  const resendBtn = document.createElement("button")
-  resendBtn.className = "btn btn-secondary onboarding-btn"
-  resendBtn.textContent = t("onboarding.resendEmail")
-  resendBtn.addEventListener("click", async () => {
-    resendBtn.disabled = true
-    try {
-      await apiPost("/api/auth/resend-verification", {})
-      msg.textContent = t("onboarding.resendSent")
-    } catch {
-      msg.textContent = t("onboarding.resendFailed")
-    }
-    resendBtn.disabled = false
-  })
-  box.appendChild(resendBtn)
-  box.appendChild(msg)
-
-  const skipBtn = document.createElement("button")
-  skipBtn.className = "btn btn-link onboarding-btn"
-  skipBtn.textContent = t("onboarding.skipBeta")
-  skipBtn.addEventListener("click", () => {
-    _step = 3
-    render(el)
-  })
-  box.appendChild(skipBtn)
-
-  const stepLabel = document.createElement("div")
-  stepLabel.className = "onboarding-step-label"
-  stepLabel.textContent = t("onboarding.step") + " 2 / 4"
-  box.appendChild(stepLabel)
-
-  wrap.appendChild(box)
-  el.appendChild(wrap)
-}
-
-function renderStep3(el) {
-  el.innerHTML = ""
+  const locale = getLocale()
+  const brand  = getBrand()
 
   const wrap = document.createElement("div")
   wrap.className = "onboarding-screen"
@@ -90,224 +56,168 @@ function renderStep3(el) {
   const box = document.createElement("div")
   box.className = "onboarding-box onboarding-wide"
 
-  const title = document.createElement("h2")
-  title.textContent = t("onboarding.profileTitle")
+  // ── Brand wordmark ─────────────────────────────────────────────────
+  const brandRow = document.createElement("div")
+  brandRow.style.cssText = "margin-bottom:var(--maq-space-6)"
+  const wordmark = document.createElement("span")
+  wordmark.style.cssText = "font-size:var(--maq-text-xl);font-weight:var(--maq-weight-bold);color:var(--maq-brand-primary);font-family:var(--maq-font-arabic),var(--maq-font-latin)"
+  wordmark.textContent = (brand.publicName && brand.publicName[locale]) || "WorkCaptain"
+  brandRow.appendChild(wordmark)
+  box.appendChild(brandRow)
+
+  const title = document.createElement("h1")
+  title.textContent = t("onboarding.lean.title")
+  title.style.cssText = "font-size:var(--maq-text-2xl);margin:0 0 var(--maq-space-2)"
   box.appendChild(title)
 
   const subtitle = document.createElement("p")
   subtitle.className = "onboarding-subtitle"
-  subtitle.textContent = t("onboarding.profileDesc")
+  subtitle.textContent = t("onboarding.lean.subtitle")
   box.appendChild(subtitle)
 
+  // ── Form ───────────────────────────────────────────────────────────
   const form = document.createElement("form")
+  form.autocomplete = "on"
   form.addEventListener("submit", e => e.preventDefault())
 
   const errEl = document.createElement("div")
   errEl.className = "onboarding-err"
   errEl.setAttribute("role", "alert")
+  errEl.setAttribute("aria-live", "polite")
 
-  // Establishment name
-  const nameGroup = _field("profile-name", t("onboarding.establishmentName"), "text")
-  form.appendChild(nameGroup.group)
+  function textField(key, type, autocomplete, helper) {
+    const w = document.createElement("div"); w.className = "field-group"
+    const lbl = document.createElement("label"); lbl.htmlFor = `ob-${key}`; lbl.textContent = t(`onboarding.lean.${key}`)
+    w.appendChild(lbl)
+    const inp = document.createElement("input")
+    inp.type = type; inp.id = `ob-${key}`; inp.name = key; inp.autocomplete = autocomplete || ""; inp.required = true
+    w.appendChild(inp)
+    if (helper) {
+      const h = document.createElement("p"); h.style.cssText = "font-size:var(--maq-text-xs);color:var(--maq-neutral-500);margin:var(--maq-space-1) 0 0"; h.textContent = helper
+      w.appendChild(h)
+    }
+    return { wrap: w, input: inp }
+  }
 
-  // Activity code
-  const actGroup = _select("profile-activity", t("onboarding.activityCode"), ACTIVITY_CODES)
-  form.appendChild(actGroup.group)
+  function selectField(key, options) {
+    const w = document.createElement("div"); w.className = "field-group"
+    const lbl = document.createElement("label"); lbl.htmlFor = `ob-${key}`; lbl.textContent = t(`onboarding.lean.${key}`)
+    w.appendChild(lbl)
+    const s = document.createElement("select"); s.id = `ob-${key}`; s.name = key; s.required = true
+    for (const opt of options) {
+      const o = document.createElement("option"); o.value = opt.value; o.textContent = opt[locale] || opt.en; s.appendChild(o)
+    }
+    w.appendChild(s)
+    return { wrap: w, input: s }
+  }
 
-  // Region
-  const regGroup = _select("profile-region", t("onboarding.region"), REGIONS)
-  form.appendChild(regGroup.group)
+  // Lean fields per Sponsor stricter rule: orgName, crNumber,
+  // primaryUseCase (confirm), teamSize, locale. NO activity_code, NO
+  // region, NO saudi_employees.
+  const orgName = textField("orgName", "text", "organization")
+  const crNumber = textField("crNumber", "text", "off",
+    locale === "ar"
+      ? "10 أرقام (التحقق عبر واثق سيُفعَّل بعد المرحلة التجريبية)"
+      : "10 digits (Wathq verification post-beta — TODO)")
+  const primaryUseCase = selectField("primaryUseCase", USE_CASES)
+  const teamSize = textField("teamSize", "number", "off")
+  teamSize.input.min = 1; teamSize.input.max = 1000000
+  const localePref = selectField("locale", LOCALES)
+  localePref.input.value = locale
 
-  // Total employees
-  const totalGroup = _field("profile-total", t("onboarding.totalEmployees"), "number")
-  totalGroup.input.min = "1"
-  form.appendChild(totalGroup.group)
+  form.appendChild(orgName.wrap)
+  form.appendChild(crNumber.wrap)
+  form.appendChild(primaryUseCase.wrap)
+  form.appendChild(teamSize.wrap)
+  form.appendChild(localePref.wrap)
 
-  // Saudi employees
-  const saudiGroup = _field("profile-saudi", t("onboarding.saudiEmployees"), "number")
-  saudiGroup.input.min = "0"
-  form.appendChild(saudiGroup.group)
+  // ── PDPL consent (brief §2 last clause) ──────────────────────────
+  const consentGroup = document.createElement("div")
+  consentGroup.className = "field-group"
+  consentGroup.style.cssText = "margin-top:var(--maq-space-4);padding:var(--maq-space-4);background:var(--maq-semantic-info-bg);border-radius:var(--maq-radius-md);border-inline-start:4px solid var(--maq-semantic-info)"
+
+  const consentLabel = document.createElement("label")
+  consentLabel.style.cssText = "display:flex;align-items:flex-start;gap:var(--maq-space-3);cursor:pointer;line-height:var(--maq-leading-normal)"
+  const consentInput = document.createElement("input")
+  consentInput.type = "checkbox"
+  consentInput.id = "ob-pdpl-consent"
+  consentInput.required = true
+  consentInput.style.cssText = "margin-top:3px;flex-shrink:0"
+  consentLabel.appendChild(consentInput)
+
+  const consentText = document.createElement("span")
+  consentText.style.cssText = "font-size:var(--maq-text-sm);color:var(--maq-neutral-700)"
+  consentText.innerHTML = `${t("onboarding.lean.pdplConsent")} <a href="#data-privacy" style="color:var(--maq-brand-primary);text-decoration:underline">${t("onboarding.lean.pdplLink")}</a>`
+  consentLabel.appendChild(consentText)
+  consentGroup.appendChild(consentLabel)
+  form.appendChild(consentGroup)
 
   form.appendChild(errEl)
 
-  // Nitaqat preview area
-  const previewEl = document.createElement("div")
-  previewEl.className = "nitaqat-preview"
-  previewEl.id = "nitaqat-preview"
-
+  // ── Submit ─────────────────────────────────────────────────────────
   const btn = document.createElement("button")
   btn.type = "submit"
-  btn.className = "btn btn-primary onboarding-btn"
-  btn.textContent = t("onboarding.saveProfile")
+  btn.className = "btn btn-accent onboarding-btn"
+  btn.textContent = t("onboarding.lean.submit")
 
   btn.addEventListener("click", async () => {
     errEl.textContent = ""
-    const name     = (nameGroup.input.value || "").trim()
-    const activity = actGroup.select.value
-    const region   = regGroup.select.value
-    const total    = parseInt(totalGroup.input.value, 10)
-    const saudi    = parseInt(saudiGroup.input.value, 10)
+    const orgVal = orgName.input.value.trim()
+    const crVal  = crNumber.input.value.trim()
+    const tsVal  = parseInt(teamSize.input.value, 10)
+    const useVal = primaryUseCase.input.value
+    const locVal = localePref.input.value
+    const consent = consentInput.checked
 
-    if (!name)             { errEl.textContent = t("onboarding.err.nameRequired"); return }
-    if (!activity)         { errEl.textContent = t("onboarding.err.activityRequired"); return }
-    if (!region)           { errEl.textContent = t("onboarding.err.regionRequired"); return }
-    if (!total || total < 1) { errEl.textContent = t("onboarding.err.totalRequired"); return }
-    if (isNaN(saudi) || saudi < 0) { errEl.textContent = t("onboarding.err.saudiRequired"); return }
-    if (saudi > total)     { errEl.textContent = t("onboarding.err.saudiExceedsTotal"); return }
+    if (!orgVal) { errEl.textContent = t("onboarding.lean.err.orgRequired"); return }
+    if (!/^[0-9]{10}$/.test(crVal)) { errEl.textContent = t("onboarding.lean.err.crFormat"); return }
+    if (!Number.isInteger(tsVal) || tsVal < 1) { errEl.textContent = t("onboarding.lean.err.teamSizeInvalid"); return }
+    if (!consent) { errEl.textContent = t("onboarding.lean.err.consentRequired"); return }
 
     btn.disabled = true
-    btn.textContent = t("onboarding.saving")
+    btn.textContent = t("onboarding.lean.submitting")
 
     try {
+      // Map lean fields to backend schema. The PATCH endpoint accepts
+      // establishment_name + total_employees today. Other fields land in
+      // tenant.config additively via the same PATCH.
+      // TODO Day 6: surface CR / use-case / consent_at on Settings page
+      // and Consent Ledger view per brief §6.
       await apiPatch("/api/onboarding/profile", {
-        establishment_name: name,
-        activity_code: activity,
-        region: region,
-        total_employees: total,
-        saudi_employees: saudi,
+        establishment_name: orgVal,
+        total_employees: tsVal,
+        // Extras go into tenant.config (server merges via config || $1):
+        cr_number: crVal,
+        primary_use_case: useVal,
+        preferred_locale: locVal,
+        pdpl_consent: {
+          granted: true,
+          granted_at: new Date().toISOString(),
+          version: "v1",
+        },
       })
 
-      // Profile saved confirmation
-      previewEl.innerHTML = ""
-      previewEl.className = "nitaqat-preview nitaqat-green"
-      const checkmark = document.createElement("div")
-      checkmark.style.cssText = "font-size:var(--text-2xl);margin-bottom:var(--space-0)"
-      checkmark.textContent = "\u2705"
-      previewEl.appendChild(checkmark)
-      const savedMsg = document.createElement("p")
-      savedMsg.style.cssText = "font-weight:600;color:var(--color-success)"
-      savedMsg.textContent = t("onboarding.profileSaved")
-      previewEl.appendChild(savedMsg)
-      const savedHint = document.createElement("p")
-      savedHint.className = "nitaqat-hint"
-      savedHint.textContent = t("onboarding.profileSavedHint")
-      previewEl.appendChild(savedHint)
+      // Persist locale preference client-side if changed.
+      if (locVal !== locale) {
+        await setLocale(locVal)
+        applyLocaleToDocument()
+      }
+      try { localStorage.setItem("pw_company", orgVal) } catch {}
 
-      btn.textContent = t("onboarding.continue")
-      btn.disabled = false
-      btn.onclick = () => { _step = 4; render(el) }
+      // Advance to controlled-beta acknowledgement screen.
+      window.location.hash = "beta-acknowledgement"
     } catch (e) {
-      errEl.textContent = e.message || t("onboarding.err.saveFailed")
+      errEl.textContent = e.message || t("onboarding.lean.err.failed")
       btn.disabled = false
-      btn.textContent = t("onboarding.saveProfile")
+      btn.textContent = t("onboarding.lean.submit")
     }
   })
 
   form.appendChild(btn)
-  form.appendChild(previewEl)
-
-  const stepLabel = document.createElement("div")
-  stepLabel.className = "onboarding-step-label"
-  stepLabel.textContent = t("onboarding.step") + " 3 / 4"
-  form.appendChild(stepLabel)
 
   box.appendChild(form)
   wrap.appendChild(box)
   el.appendChild(wrap)
-}
-
-function renderStep4(el) {
-  el.innerHTML = ""
-
-  const wrap = document.createElement("div")
-  wrap.className = "onboarding-screen"
-
-  const box = document.createElement("div")
-  box.className = "onboarding-box onboarding-wide"
-
-  const title = document.createElement("h2")
-  title.textContent = t("onboarding.actionTitle")
-  box.appendChild(title)
-
-  const subtitle = document.createElement("p")
-  subtitle.className = "onboarding-subtitle"
-  subtitle.textContent = t("onboarding.actionDesc")
-  box.appendChild(subtitle)
-
-  const cards = document.createElement("div")
-  cards.className = "action-cards"
-
-  const actions = [
-    { icon: "\u{1F4CB}", label: t("onboarding.action.postRole"),    href: "#workers",   desc: t("onboarding.action.postRoleDesc") },
-    { icon: "\u{1F465}", label: t("onboarding.action.inviteTeam"),  href: "#tenants",   desc: t("onboarding.action.inviteTeamDesc") },
-    { icon: "\u{1F4CA}", label: t("onboarding.action.explore"),     href: "#dashboard", desc: t("onboarding.action.exploreDesc") },
-  ]
-
-  actions.forEach(a => {
-    const card = document.createElement("a")
-    card.className = "action-card"
-    card.href = a.href
-
-    const iconEl = document.createElement("div")
-    iconEl.className = "action-icon"
-    iconEl.textContent = a.icon
-
-    const labelEl = document.createElement("h3")
-    labelEl.textContent = a.label
-
-    const descEl = document.createElement("p")
-    descEl.textContent = a.desc
-
-    card.appendChild(iconEl)
-    card.appendChild(labelEl)
-    card.appendChild(descEl)
-    cards.appendChild(card)
-  })
-
-  box.appendChild(cards)
-
-  const stepLabel = document.createElement("div")
-  stepLabel.className = "onboarding-step-label"
-  stepLabel.textContent = t("onboarding.step") + " 4 / 4"
-  box.appendChild(stepLabel)
-
-  wrap.appendChild(box)
-  el.appendChild(wrap)
-}
-
-function _field(id, label, type) {
-  const group = document.createElement("div")
-  group.className = "field-group"
-  const lbl = document.createElement("label")
-  lbl.htmlFor = id
-  lbl.textContent = label
-  group.appendChild(lbl)
-  const input = document.createElement("input")
-  input.type = type
-  input.id = id
-  input.placeholder = label
-  group.appendChild(input)
-  return { group, input }
-}
-
-function _select(id, label, options) {
-  const group = document.createElement("div")
-  group.className = "field-group"
-  const lbl = document.createElement("label")
-  lbl.htmlFor = id
-  lbl.textContent = label
-  group.appendChild(lbl)
-  const select = document.createElement("select")
-  select.id = id
-  const empty = document.createElement("option")
-  empty.value = ""
-  empty.textContent = "— " + label + " —"
-  select.appendChild(empty)
-  options.forEach(o => {
-    const opt = document.createElement("option")
-    opt.value = o.value
-    opt.textContent = o.en
-    select.appendChild(opt)
-  })
-  group.appendChild(select)
-  return { group, select }
-}
-
-function render(el) {
-  if (_step === 2) return renderStep2(el)
-  if (_step === 3) return renderStep3(el)
-  if (_step === 4) return renderStep4(el)
-  renderStep2(el)
 }
 
 export default { render }

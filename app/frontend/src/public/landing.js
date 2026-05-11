@@ -223,15 +223,15 @@ async function mount() {
 }
 
 /**
- * CTA handlers — Day 2 placeholder routing.
- * Day 3 wires real cohort-registration flow (brief §2).
+ * CTA handlers.
+ *
+ * Day 3 (2026-05-13) repoints "Request access" from the killed self-serve
+ * /app/#register route to the cohort intake at /app/#request-access. The
+ * cohort flow posts to POST /api/cohort/request (cohort_router.js); no
+ * account is auto-created per brief §2 + WC Controlled-Launch Memo V1.1.
  */
 function handleRequestAccess() {
-  // Day 3 will replace this with a real cohort-registration form per
-  // PROPOSAL §11.A4 no-phantom-features rule. For Day 2 the landing
-  // routes to the existing /app/#register surface (which uses
-  // app/api/auth/register backend — already functional).
-  window.location.href = '/app/#register'
+  window.location.href = '/app/#request-access'
 }
 
 function handleSignIn() {
