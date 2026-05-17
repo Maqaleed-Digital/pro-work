@@ -489,5 +489,19 @@
   "offer.overrideBtn": "Override compliance",
   "offer.overrideReason": "Override reason (required)",
   "offer.sendBlocked": "Cannot send — compliance check has RED items",
-  "offer.navLabel": "Offer Builder"
+  "offer.navLabel": "Offer Builder",
+  "du1.ratioLabel": "Current Saudisation ratio",
+  "du1.hint": "Click to see source of truth",
+  "du1.emptyMsg": "Add your workforce data to see your first ratio",
+  "du1.emptyCta": "Add data",
+  "du1.panelTotal": "Total headcount",
+  "du1.panelSaudi": "Saudi nationals",
+  "du1.panelNonSaudi": "Non-Saudi nationals",
+  "du1.panelThreshold": "Regulatory threshold",
+  "du1.sourcesLabel": "Data sources",
+  "du1.records": "records",
+  "du1.lastSync": "Last sync",
+  "du1.stateAbove": "above threshold",
+  "du1.stateApproaching": "approaching threshold",
+  "du1.stateBelow": "below threshold"
 }

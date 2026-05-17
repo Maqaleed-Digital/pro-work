@@ -25,8 +25,10 @@
 import { t, getLocale } from "../locale.js"
 import { renderKpiCard } from "../components/kpi_card.js"
 import { renderModeDAdvisory } from "../components/mode_status_chip.js"
+import { renderComplianceHealthHeader } from "../components/compliance_health_header.js"
 import { getDashboardSummary } from "../api/dashboard.js"
 import { getOnboardingStatus } from "../api/onboarding.js"
+import { getNitaqatStatus } from "../api/nitaqat.js"
 
 let _refreshTimer = null
 
@@ -54,6 +56,15 @@ function render(el) {
 
   header.appendChild(headerText)
   wrap.appendChild(header)
+
+  // ── D-U1 Compliance Health Header (WC-IMPL-001 §T-1) ────────────────
+  // First hierarchical element per WC-OPSDASH-001 §D: the cohort user
+  // grasps compliance posture (ratio + state colour + click affordance)
+  // before reading any other element. 30-second test gate.
+  const du1Slot = document.createElement("div")
+  du1Slot.setAttribute("data-component", "du1-slot")
+  du1Slot.setAttribute("aria-busy", "true")
+  wrap.appendChild(du1Slot)
 
   // ── KPI grid (renders skeletons immediately; updates with data) ────
   const grid = document.createElement("section")
@@ -83,14 +94,65 @@ function render(el) {
 
   // ── Fetch + render ─────────────────────────────────────────────────
   fetchAndRender(grid, locale)
+  fetchAndRenderDU1(du1Slot, locale)
 
   // Auto-refresh every 60s while page is visible.
   if (_refreshTimer) { clearInterval(_refreshTimer); _refreshTimer = null }
   _refreshTimer = setInterval(() => {
     if (document.visibilityState === "visible") {
       fetchAndRender(grid, locale, /* silent */ true)
+      fetchAndRenderDU1(du1Slot, locale, /* silent */ true)
     }
   }, 60_000)
+}
+
+/**
+ * D-U1 Compliance Health Header — fetch + render.
+ * Uses getNitaqatStatus() so state colour is driven by real backend
+ * zone authority (Nitaqat policy), not invented thresholds (§11.A4).
+ * Empty state (CTA → #employees) when no workforce data yet.
+ */
+async function fetchAndRenderDU1(slot, locale, silent = false) {
+  let snapshot = null
+  try {
+    const nitaqat = await getNitaqatStatus()
+    if (nitaqat && typeof nitaqat.saudiPercent === "number" && typeof nitaqat.totalEmployees === "number" && nitaqat.totalEmployees > 0) {
+      snapshot = {
+        totalHeadcount: nitaqat.totalEmployees,
+        saudiCount:     nitaqat.saudiEmployees ?? Math.round(nitaqat.totalEmployees * nitaqat.saudiPercent),
+        nonSaudiCount:  (nitaqat.totalEmployees) - (nitaqat.saudiEmployees ?? Math.round(nitaqat.totalEmployees * nitaqat.saudiPercent)),
+        ratio:          nitaqat.saudiPercent,
+        zone:           nitaqat.zone,
+        lastUpdated:    nitaqat.lastUpdated,
+      }
+    }
+  } catch (e) {
+    if (!silent) {
+      // Surface error inline; D-U1's empty state covers genuine no-data.
+      // A backend error renders a small inline message; the rest of the
+      // dashboard remains functional.
+      slot.innerHTML = ""
+      const errMsg = document.createElement("p")
+      errMsg.setAttribute("role", "alert")
+      errMsg.style.cssText = "margin:0;padding:var(--maq-space-3) var(--maq-space-4);color:var(--maq-semantic-danger);font-size:var(--maq-text-sm)"
+      errMsg.textContent = locale === "ar"
+        ? "تعذّر تحميل مؤشر السعودة. حاول التحديث."
+        : "Couldn't load the Saudisation indicator. Try refreshing."
+      slot.appendChild(errMsg)
+      slot.setAttribute("aria-busy", "false")
+      return
+    }
+    // Silent refresh: keep previous render on transient error.
+    return
+  }
+
+  slot.innerHTML = ""
+  slot.appendChild(renderComplianceHealthHeader({
+    snapshot,
+    locale,
+    onAddData: () => { location.hash = "#employees" },
+  }))
+  slot.setAttribute("aria-busy", "false")
 }
 
 function renderSkeleton(locale) {
