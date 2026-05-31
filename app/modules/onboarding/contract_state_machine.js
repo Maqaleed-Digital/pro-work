@@ -4,6 +4,12 @@ const crypto = require('crypto');
 const path   = require('path');
 const fs     = require('fs');
 
+// VERITAS event-6 fire-and-forget emit. Sponsor Ruling 31 May 2026:
+// emit BEFORE the original throw; swallow all emit failures; do not alter
+// throw type, message, or timing. Default transport is noop (zero behaviour
+// change) until wired with a real transport at composition root.
+const veritasGuards = require('../event_bus/veritas/guards');
+
 const MAPPING = JSON.parse(
   fs.readFileSync(
     path.join(__dirname, '../../config/contracts/qiwa_field_mapping_v1.json'),
@@ -145,6 +151,17 @@ function runGuards(guardNames, fromState, toState, contract, input) {
       }
       case 'human_actor': {
         if (!input.actor || input.actor.actor_type !== 'HUMAN') {
+          veritasGuards.emitGovernanceException({
+            kind:          'execution_boundary',
+            guard:         'human_actor',
+            fromState,
+            toState,
+            contractId:    contract.contract_id,
+            tenantId:      contract.tenant_id,
+            actor:         input.actor,
+            correlationId: input.correlation_id,
+            causationId:   input.causation_id,
+          });
           throw transitionError(
             `${fromState}→${toState} requires HUMAN actor — auto-transitions are not permitted`
           );
@@ -297,6 +314,17 @@ function createContractStateMachine({ contractStore, eventStore, hooks }) {
 
     // ── 1. Terminal state check ──────────────────────────────────────────────
     if (TERMINAL_STATES.has(fromState)) {
+      veritasGuards.emitGovernanceException({
+        kind:          'policy',
+        guard:         'terminal_state',
+        fromState,
+        toState,
+        contractId:    contract.contract_id,
+        tenantId:      contract.tenant_id,
+        actor:         input.actor,
+        correlationId: input.correlation_id,
+        causationId:   input.causation_id,
+      });
       throw transitionError(
         `${fromState} is a terminal state — no further transitions are permitted`
       );
@@ -305,6 +333,17 @@ function createContractStateMachine({ contractStore, eventStore, hooks }) {
     // ── 2. Valid transition check ────────────────────────────────────────────
     const allowed = TRANSITIONS[fromState] || [];
     if (!allowed.includes(toState)) {
+      veritasGuards.emitGovernanceException({
+        kind:          'policy',
+        guard:         'invalid_transition',
+        fromState,
+        toState,
+        contractId:    contract.contract_id,
+        tenantId:      contract.tenant_id,
+        actor:         input.actor,
+        correlationId: input.correlation_id,
+        causationId:   input.causation_id,
+      });
       throw transitionError(
         `Invalid transition: ${fromState} → ${toState}. ` +
         `Allowed from ${fromState}: [${allowed.join(', ') || 'none'}]`
