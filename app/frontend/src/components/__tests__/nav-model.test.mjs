@@ -1,46 +1,56 @@
-// WC-W4-UI-001 · UI-1 nav-model tests (node:test — pure model, no DOM). Real evidence the
-// Sponsor rulings hold, independent of the app required-checks (which are genesis stubs).
+// WC-W4-UI-001 · UI-1.1 nav-model tests (node:test, pure model). Real evidence the two-front
+// architecture + surface-access guard hold — independent of the (now-real) CI build.
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import {
-  BRANDS, ROLE_NAV, ROLES, EXCLUDED_SURFACES, isExcluded, roleMode, excludedLeakage,
+  FRONTS, FRONT_IDS, FRONT_NAV, INTERNAL_ONLY_ROUTES, EXCLUDED_SURFACES,
+  isExcluded, canAccessRoute, frontAInternalLeak,
 } from "../nav-model.js"
 
-test("DL-037 dual-brand: structural switch present, exact copy FLAGGED (not invented)", () => {
-  assert.equal(BRANDS.primary.name, "WorkCaptain")
-  assert.equal(BRANDS.cobrand.name, "Maqaleed Workforce")
-  assert.equal(BRANDS.copyStatus, "PENDING-DL-037-CONFIRMATION")
+test("two-product model: A=WorkCaptain (customer, copy PENDING), B=Maqaleed Workforce Console (internal)", () => {
+  assert.deepEqual(FRONT_IDS, ["A", "B"])
+  assert.equal(FRONTS.A.id, "workcaptain")
+  assert.equal(FRONTS.A.kind, "customer")
+  assert.equal(FRONTS.A.brand.copyStatus, "PENDING-DL-037-CONFIRMATION") // not invented
+  assert.equal(FRONTS.B.id, "maqaleed-workforce-console")
+  assert.equal(FRONTS.B.kind, "internal")
 })
 
-test("role-aware nav: admin/employer/worker trees exist; admin populated with in-scope surfaces", () => {
-  assert.deepEqual(ROLES, ["admin", "employer", "worker"])
-  assert.ok(ROLE_NAV.admin.length >= 10)
-  // admin surfaces are the in-scope live ones (Mode-A)
-  assert.ok(ROLE_NAV.admin.every((t) => t.mode === "A"))
-  assert.ok(ROLE_NAV.admin.some((t) => t.key === "dashboard"))
+test("per-front nav: Front A is customer surfaces; Front B holds the internal/operator surfaces", () => {
+  const aKeys = FRONT_NAV.A.map((i) => i.key)
+  const bKeys = FRONT_NAV.B.map((i) => i.key)
+  assert.ok(aKeys.includes("dashboard") && aKeys.includes("billing") && aKeys.includes("hyperpay-test"))
+  for (const internal of INTERNAL_ONLY_ROUTES) assert.ok(bKeys.includes(internal), `B should expose ${internal}`)
 })
 
-test("HARD EXCLUDE (D-A marketplace+ERI, D-B ai): NOT in any nav tree — no leakage", () => {
-  // the ruling set is registered
+test("SURFACE-ACCESS GUARD: Front A cannot reach ANY internal route; Front B can reach all", () => {
+  for (const r of INTERNAL_ONLY_ROUTES) {
+    assert.equal(canAccessRoute("A", r), false, `Front A must be walled from ${r}`)
+    assert.equal(canAccessRoute("B", r), true, `Front B may reach ${r}`)
+  }
+  // customer-front surfaces remain reachable on A
+  assert.equal(canAccessRoute("A", "dashboard"), true)
+  assert.equal(canAccessRoute("A", "billing"), true)
+})
+
+test("boundary guard is NON-VACUOUS: no leak in Front A nav, AND a planted internal route IS detected", () => {
+  // real state: zero internal/excluded routes present in Front A's nav
+  assert.deepEqual(frontAInternalLeak(FRONT_NAV.A), [])
+  // control: if the guard regressed and 'governance' rode into Front A, the detector fires
+  const planted = [{ key: "dashboard", label: "x", mode: "A" }, { key: "governance", label: "x", mode: "A" }]
+  assert.deepEqual(frontAInternalLeak(planted), ["governance"])
+})
+
+test("carry-forward exclusions (D-A deferred + D-B ai): reachable on NEITHER front, in NO front nav", () => {
   assert.deepEqual([...EXCLUDED_SURFACES.deferred], ["post-role", "candidates", "seeker-home", "identity"])
   assert.deepEqual([...EXCLUDED_SURFACES.heldUntilUI4], ["ai"])
-  // and none of them appear anywhere in the nav
   for (const k of [...EXCLUDED_SURFACES.deferred, ...EXCLUDED_SURFACES.heldUntilUI4]) {
     assert.equal(isExcluded(k), true)
+    assert.equal(canAccessRoute("A", k), false)
+    assert.equal(canAccessRoute("B", k), false) // excluded everywhere, even internal front
   }
-  assert.deepEqual(excludedLeakage(), []) // ZERO excluded surfaces present in any role tree
-})
-
-test("non-vacuous: the leakage guard CAN fail (a planted excluded key is detected)", () => {
-  // sanity that excludedLeakage actually detects a leak — proves the empty result above is real
-  const planted = { admin: [{ key: "post-role", label: "x", mode: "A" }] }
-  const leaked = []
-  for (const item of planted.admin) if (isExcluded(item.key)) leaked.push(`admin:${item.key}`)
-  assert.deepEqual(leaked, ["admin:post-role"])
-})
-
-test("Mode-A/D: live role is Mode-A; empty (forthcoming) role is disclosed-not-live (Mode-D)", () => {
-  assert.equal(roleMode("admin"), "A")        // populated, live
-  assert.equal(roleMode("employer"), "D")     // forthcoming → disclosed-not-live
-  assert.equal(roleMode("worker"), "D")
+  const all = [...FRONT_NAV.A, ...FRONT_NAV.B].map((i) => i.key)
+  for (const k of [...EXCLUDED_SURFACES.deferred, ...EXCLUDED_SURFACES.heldUntilUI4]) {
+    assert.equal(all.includes(k), false, `${k} must not appear in any front nav`)
+  }
 })

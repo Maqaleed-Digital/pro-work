@@ -1,68 +1,67 @@
-// WC-W4-UI-001 · UI-1 nav data-model (pure — no DOM/browser imports, so it is unit-testable
-// in node). nav.js renders from this. Carries: dual-brand (DL-037) structural switch, the
-// role-aware in-scope trees, Mode-A/D tagging, and the HARD-EXCLUDE registry.
+// WC-W4-UI-001 · UI-1.1 — Two-Front Product Architecture (DL-037 refinement). Pure model
+// (no DOM), so the surface-access guard is unit-testable. nav.js + router.js render/enforce it.
 //
-// FLAGS (per dispatch — surfaced, not silently resolved):
-//  - DL-037 brand COPY is NOT in-repo. We render the structural dual-brand switch and mark the
-//    wording PENDING-DL-037-CONFIRMATION. Brand text is NOT invented.
-//  - The 3 stacks (app/frontend Vite SPA · admin-console · trust-explorer) are NOT consolidated
-//    here — that is a separate Sponsor architecture decision. UI-1 touches app/frontend only.
+// ONE backend (id `prowork`, unchanged). SHARED: auth / tenancy / data-model / APIs / audit /
+// business-logic. SEPARATED (front-level): branding / nav / layouts / journeys / surface-exposure.
+// NO tenancy split, NO data-model split.
+//
+// FLAGS (surfaced, not resolved): Front A (customer) exact brand copy = PENDING-DL-037-CONFIRMATION
+// (structural only, not invented). The 3 stacks are NOT consolidated (separate Sponsor decision).
 
-// Dual-brand (DL-037 / DL-088). Structural switch only; exact copy pending confirmation.
-export const BRANDS = Object.freeze({
-  primary: { name: "WorkCaptain", tagline: "Workforce OS" },
-  cobrand: { name: "Maqaleed Workforce", tagline: null },
-  copyStatus: "PENDING-DL-037-CONFIRMATION", // exact brand copy not in-repo — flagged, not invented
-});
+export const FRONTS = Object.freeze({
+  // FRONT A — customer: employers / workers / commercial. Simple, conversion-oriented SaaS.
+  A: Object.freeze({ id: "workcaptain", kind: "customer", brand: { name: "WorkCaptain", copyStatus: "PENDING-DL-037-CONFIRMATION" } }),
+  // FRONT B — internal: operators / support / governance / audit / oversight. Institutional, governance-first.
+  B: Object.freeze({ id: "maqaleed-workforce-console", kind: "internal", brand: { name: "Maqaleed Workforce Console", copyStatus: "confirmed" } }),
+})
+export const FRONT_IDS = Object.freeze(["A", "B"])
 
-// HARD EXCLUDE — Sponsor rulings. These surfaces are NOT in any nav tree and NOT wired.
+// Operator-only surfaces. FRONT A (customer) MUST NOT route to any of these — direct URL blocked,
+// not merely hidden (enforced in router.navigate via canAccessRoute).
+export const INTERNAL_ONLY_ROUTES = Object.freeze(["admin", "audit", "governance", "tenants", "evidence", "system"])
+
+// Carry-forward exclusions (Sponsor D-A deferred + D-B held) — reachable on NEITHER front.
 export const EXCLUDED_SURFACES = Object.freeze({
-  // D-A: marketplace + ERI, deferred out of scope (off the demo path).
   deferred: Object.freeze(["post-role", "candidates", "seeker-home", "identity"]),
-  // D-B: ai held until it ships Mode-D-fenced + fail-closed-visible (UI-4).
   heldUntilUI4: Object.freeze(["ai"]),
-});
-
+})
 export function isExcluded(key) {
-  return EXCLUDED_SURFACES.deferred.includes(key) || EXCLUDED_SURFACES.heldUntilUI4.includes(key);
+  return EXCLUDED_SURFACES.deferred.includes(key) || EXCLUDED_SURFACES.heldUntilUI4.includes(key)
 }
 
-// Role-aware nav — IN-SCOPE surfaces only. admin tree = the surfaces that exist + are live on
-// main (Mode-A). employer/worker are first-class role contexts in the shell; their in-scope
-// surfaces arrive in later UI slices (Mode-D / disclosed-not-live) — marketplace stays excluded.
-export const ROLE_NAV = Object.freeze({
-  admin: Object.freeze([
-    { key: "dashboard",   label: "Dashboard",   mode: "A" },
-    { key: "workers",     label: "Workers",     mode: "A" },
-    { key: "pods",        label: "Pods",        mode: "A" },
-    { key: "assignments", label: "Assignments", mode: "A" },
-    { key: "evidence",    label: "Evidence",    mode: "A" },
-    { key: "scheduler",   label: "Scheduler",   mode: "A" },
-    { key: "governance",  label: "Governance",  mode: "A" },
-    { key: "tenants",     label: "Tenants",     mode: "A" },
-    { key: "analytics",   label: "Analytics",   mode: "A" },
-    { key: "system",      label: "System",      mode: "A" },
+// Per-front nav — IN-SCOPE surfaces only. mode A = live on main; mode D = forthcoming, disclosed-not-live.
+export const FRONT_NAV = Object.freeze({
+  A: Object.freeze([
+    { key: "dashboard",     label: "Dashboard",          mode: "A" },
+    { key: "workforce",     label: "Workforce",          mode: "A" }, // customer workforce mgmt
+    { key: "onboarding",    label: "Onboarding",         mode: "D" },
+    { key: "compliance",    label: "Compliance",         mode: "D" }, // customer compliance (NOT operator governance)
+    { key: "billing",       label: "Billing",            mode: "D" },
+    { key: "hyperpay-test", label: "Payments (sandbox)", mode: "D" }, // HyperPay test flow, disclosed-not-live
   ]),
-  // disclosed-not-live: role context present, in-scope surfaces forthcoming in later UI slices.
-  employer: Object.freeze([]),
-  worker:   Object.freeze([]),
-});
+  B: Object.freeze([
+    { key: "admin",      label: "Admin",       mode: "D" },
+    { key: "audit",      label: "Audit",       mode: "D" },
+    { key: "governance", label: "Governance",  mode: "A" },
+    { key: "tenants",    label: "Tenants",     mode: "A" },
+    { key: "evidence",   label: "Evidence",    mode: "A" },
+    { key: "system",     label: "System",      mode: "A" },
+    { key: "pods",       label: "Pods",        mode: "A" },
+    { key: "assignments",label: "Assignments", mode: "A" },
+    { key: "scheduler",  label: "Scheduler",   mode: "A" },
+    { key: "analytics",  label: "Analytics",   mode: "A" },
+  ]),
+})
 
-export const ROLES = Object.freeze(["admin", "employer", "worker"]);
-
-/** A role with no live surfaces yet is disclosed-not-live (fail-closed-visible). */
-export function roleMode(role) {
-  const tree = ROLE_NAV[role] || [];
-  return tree.length > 0 ? "A" : "D";
+/** SURFACE-ACCESS GUARD (routing-level). Can `front` reach `routeKey`? */
+export function canAccessRoute(front, routeKey) {
+  if (isExcluded(routeKey)) return false                                  // deferred/held: never on any front
+  if (front === "A" && INTERNAL_ONLY_ROUTES.includes(routeKey)) return false // customer cannot reach internal
+  return true
 }
 
-/** Guard: NO excluded surface may appear in ANY role tree. Returns the offending keys (empty = clean). */
-export function excludedLeakage() {
-  const leaked = [];
-  for (const role of ROLES) {
-    for (const item of ROLE_NAV[role] || []) {
-      if (isExcluded(item.key)) leaked.push(`${role}:${item.key}`);
-    }
-  }
-  return leaked;
+/** Leak detector — any internal/excluded route present in a Front-A nav list (should be []). */
+export function frontAInternalLeak(navA) {
+  const list = navA || FRONT_NAV.A
+  return list.map((i) => i.key).filter((k) => INTERNAL_ONLY_ROUTES.includes(k) || isExcluded(k))
 }

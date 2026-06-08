@@ -1,4 +1,5 @@
-import { renderNav, setTenantOptions } from "./components/nav.js"
+import { renderNav, setTenantOptions, getFront } from "./components/nav.js"
+import { canAccessRoute } from "./components/nav-model.js"
 import { apiGet } from "./api.js"
 import dashboard   from "./pages/dashboard.js"
 import workers     from "./pages/workers.js"
@@ -33,8 +34,27 @@ function currentRoute() {
 
 let _pageEl = null
 
+function renderAccessDenied(el, key, front) {
+  const box = document.createElement("div")
+  box.className = "access-denied"
+  box.setAttribute("role", "alert")
+  box.setAttribute("data-denied-route", key)
+  box.textContent = `Surface "${key}" is not available on the WorkCaptain (customer) front.`
+  el.appendChild(box)
+}
+
 function navigate(name, pushState = true) {
-  const key = ROUTES[name] ? name : DEFAULT
+  const front = getFront()
+  const requested = ROUTES[name] ? name : DEFAULT
+  // SURFACE-ACCESS GUARD (routing-level): a front that cannot reach a route hits a wall here,
+  // even on a direct URL (#governance) — not merely a hidden nav link.
+  if (!canAccessRoute(front, requested)) {
+    if (pushState) location.hash = DEFAULT
+    renderNav(DEFAULT)
+    if (_pageEl) { _pageEl.innerHTML = ""; renderAccessDenied(_pageEl, requested, front) }
+    return
+  }
+  const key = requested
   if (pushState) location.hash = key
   renderNav(key)
   if (_pageEl) {
