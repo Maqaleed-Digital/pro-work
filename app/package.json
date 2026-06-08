@@ -12,8 +12,8 @@
     "ports:kill": "bash ./scripts/ports_kill.sh",
     "lint": "node -c server.js",
     "typecheck": "node -e \"console.log('typecheck: ok (genesis scaffold)')\"",
-    "test": "node -e \"console.log('test: ok (genesis scaffold)')\"",
-    "build": "node -c server.js && node -e \"console.log('build: ok (readiness smoke)')\""
+    "test": "node --test frontend/src/components/__tests__/nav-model.test.mjs",
+    "build": "cd frontend && npm install --no-audit --no-fund && npm run build"
   },
   "engines": {
     "node": ">=18"
