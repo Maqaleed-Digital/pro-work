@@ -10,11 +10,16 @@
 
 export const FRONTS = Object.freeze({
   // FRONT A — customer: employers / workers / commercial. Simple, conversion-oriented SaaS.
-  A: Object.freeze({ id: "workcaptain", kind: "customer", brand: { name: "WorkCaptain", copyStatus: "PENDING-DL-037-CONFIRMATION" } }),
+  // defaultMode D: the customer product is disclosed-not-live by default (not yet productionised).
+  A: Object.freeze({ id: "workcaptain", kind: "customer", defaultMode: "D", brand: { name: "WorkCaptain", copyStatus: "PENDING-DL-037-CONFIRMATION" } }),
   // FRONT B — internal: operators / support / governance / audit / oversight. Institutional, governance-first.
-  B: Object.freeze({ id: "maqaleed-workforce-console", kind: "internal", brand: { name: "Maqaleed Workforce Console", copyStatus: "confirmed" } }),
+  // defaultMode A: the internal console is operational/live.
+  B: Object.freeze({ id: "maqaleed-workforce-console", kind: "internal", defaultMode: "A", brand: { name: "Maqaleed Workforce Console", copyStatus: "confirmed" } }),
 })
 export const FRONT_IDS = Object.freeze(["A", "B"])
+
+/** Front-level default Mode (Customer → D / Internal → A). */
+export function frontMode(front) { return (FRONTS[front] && FRONTS[front].defaultMode) || "D" }
 
 // Operator-only surfaces. FRONT A (customer) MUST NOT route to any of these — direct URL blocked,
 // not merely hidden (enforced in router.navigate via canAccessRoute).
@@ -32,8 +37,9 @@ export function isExcluded(key) {
 // Per-front nav — IN-SCOPE surfaces only. mode A = live on main; mode D = forthcoming, disclosed-not-live.
 export const FRONT_NAV = Object.freeze({
   A: Object.freeze([
-    { key: "dashboard",     label: "Dashboard",          mode: "A" },
-    { key: "workforce",     label: "Workforce",          mode: "A" }, // customer workforce mgmt
+    // Customer front defaults to Mode D (disclosed-not-live) until productionised.
+    { key: "dashboard",     label: "Dashboard",          mode: "D" },
+    { key: "workforce",     label: "Workforce",          mode: "D" }, // customer workforce mgmt
     { key: "onboarding",    label: "Onboarding",         mode: "D" },
     { key: "compliance",    label: "Compliance",         mode: "D" }, // customer compliance (NOT operator governance)
     { key: "billing",       label: "Billing",            mode: "D" },

@@ -4,7 +4,7 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 import {
   FRONTS, FRONT_IDS, FRONT_NAV, INTERNAL_ONLY_ROUTES, EXCLUDED_SURFACES,
-  isExcluded, canAccessRoute, frontAInternalLeak,
+  isExcluded, canAccessRoute, frontAInternalLeak, frontMode,
 } from "../nav-model.js"
 
 test("two-product model: A=WorkCaptain (customer, copy PENDING), B=Maqaleed Workforce Console (internal)", () => {
@@ -14,6 +14,15 @@ test("two-product model: A=WorkCaptain (customer, copy PENDING), B=Maqaleed Work
   assert.equal(FRONTS.A.brand.copyStatus, "PENDING-DL-037-CONFIRMATION") // not invented
   assert.equal(FRONTS.B.id, "maqaleed-workforce-console")
   assert.equal(FRONTS.B.kind, "internal")
+})
+
+test("front-level default Mode: Customer=D (disclosed-not-live), Internal=A (live)", () => {
+  assert.equal(FRONTS.A.defaultMode, "D")
+  assert.equal(FRONTS.B.defaultMode, "A")
+  assert.equal(frontMode("A"), "D")
+  assert.equal(frontMode("B"), "A")
+  // customer-front surfaces inherit Mode-D (whole customer product disclosed-not-live)
+  assert.ok(FRONT_NAV.A.every((s) => s.mode === "D"))
 })
 
 test("per-front nav: Front A is customer surfaces; Front B holds the internal/operator surfaces", () => {

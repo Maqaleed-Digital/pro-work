@@ -1,5 +1,5 @@
 import { getToken, setToken, getTenant, setTenant } from "../api.js"
-import { FRONTS, FRONT_IDS, FRONT_NAV, canAccessRoute, isExcluded } from "./nav-model.js"
+import { FRONTS, FRONT_IDS, FRONT_NAV, canAccessRoute, isExcluded, frontMode } from "./nav-model.js"
 
 // WC-W4-UI-001 · UI-1.1 shell — Two-Front Product Architecture over ONE backend.
 // Front A = WorkCaptain (customer) · Front B = Maqaleed Workforce Console (internal).
@@ -31,10 +31,14 @@ function renderBrand(nav, front) {
 
 function renderModeChrome(nav, front) {
   // Fail-closed-visible: show the front + a live/disclosed indicator.
+  const m = frontMode(front) // Customer → D (disclosed-not-live) · Internal → A (live)
   const chip = document.createElement("div")
-  chip.className = "front-chip front-" + front.toLowerCase()
+  chip.className = "front-chip front-" + front.toLowerCase() + " mode-" + m
   chip.setAttribute("data-front", front)
-  chip.textContent = front === "A" ? "WorkCaptain · customer" : "Maqaleed Workforce Console · internal"
+  chip.setAttribute("data-mode", m)
+  chip.textContent = front === "A"
+    ? "WorkCaptain · customer · Mode D · disclosed-not-live"
+    : "Maqaleed Workforce Console · internal · Mode A · live"
   nav.appendChild(chip)
 }
 
