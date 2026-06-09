@@ -28,7 +28,7 @@ test("front-level default Mode: Customer=D (disclosed-not-live), Internal=A (liv
 test("per-front nav: Front A is customer surfaces; Front B holds the internal/operator surfaces", () => {
   const aKeys = FRONT_NAV.A.map((i) => i.key)
   const bKeys = FRONT_NAV.B.map((i) => i.key)
-  assert.ok(aKeys.includes("billing") && aKeys.includes("hyperpay-test"))
+  assert.ok(aKeys.includes("fee-transparency") && aKeys.includes("hyperpay-test"))
   // beta is in the operator set and lives on Front B (not A)
   for (const internal of INTERNAL_ONLY_ROUTES) {
     if (internal === "beta") { assert.ok(bKeys.includes("beta")); continue }
@@ -56,8 +56,9 @@ test("UI-5: trust surfaces (evidence/governance) classify Front B / Mode D displ
   const gov = FRONT_NAV.B.find((i) => i.key === "governance")
   assert.ok(ev && ev.mode === "D" && !ev.executing, "evidence: Front B, Mode D, display-only")
   assert.ok(gov && gov.mode === "D" && !gov.executing, "governance: Front B, Mode D, display-only")
-  // matrix finding: no trust surface executes; beta remains the only Mode-A executor
-  assert.equal(FRONT_NAV.B.filter((i) => i.executing).map((i) => i.key).join(","), "beta")
+  // matrix finding: NO trust surface (evidence/governance) executes — they are display-only.
+  // (Executors on Front B are beta [UI-2] and payout-matrix [UI-6 PSP routing], not trust surfaces.)
+  assert.equal(["evidence", "governance"].some((k) => FRONT_NAV.B.find((i) => i.key === k)?.executing), false)
   // not on Front A
   assert.equal(FRONT_NAV.A.some((i) => i.key === "evidence" || i.key === "governance"), false)
 })
@@ -72,6 +73,28 @@ test("UI-5: evidence-pack export is internal (Front B, Mode D read+export) and F
   assert.equal(canAccessRoute("B", "evidence-export"), true)
   // NON-VACUOUS control: a planted evidence-export link on Front A IS detected as a leak
   assert.deepEqual(frontAInternalLeak([{ key: "evidence-export", label: "x", mode: "D" }]), ["evidence-export"])
+})
+
+test("UI-6: fee_transparency is GENUINELY customer (Front A, Mode D display) — first customer surface, held", () => {
+  const fee = FRONT_NAV.A.find((i) => i.key === "fee-transparency")
+  assert.ok(fee && fee.mode === "D" && fee.held === true && !fee.executing, "fee-transparency: Front A, Mode D, held, display")
+  assert.equal(canAccessRoute("A", "fee-transparency"), true) // customer surface — reachable on Front A
+  assert.equal(FRONT_NAV.B.some((i) => i.key === "fee-transparency"), false)
+})
+
+test("UI-6: esb_calculator EXECUTES (Store-as-Evidence) → tagged Mode A executing", () => {
+  assert.ok(EXECUTING_SURFACES["esb-calculator"], "esb-calculator recorded as executing")
+  assert.match(EXECUTING_SURFACES["esb-calculator"].action, /esb\/calculate|Store-as-Evidence/)
+})
+
+test("UI-6: payout-matrix (PSP routing config) is INTERNAL (Front B) — Front A walled; non-vacuous control", () => {
+  assert.ok(INTERNAL_ONLY_ROUTES.includes("payout-matrix"))
+  assert.ok(FRONT_NAV.B.some((i) => i.key === "payout-matrix"))
+  assert.equal(FRONT_NAV.A.some((i) => i.key === "payout-matrix"), false)
+  assert.equal(canAccessRoute("A", "payout-matrix"), false) // customer walled from PSP routing config
+  assert.equal(canAccessRoute("B", "payout-matrix"), true)
+  // NON-VACUOUS control: a planted internal-finance route on Front A IS detected as a leak
+  assert.deepEqual(frontAInternalLeak([{ key: "payout-matrix", label: "x", mode: "A" }]), ["payout-matrix"])
 })
 
 test("UI-2: Front A has NO wired customer dashboard — all customer surfaces held disclosed-not-live", () => {

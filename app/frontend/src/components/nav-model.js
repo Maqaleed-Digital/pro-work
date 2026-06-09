@@ -25,11 +25,17 @@ export function frontMode(front) { return (FRONTS[front] && FRONTS[front].defaul
 // not merely hidden (enforced in router.navigate via canAccessRoute).
 // UI-2: `beta` (/admin/beta GTM scorecard — internal, POSTs /admin/beta/ceo-exit-request) added here
 // after the UI-0 audit misclassified it as a customer surface (corrected per Sponsor ruling).
-export const INTERNAL_ONLY_ROUTES = Object.freeze(["admin", "audit", "governance", "tenants", "evidence", "system", "beta", "evidence-export"])
+// UI-6: payout-matrix = PSP routing config (psp_routing_matrix_v1.json) — internal payment
+// infrastructure, NOT customer. Added to the guard set (Front A walled).
+export const INTERNAL_ONLY_ROUTES = Object.freeze(["admin", "audit", "governance", "tenants", "evidence", "system", "beta", "evidence-export", "payout-matrix"])
 
 // Surfaces carrying an EXECUTING action (Addendum B: executes ⇒ Mode A + review, not passive display).
 export const EXECUTING_SURFACES = Object.freeze({
   beta: Object.freeze({ action: "/admin/beta/ceo-exit-request", method: "POST" }),
+  // UI-6: esb_calculator computes (POST /api/compliance/esb/calculate) AND has a "Store as Evidence"
+  // action (onStored → EP-WOS-OFFBOARD-01) that COMMITS a record ⇒ Mode A. Held disclosed-not-live,
+  // review-gated (no live store). It is an embedded component, not a top-level nav surface.
+  "esb-calculator": Object.freeze({ action: "/api/compliance/esb/calculate + Store-as-Evidence(EP-WOS-OFFBOARD-01)", method: "POST", front: "A-customer", held: true }),
 })
 
 // Carry-forward exclusions (Sponsor D-A deferred + D-B held) — reachable on NEITHER front.
@@ -52,7 +58,10 @@ export const FRONT_NAV = Object.freeze({
     { key: "worker-context",     label: "Worker",             mode: "D", held: true },
     { key: "onboarding",         label: "Onboarding",         mode: "D", held: true },
     { key: "compliance",         label: "Compliance",         mode: "D", held: true },
-    { key: "billing",            label: "Billing",            mode: "D", held: true },
+    // UI-6: fee_transparency classified GENUINELY CUSTOMER (GET /api/payments/fee-transparency/* +
+    // stateless POST /calculate; displays fee math before commitment) — the first customer surface.
+    // Held disclosed-not-live: no live fund movement; live backend + payment commitment gated (G5/UI-7).
+    { key: "fee-transparency",   label: "Billing / Fee Transparency", mode: "D", held: true },
     { key: "hyperpay-test",      label: "Payments (sandbox)", mode: "D", held: true },
   ]),
   // FRONT B — Maqaleed Workforce Console (internal). Live ops/governance surfaces = Mode A.
@@ -73,6 +82,8 @@ export const FRONT_NAV = Object.freeze({
     { key: "analytics",  label: "Analytics",     mode: "A" },
     { key: "admin",      label: "Admin",         mode: "D", held: true },
     { key: "audit",      label: "Audit",         mode: "D", held: true },
+    // UI-6: PSP routing matrix — internal payment-infra config (executing when live); held, guarded.
+    { key: "payout-matrix", label: "PSP Routing Matrix", mode: "A", held: true, executing: true },
   ]),
 })
 
