@@ -49,6 +49,11 @@ jobs:
 
   build:
     needs: test
+    # WC-W4-UI-009 (Option A): build/push the image only for RELEASES (tags v*) or a manual
+    # dispatch — NOT on ordinary pushes to main. An ordinary main merge runs the `test` job only;
+    # the infra jobs (GHCR push, AWS ECS deploy) stay gated to release/dispatch. This keeps the
+    # deploy pipeline green at demo-ready without smuggling deploy-infra config into a UI slice.
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -92,7 +97,9 @@ jobs:
 
   deploy-staging:
     needs: build
-    if: github.ref == 'refs/heads/main'
+    # WC-W4-UI-009 (Option A): staging deploy on RELEASE tag (v*) or manual dispatch — no longer
+    # on every push to main (which would attempt a real AWS ECS deploy on each feature merge).
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     environment: staging
     steps:
