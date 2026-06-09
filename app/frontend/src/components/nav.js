@@ -45,7 +45,7 @@ function renderModeChrome(nav, front) {
 function renderTabs(nav, front, activeKey) {
   const tabs = document.createElement("div")
   tabs.className = "tabs"
-  ;(FRONT_NAV[front] || []).forEach(({ key, label, mode, held, executing }) => {
+  ;(FRONT_NAV[front] || []).forEach(({ key, label, mode, held, executing, sandbox }) => {
     // belt-and-suspenders: never render an excluded surface, nor one the front can't reach.
     if (isExcluded(key)) return
     if (!canAccessRoute(front, key)) return
@@ -60,11 +60,18 @@ function renderTabs(nav, front, activeKey) {
       return
     }
     const a = document.createElement("a")
-    a.className = "tab" + (key === activeKey ? " active" : "")
+    a.className = "tab" + (key === activeKey ? " active" : "") + (sandbox ? " tab-sandbox" : "")
     a.href = "#" + key
     a.setAttribute("data-mode", mode)
+    if (sandbox) a.setAttribute("data-state", "disclosed-not-live")
     a.textContent = label
-    if (executing) {
+    if (sandbox) {
+      // UI-7: navigable but visibly NOT live — executes in sandbox only; live funds held behind G5.
+      const s = document.createElement("span")
+      s.className = "tab-sandbox-tag"
+      s.textContent = " · sandbox · not live (G5)"
+      a.appendChild(s)
+    } else if (executing) {
       // Addendum B: surface carries an executing action ⇒ Mode A + review.
       const e = document.createElement("span")
       e.className = "tab-executing"
