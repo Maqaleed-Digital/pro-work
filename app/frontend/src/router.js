@@ -13,6 +13,7 @@ import analytics   from "./pages/analytics.js"
 import system      from "./pages/system.js"
 import betaDashboard from "./pages/beta_dashboard.js" // UI-2: internal /admin/beta (Front B; guard-walled from Front A)
 import evidenceExport from "./pages/evidence_export.js" // UI-5: internal evidence-pack export (Front B; guard-walled)
+import hyperpaySandbox from "./pages/hyperpay_sandbox.js" // UI-7: customer HyperPay SANDBOX (Front A; disclosed-not-live, no live funds)
 
 const ROUTES = {
   "dashboard":   dashboard,
@@ -27,6 +28,7 @@ const ROUTES = {
   "system":      system,
   "beta":        betaDashboard,
   "evidence-export": evidenceExport,
+  "hyperpay-sandbox": hyperpaySandbox,
 }
 
 const DEFAULT = "dashboard"

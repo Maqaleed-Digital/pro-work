@@ -2,10 +2,21 @@
 // architecture + surface-access guard hold — independent of the (now-real) CI build.
 import { test } from "node:test"
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
+import { fileURLToPath } from "node:url"
 import {
   FRONTS, FRONT_IDS, FRONT_NAV, INTERNAL_ONLY_ROUTES, EXCLUDED_SURFACES, EXECUTING_SURFACES,
   isExcluded, canAccessRoute, frontAInternalLeak, frontMode,
 } from "../nav-model.js"
+
+// UI-7: read the HyperPay sandbox page source for the sandbox-only + no-secret guards.
+const HYPERPAY_SRC = readFileSync(fileURLToPath(new URL("../../pages/hyperpay_sandbox.js", import.meta.url)), "utf8")
+// Non-vacuous secret detector: a Bearer token, a HYPERPAY_*_TOKEN assignment, or a long hex/sk_ key.
+function hasEmbeddedSecret(text) {
+  return /Bearer\s+[A-Za-z0-9._\-]{8,}/.test(text)
+    || /HYPERPAY_[A-Z_]*(TOKEN|SECRET|ENTITY_ID)\s*[:=]\s*["'][^"']+["']/.test(text)
+    || /\b(sk_live|sk_test)_[A-Za-z0-9]{8,}\b/.test(text)
+}
 
 test("two-product model: A=WorkCaptain (customer, copy PENDING), B=Maqaleed Workforce Console (internal)", () => {
   assert.deepEqual(FRONT_IDS, ["A", "B"])
@@ -21,14 +32,17 @@ test("front-level default Mode: Customer=D (disclosed-not-live), Internal=A (liv
   assert.equal(FRONTS.B.defaultMode, "A")
   assert.equal(frontMode("A"), "D")
   assert.equal(frontMode("B"), "A")
-  // customer-front surfaces inherit Mode-D (whole customer product disclosed-not-live)
-  assert.ok(FRONT_NAV.A.every((s) => s.mode === "D"))
+  // Front A liveness invariant (UI-7-refined): NO Front-A surface runs a LIVE customer action.
+  // Every surface is either Mode-D display, OR an executing surface that is gated (held placeholder
+  // OR sandbox/disclosed-not-live). There is NO live (navigable, non-sandbox, non-held) executor.
+  assert.ok(FRONT_NAV.A.every((s) => s.mode === "D" || (s.executing && (s.held || s.sandbox))))
+  assert.equal(FRONT_NAV.A.some((s) => s.executing && !s.held && !s.sandbox), false, "no live customer executor")
 })
 
 test("per-front nav: Front A is customer surfaces; Front B holds the internal/operator surfaces", () => {
   const aKeys = FRONT_NAV.A.map((i) => i.key)
   const bKeys = FRONT_NAV.B.map((i) => i.key)
-  assert.ok(aKeys.includes("fee-transparency") && aKeys.includes("hyperpay-test"))
+  assert.ok(aKeys.includes("fee-transparency") && aKeys.includes("hyperpay-sandbox"))
   // beta is in the operator set and lives on Front B (not A)
   for (const internal of INTERNAL_ONLY_ROUTES) {
     if (internal === "beta") { assert.ok(bKeys.includes("beta")); continue }
@@ -97,9 +111,44 @@ test("UI-6: payout-matrix (PSP routing config) is INTERNAL (Front B) — Front A
   assert.deepEqual(frontAInternalLeak([{ key: "payout-matrix", label: "x", mode: "A" }]), ["payout-matrix"])
 })
 
-test("UI-2: Front A has NO wired customer dashboard — all customer surfaces held disclosed-not-live", () => {
-  // no real customer-dashboard route on Front A; every Front-A surface is held (no overclaim)
-  assert.ok(FRONT_NAV.A.every((i) => i.held === true))
+test("UI-7: hyperpay-sandbox is Front A, Mode A, executing-tagged, sandbox/disclosed-not-live (NOT live)", () => {
+  const hp = FRONT_NAV.A.find((i) => i.key === "hyperpay-sandbox")
+  assert.ok(hp, "hyperpay-sandbox present on Front A (customer)")
+  assert.equal(hp.mode, "A")               // payment surface EXECUTES ⇒ Mode A
+  assert.equal(hp.executing, true)         // executing-tag (Addendum B)
+  assert.equal(hp.sandbox, true)           // disclosed-not-live, navigable demo
+  assert.notEqual(hp.held, true)           // navigable (the flow can be demonstrated)
+  assert.equal(FRONT_NAV.B.some((i) => i.key === "hyperpay-sandbox"), false) // customer surface, not internal
+  assert.equal(canAccessRoute("A", "hyperpay-sandbox"), true) // reachable on Front A (NOT in INTERNAL_ONLY_ROUTES)
+  // registered as an executing surface, gated to sandbox, no live fund movement, G5-held
+  const reg = EXECUTING_SURFACES["hyperpay-sandbox"]
+  assert.ok(reg && reg.sandbox === true && reg.liveFundMovement === false && reg.liveGate === "G5")
+})
+
+test("UI-7: sandbox-ONLY — eu-test base, NO production endpoint / NO live-charge path in the surface", () => {
+  assert.match(HYPERPAY_SRC, /eu-test\.oppwa\.com/, "sandbox base present")
+  // production base must NOT appear anywhere in the customer surface
+  assert.equal(/https:\/\/oppwa\.com\/v1/.test(HYPERPAY_SRC), false, "no production base URL")
+  // no live charge path: the surface makes NO network call at all (client-side synthetic only)
+  assert.equal(/\bfetch\s*\(/.test(HYPERPAY_SRC), false, "surface performs no network call")
+  assert.equal(/\bAuthorization\b/.test(HYPERPAY_SRC), false, "no Authorization header / live request")
+  // EXECUTING_SURFACES marks it sandbox-only with no production path
+  assert.equal(EXECUTING_SURFACES["hyperpay-sandbox"].noProductionPath, true)
+})
+
+test("UI-7: NO secret embedded in the committed surface (env-only) — with non-vacuous control", () => {
+  // the customer surface references NO HyperPay credential value (creds are backend env-only)
+  assert.equal(hasEmbeddedSecret(HYPERPAY_SRC), false, "no Bearer token / token assignment / api key in source")
+  assert.equal(/HYPERPAY_ACCESS_TOKEN\s*[:=]\s*["']/.test(HYPERPAY_SRC), false, "no access-token assignment")
+  // NON-VACUOUS control: an actually-embedded secret IS detected by the same detector
+  assert.equal(hasEmbeddedSecret('const h = { Authorization: "Bearer sk_live_abc123def456ghi" }'), true)
+  assert.equal(hasEmbeddedSecret('HYPERPAY_ACCESS_TOKEN = "OGE4Mjk0..."'), true)
+})
+
+test("UI-2: Front A has NO wired customer dashboard — all customer surfaces disclosed-not-live", () => {
+  // no real customer-dashboard route on Front A; every Front-A surface is disclosed-not-live —
+  // either held (non-navigable placeholder) or sandbox (navigable but not live). No overclaim.
+  assert.ok(FRONT_NAV.A.every((i) => i.held === true || i.sandbox === true))
   assert.equal(FRONT_NAV.A.some((i) => i.key === "dashboard"), false) // ops dashboard not on customer front
   // employer/worker contexts present but held (disclosed-not-live)
   assert.ok(FRONT_NAV.A.some((i) => i.key === "employer-context" && i.held))

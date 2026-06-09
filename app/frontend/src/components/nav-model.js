@@ -36,6 +36,15 @@ export const EXECUTING_SURFACES = Object.freeze({
   // action (onStored → EP-WOS-OFFBOARD-01) that COMMITS a record ⇒ Mode A. Held disclosed-not-live,
   // review-gated (no live store). It is an embedded component, not a top-level nav surface.
   "esb-calculator": Object.freeze({ action: "/api/compliance/esb/calculate + Store-as-Evidence(EP-WOS-OFFBOARD-01)", method: "POST", front: "A-customer", held: true }),
+  // UI-7: HyperPay payment surface EXECUTES (charge) ⇒ Mode A + executing-tag. Customer-facing
+  // (Front A) but SANDBOX-only + disclosed-not-live: live fund movement HELD behind G5
+  // (WC-PAY-TEST-001). NON-CUSTODIAL. The UI runs client-side synthetic responses only — no network,
+  // no live charge path, no secret. Credentials are env-only in the BACKEND adapter (never here/CI).
+  "hyperpay-sandbox": Object.freeze({
+    action: "charge (Copy&Pay)", env: "sandbox", base: "https://eu-test.oppwa.com/v1",
+    front: "A-customer", sandbox: true, liveFundMovement: false, liveGate: "G5", custody: "non-custodial",
+    noProductionPath: true, credsEnvOnly: ["HYPERPAY_ENTITY_ID", "HYPERPAY_ACCESS_TOKEN", "HYPERPAY_WEBHOOK_SECRET"],
+  }),
 })
 
 // Carry-forward exclusions (Sponsor D-A deferred + D-B held) — reachable on NEITHER front.
@@ -62,7 +71,10 @@ export const FRONT_NAV = Object.freeze({
     // stateless POST /calculate; displays fee math before commitment) — the first customer surface.
     // Held disclosed-not-live: no live fund movement; live backend + payment commitment gated (G5/UI-7).
     { key: "fee-transparency",   label: "Billing / Fee Transparency", mode: "D", held: true },
-    { key: "hyperpay-test",      label: "Payments (sandbox)", mode: "D", held: true },
+    // UI-7: HyperPay sandbox — EXECUTES (Mode A, executing-tag). NAVIGABLE so the flow can be
+    // demonstrated, but `sandbox:true` (not `held`) ⇒ rendered disclosed-not-live, no live funds,
+    // G5-gated. This is the discipline: a customer surface can execute, but only in sandbox until G5.
+    { key: "hyperpay-sandbox",   label: "Payments (HyperPay sandbox)", mode: "A", executing: true, sandbox: true },
   ]),
   // FRONT B — Maqaleed Workforce Console (internal). Live ops/governance surfaces = Mode A.
   // beta (Beta/GTM scorecard) lives here with an executing action (see EXECUTING_SURFACES).
