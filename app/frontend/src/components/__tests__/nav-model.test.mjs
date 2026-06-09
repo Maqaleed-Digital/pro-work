@@ -3,7 +3,7 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import {
-  FRONTS, FRONT_IDS, FRONT_NAV, INTERNAL_ONLY_ROUTES, EXCLUDED_SURFACES,
+  FRONTS, FRONT_IDS, FRONT_NAV, INTERNAL_ONLY_ROUTES, EXCLUDED_SURFACES, EXECUTING_SURFACES,
   isExcluded, canAccessRoute, frontAInternalLeak, frontMode,
 } from "../nav-model.js"
 
@@ -28,8 +28,36 @@ test("front-level default Mode: Customer=D (disclosed-not-live), Internal=A (liv
 test("per-front nav: Front A is customer surfaces; Front B holds the internal/operator surfaces", () => {
   const aKeys = FRONT_NAV.A.map((i) => i.key)
   const bKeys = FRONT_NAV.B.map((i) => i.key)
-  assert.ok(aKeys.includes("dashboard") && aKeys.includes("billing") && aKeys.includes("hyperpay-test"))
-  for (const internal of INTERNAL_ONLY_ROUTES) assert.ok(bKeys.includes(internal), `B should expose ${internal}`)
+  assert.ok(aKeys.includes("billing") && aKeys.includes("hyperpay-test"))
+  // beta is in the operator set and lives on Front B (not A)
+  for (const internal of INTERNAL_ONLY_ROUTES) {
+    if (internal === "beta") { assert.ok(bKeys.includes("beta")); continue }
+    assert.ok(bKeys.includes(internal), `B should expose ${internal}`)
+  }
+})
+
+test("UI-2: beta_dashboard correctly placed Front B / Mode A + executing-tagged; Front A walled from /admin/beta", () => {
+  // reclassified internal: in the guard set, on Front B, NOT on Front A
+  assert.ok(INTERNAL_ONLY_ROUTES.includes("beta"))
+  const beta = FRONT_NAV.B.find((i) => i.key === "beta")
+  assert.ok(beta && beta.mode === "A" && beta.executing === true)
+  assert.equal(FRONT_NAV.A.some((i) => i.key === "beta"), false)
+  // executing action recorded (Addendum B: executes ⇒ Mode A + review)
+  assert.equal(EXECUTING_SURFACES.beta.action, "/admin/beta/ceo-exit-request")
+  // routing-level wall: Front A cannot reach /admin/beta; Front B can
+  assert.equal(canAccessRoute("A", "beta"), false)
+  assert.equal(canAccessRoute("B", "beta"), true)
+  // NON-VACUOUS control: a planted /admin/beta link on Front A IS detected as a leak
+  assert.deepEqual(frontAInternalLeak([{ key: "beta", label: "x", mode: "A" }]), ["beta"])
+})
+
+test("UI-2: Front A has NO wired customer dashboard — all customer surfaces held disclosed-not-live", () => {
+  // no real customer-dashboard route on Front A; every Front-A surface is held (no overclaim)
+  assert.ok(FRONT_NAV.A.every((i) => i.held === true))
+  assert.equal(FRONT_NAV.A.some((i) => i.key === "dashboard"), false) // ops dashboard not on customer front
+  // employer/worker contexts present but held (disclosed-not-live)
+  assert.ok(FRONT_NAV.A.some((i) => i.key === "employer-context" && i.held))
+  assert.ok(FRONT_NAV.A.some((i) => i.key === "worker-context" && i.held))
 })
 
 test("SURFACE-ACCESS GUARD: Front A cannot reach ANY internal route; Front B can reach all", () => {

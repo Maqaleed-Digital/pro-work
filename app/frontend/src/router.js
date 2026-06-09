@@ -11,6 +11,7 @@ import governance  from "./pages/governance.js"
 import tenants     from "./pages/tenants.js"
 import analytics   from "./pages/analytics.js"
 import system      from "./pages/system.js"
+import betaDashboard from "./pages/beta_dashboard.js" // UI-2: internal /admin/beta (Front B; guard-walled from Front A)
 
 const ROUTES = {
   "dashboard":   dashboard,
@@ -23,6 +24,7 @@ const ROUTES = {
   "tenants":     tenants,
   "analytics":   analytics,
   "system":      system,
+  "beta":        betaDashboard,
 }
 
 const DEFAULT = "dashboard"
