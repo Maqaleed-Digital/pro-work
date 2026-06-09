@@ -12,6 +12,7 @@ import tenants     from "./pages/tenants.js"
 import analytics   from "./pages/analytics.js"
 import system      from "./pages/system.js"
 import betaDashboard from "./pages/beta_dashboard.js" // UI-2: internal /admin/beta (Front B; guard-walled from Front A)
+import evidenceExport from "./pages/evidence_export.js" // UI-5: internal evidence-pack export (Front B; guard-walled)
 
 const ROUTES = {
   "dashboard":   dashboard,
@@ -25,6 +26,7 @@ const ROUTES = {
   "analytics":   analytics,
   "system":      system,
   "beta":        betaDashboard,
+  "evidence-export": evidenceExport,
 }
 
 const DEFAULT = "dashboard"
