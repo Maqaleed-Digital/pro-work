@@ -39,9 +39,13 @@ jobs:
       - name: Run tests
         working-directory: app
         run: npm test
-      
-      - name: Run reserve layer tests
-        run: node --test tests/reserve/reserve_layer.test.js
+      # NOTE (WC-W4-UI-009): the former "Run reserve layer tests" step was removed — it ran
+      # `node --test tests/reserve/reserve_layer.test.js`, a fixture that has NEVER existed in
+      # main's tree. The trust-reserve feature (app/modules/reserve/* + its test) lives on
+      # sprint/S37-trust-reserve-stability and was never merged to main; the step was orphaned on
+      # main since fb8de0c (PROD-V1) and red on every commit. Restoring the test alone fails on its
+      # missing module imports, and pulling the modules in would import an unmerged/unratified
+      # feature via a CI cleanup — out of scope. The `npm test` step above is the real coverage.
 
   build:
     needs: test

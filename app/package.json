@@ -12,7 +12,7 @@
     "ports:kill": "bash ./scripts/ports_kill.sh",
     "lint": "node -c server.js",
     "typecheck": "node -e \"console.log('typecheck: ok (genesis scaffold)')\"",
-    "test": "node --test frontend/src/components/__tests__/nav-model.test.mjs",
+    "test": "node --test frontend/src/components/__tests__/",
     "build": "cd frontend && npm install --no-audit --no-fund && npm run build"
   },
   "engines": {
