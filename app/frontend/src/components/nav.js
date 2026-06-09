@@ -45,16 +45,32 @@ function renderModeChrome(nav, front) {
 function renderTabs(nav, front, activeKey) {
   const tabs = document.createElement("div")
   tabs.className = "tabs"
-  ;(FRONT_NAV[front] || []).forEach(({ key, label, mode }) => {
+  ;(FRONT_NAV[front] || []).forEach(({ key, label, mode, held, executing }) => {
     // belt-and-suspenders: never render an excluded surface, nor one the front can't reach.
     if (isExcluded(key)) return
     if (!canAccessRoute(front, key)) return
+    if (held) {
+      // disclosed-not-live: rendered as a NON-navigable placeholder (no route, not a link).
+      const span = document.createElement("span")
+      span.className = "tab tab-held"
+      span.setAttribute("data-mode", mode)
+      span.setAttribute("data-state", "disclosed-not-live")
+      span.textContent = label + " · disclosed-not-live"
+      tabs.appendChild(span)
+      return
+    }
     const a = document.createElement("a")
     a.className = "tab" + (key === activeKey ? " active" : "")
     a.href = "#" + key
     a.setAttribute("data-mode", mode)
     a.textContent = label
-    if (mode === "D") {
+    if (executing) {
+      // Addendum B: surface carries an executing action ⇒ Mode A + review.
+      const e = document.createElement("span")
+      e.className = "tab-executing"
+      e.textContent = " · executing (Mode A · review)"
+      a.appendChild(e)
+    } else if (mode === "D") {
       const d = document.createElement("span")
       d.className = "tab-mode-d"
       d.textContent = " · disclosed-not-live"

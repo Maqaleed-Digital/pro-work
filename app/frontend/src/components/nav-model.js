@@ -23,7 +23,14 @@ export function frontMode(front) { return (FRONTS[front] && FRONTS[front].defaul
 
 // Operator-only surfaces. FRONT A (customer) MUST NOT route to any of these — direct URL blocked,
 // not merely hidden (enforced in router.navigate via canAccessRoute).
-export const INTERNAL_ONLY_ROUTES = Object.freeze(["admin", "audit", "governance", "tenants", "evidence", "system"])
+// UI-2: `beta` (/admin/beta GTM scorecard — internal, POSTs /admin/beta/ceo-exit-request) added here
+// after the UI-0 audit misclassified it as a customer surface (corrected per Sponsor ruling).
+export const INTERNAL_ONLY_ROUTES = Object.freeze(["admin", "audit", "governance", "tenants", "evidence", "system", "beta"])
+
+// Surfaces carrying an EXECUTING action (Addendum B: executes ⇒ Mode A + review, not passive display).
+export const EXECUTING_SURFACES = Object.freeze({
+  beta: Object.freeze({ action: "/admin/beta/ceo-exit-request", method: "POST" }),
+})
 
 // Carry-forward exclusions (Sponsor D-A deferred + D-B held) — reachable on NEITHER front.
 export const EXCLUDED_SURFACES = Object.freeze({
@@ -36,26 +43,33 @@ export function isExcluded(key) {
 
 // Per-front nav — IN-SCOPE surfaces only. mode A = live on main; mode D = forthcoming, disclosed-not-live.
 export const FRONT_NAV = Object.freeze({
+  // FRONT A — customer. Mode D throughout. UI-2: NO real customer dashboard exists on S45 to
+  // integrate, so all customer surfaces (incl. dashboard + employer/worker contexts) are HELD
+  // disclosed-not-live (held:true ⇒ rendered as a non-navigable disclosed-not-live placeholder).
   A: Object.freeze([
-    // Customer front defaults to Mode D (disclosed-not-live) until productionised.
-    { key: "dashboard",     label: "Dashboard",          mode: "D" },
-    { key: "workforce",     label: "Workforce",          mode: "D" }, // customer workforce mgmt
-    { key: "onboarding",    label: "Onboarding",         mode: "D" },
-    { key: "compliance",    label: "Compliance",         mode: "D" }, // customer compliance (NOT operator governance)
-    { key: "billing",       label: "Billing",            mode: "D" },
-    { key: "hyperpay-test", label: "Payments (sandbox)", mode: "D" }, // HyperPay test flow, disclosed-not-live
+    { key: "customer-dashboard", label: "Dashboard",          mode: "D", held: true },
+    { key: "employer-context",   label: "Employer",           mode: "D", held: true },
+    { key: "worker-context",     label: "Worker",             mode: "D", held: true },
+    { key: "onboarding",         label: "Onboarding",         mode: "D", held: true },
+    { key: "compliance",         label: "Compliance",         mode: "D", held: true },
+    { key: "billing",            label: "Billing",            mode: "D", held: true },
+    { key: "hyperpay-test",      label: "Payments (sandbox)", mode: "D", held: true },
   ]),
+  // FRONT B — Maqaleed Workforce Console (internal). Live ops/governance surfaces = Mode A.
+  // beta (Beta/GTM scorecard) lives here with an executing action (see EXECUTING_SURFACES).
   B: Object.freeze([
-    { key: "admin",      label: "Admin",       mode: "D" },
-    { key: "audit",      label: "Audit",       mode: "D" },
-    { key: "governance", label: "Governance",  mode: "A" },
-    { key: "tenants",    label: "Tenants",     mode: "A" },
-    { key: "evidence",   label: "Evidence",    mode: "A" },
-    { key: "system",     label: "System",      mode: "A" },
-    { key: "pods",       label: "Pods",        mode: "A" },
-    { key: "assignments",label: "Assignments", mode: "A" },
-    { key: "scheduler",  label: "Scheduler",   mode: "A" },
-    { key: "analytics",  label: "Analytics",   mode: "A" },
+    { key: "dashboard",  label: "Ops Dashboard", mode: "A" },                 // ops dashboard.js (unchanged)
+    { key: "beta",       label: "Beta / GTM",    mode: "A", executing: true },// /admin/beta — internal, executing
+    { key: "governance", label: "Governance",    mode: "A" },
+    { key: "tenants",    label: "Tenants",       mode: "A" },
+    { key: "evidence",   label: "Evidence",      mode: "A" },
+    { key: "system",     label: "System",        mode: "A" },
+    { key: "pods",       label: "Pods",          mode: "A" },
+    { key: "assignments",label: "Assignments",   mode: "A" },
+    { key: "scheduler",  label: "Scheduler",     mode: "A" },
+    { key: "analytics",  label: "Analytics",     mode: "A" },
+    { key: "admin",      label: "Admin",         mode: "D", held: true },
+    { key: "audit",      label: "Audit",         mode: "D", held: true },
   ]),
 })
 
