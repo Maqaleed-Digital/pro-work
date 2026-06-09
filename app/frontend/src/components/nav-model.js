@@ -25,7 +25,7 @@ export function frontMode(front) { return (FRONTS[front] && FRONTS[front].defaul
 // not merely hidden (enforced in router.navigate via canAccessRoute).
 // UI-2: `beta` (/admin/beta GTM scorecard — internal, POSTs /admin/beta/ceo-exit-request) added here
 // after the UI-0 audit misclassified it as a customer surface (corrected per Sponsor ruling).
-export const INTERNAL_ONLY_ROUTES = Object.freeze(["admin", "audit", "governance", "tenants", "evidence", "system", "beta"])
+export const INTERNAL_ONLY_ROUTES = Object.freeze(["admin", "audit", "governance", "tenants", "evidence", "system", "beta", "evidence-export"])
 
 // Surfaces carrying an EXECUTING action (Addendum B: executes ⇒ Mode A + review, not passive display).
 export const EXECUTING_SURFACES = Object.freeze({
@@ -60,9 +60,12 @@ export const FRONT_NAV = Object.freeze({
   B: Object.freeze([
     { key: "dashboard",  label: "Ops Dashboard", mode: "A" },                 // ops dashboard.js (unchanged)
     { key: "beta",       label: "Beta / GTM",    mode: "A", executing: true },// /admin/beta — internal, executing
-    { key: "governance", label: "Governance",    mode: "A" },
+    // UI-5: trust/audit surfaces are DISPLAY-only (GET) → Mode D per Addendum B (A is reserved for
+    // surfaces that EXECUTE). governance/evidence read /api/admin/* and render — no executing action.
+    { key: "governance", label: "Governance",    mode: "D" }, // display-only (GET governance/principals)
     { key: "tenants",    label: "Tenants",       mode: "A" },
-    { key: "evidence",   label: "Evidence",      mode: "A" },
+    { key: "evidence",   label: "Evidence",      mode: "D" }, // display-only (GET evidence)
+    { key: "evidence-export", label: "Evidence Pack Export", mode: "D" }, // read + client-side export (no server action)
     { key: "system",     label: "System",        mode: "A" },
     { key: "pods",       label: "Pods",          mode: "A" },
     { key: "assignments",label: "Assignments",   mode: "A" },

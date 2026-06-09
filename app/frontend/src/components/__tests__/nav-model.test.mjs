@@ -51,6 +51,29 @@ test("UI-2: beta_dashboard correctly placed Front B / Mode A + executing-tagged;
   assert.deepEqual(frontAInternalLeak([{ key: "beta", label: "x", mode: "A" }]), ["beta"])
 })
 
+test("UI-5: trust surfaces (evidence/governance) classify Front B / Mode D display-only — NO executors", () => {
+  const ev = FRONT_NAV.B.find((i) => i.key === "evidence")
+  const gov = FRONT_NAV.B.find((i) => i.key === "governance")
+  assert.ok(ev && ev.mode === "D" && !ev.executing, "evidence: Front B, Mode D, display-only")
+  assert.ok(gov && gov.mode === "D" && !gov.executing, "governance: Front B, Mode D, display-only")
+  // matrix finding: no trust surface executes; beta remains the only Mode-A executor
+  assert.equal(FRONT_NAV.B.filter((i) => i.executing).map((i) => i.key).join(","), "beta")
+  // not on Front A
+  assert.equal(FRONT_NAV.A.some((i) => i.key === "evidence" || i.key === "governance"), false)
+})
+
+test("UI-5: evidence-pack export is internal (Front B, Mode D read+export) and Front A is walled from it", () => {
+  assert.ok(INTERNAL_ONLY_ROUTES.includes("evidence-export"))
+  const exp = FRONT_NAV.B.find((i) => i.key === "evidence-export")
+  assert.ok(exp && exp.mode === "D" && !exp.executing, "export: Front B, Mode D, no server action")
+  assert.equal(FRONT_NAV.A.some((i) => i.key === "evidence-export"), false)
+  // routing-level wall
+  assert.equal(canAccessRoute("A", "evidence-export"), false)
+  assert.equal(canAccessRoute("B", "evidence-export"), true)
+  // NON-VACUOUS control: a planted evidence-export link on Front A IS detected as a leak
+  assert.deepEqual(frontAInternalLeak([{ key: "evidence-export", label: "x", mode: "D" }]), ["evidence-export"])
+})
+
 test("UI-2: Front A has NO wired customer dashboard — all customer surfaces held disclosed-not-live", () => {
   // no real customer-dashboard route on Front A; every Front-A surface is held (no overclaim)
   assert.ok(FRONT_NAV.A.every((i) => i.held === true))
