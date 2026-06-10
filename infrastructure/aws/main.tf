@@ -11,7 +11,7 @@ terraform {
   backend "s3" {
     bucket = "prowork-terraform-state"
     key    = "production/terraform.tfstate"
-    region = "us-east-1"
+    region = "me-central-1"
   }
 }
 
@@ -28,7 +28,7 @@ provider "aws" {
 }
 
 variable "aws_region" {
-  default = "us-east-1"
+  default = "me-central-1"
 }
 
 variable "environment" {
@@ -40,17 +40,21 @@ variable "app_name" {
 }
 
 module "vpc" {
-  source = "terraform-aws-modules/vpc/aws"
-  
+  source  = "terraform-aws-modules/vpc/aws"
+  version = "~> 5.21"  # pin to the 5.x line — compatible with the aws ~> 5.0 provider pin below (unpinned resolved to 6.x and broke init)
+
   name = "${var.app_name}-${var.environment}"
   cidr = "10.0.0.0/16"
   
-  azs             = ["${var.aws_region}a", "${var.aws_region}b", "${var.aws_region}c"]
-  private_subnets = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
-  public_subnets  = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
+  # 2-AZ (a + c). me-central-1b is dropped: CreateSubnet wedges indefinitely there for
+  # this account (no subnet lands even in the default VPC), despite the AZ reporting
+  # "available". 2-AZ is adequate for the interim anchor; revisit 3-AZ at the Riyadh move.
+  azs             = ["${var.aws_region}a", "${var.aws_region}c"]
+  private_subnets = ["10.0.1.0/24", "10.0.3.0/24"]
+  public_subnets  = ["10.0.101.0/24", "10.0.103.0/24"]
   
-  enable_nat_gateway = true
-  single_nat_gateway = var.environment != "production"
+  enable_nat_gateway = var.enable_runtime  # staged: NAT bills ~$38/mo, created at app-deploy apply
+  single_nat_gateway = true                # cost-optimized: one shared NAT, not one per AZ
   
   enable_dns_hostnames = true
   enable_dns_support   = true
@@ -105,36 +109,40 @@ resource "random_password" "db_password" {
 }
 
 resource "aws_db_instance" "main" {
+  count = var.enable_runtime ? 1 : 0  # staged: billable, created at app-deploy apply
+
   identifier = "${var.app_name}-${var.environment}"
-  
+
   engine         = "postgres"
   engine_version = "16.1"
-  instance_class = var.environment == "production" ? "db.t3.medium" : "db.t3.micro"
-  
+  # Interim anchor sizing per DL-097: single-AZ db.t3.medium. Revisit (multi-AZ / larger
+  # class) at the Riyadh regional move; not production-HA yet.
+  instance_class = "db.t3.medium"
+
   allocated_storage     = 20
   max_allocated_storage = 100
   storage_encrypted     = true
-  
+
   db_name  = "prowork"
   username = "prowork"
   password = random_password.db_password.result
-  
+
   vpc_security_group_ids = [aws_security_group.rds.id]
   db_subnet_group_name   = aws_db_subnet_group.main.name
-  
-  backup_retention_period = var.environment == "production" ? 7 : 1
-  skip_final_snapshot     = var.environment != "production"
-  
-  multi_az = var.environment == "production"
+
+  backup_retention_period = 7
+  skip_final_snapshot     = true  # interim anchor; flip to false before Riyadh prod cutover
+
+  multi_az = false  # interim single-AZ; enable for prod HA at Riyadh move
 }
 
 resource "aws_ecs_cluster" "main" {
   name = "${var.app_name}-${var.environment}"
-  
-  setting {
-    name  = "containerInsights"
-    value = "enabled"
-  }
+
+  # Container Insights left at the account default (disabled) for the interim: the
+  # "enabled" setting makes CreateCluster wedge from this environment (me-central-1
+  # control-plane long-call). It also carries CloudWatch cost. Re-enable at the
+  # Riyadh move (or via `aws ecs update-cluster-settings`) once runtime exists.
 }
 
 resource "aws_security_group" "alb" {
@@ -164,6 +172,8 @@ resource "aws_security_group" "alb" {
 }
 
 resource "aws_lb" "main" {
+  count = var.enable_runtime ? 1 : 0  # staged: billable, created at app-deploy apply
+
   name               = "${var.app_name}-${var.environment}"
   internal           = false
   load_balancer_type = "application"
@@ -188,10 +198,12 @@ resource "aws_lb_target_group" "api" {
 }
 
 resource "aws_lb_listener" "http" {
-  load_balancer_arn = aws_lb.main.arn
+  count = var.enable_runtime ? 1 : 0  # staged with the ALB
+
+  load_balancer_arn = aws_lb.main[0].arn
   port              = 80
   protocol          = "HTTP"
-  
+
   default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.api.arn
@@ -199,11 +211,11 @@ resource "aws_lb_listener" "http" {
 }
 
 output "alb_dns_name" {
-  value = aws_lb.main.dns_name
+  value = one(aws_lb.main[*].dns_name)
 }
 
 output "db_endpoint" {
-  value     = aws_db_instance.main.endpoint
+  value     = one(aws_db_instance.main[*].endpoint)
   sensitive = true
 }
 

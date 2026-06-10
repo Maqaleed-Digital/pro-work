@@ -1,0 +1,23 @@
+# Terraform working artifacts — never commit
+.terraform/
+.terraform.tfstate.lock.info
+
+# State (managed in the S3 backend, never local)
+*.tfstate
+*.tfstate.*
+
+# Saved plans and captured CLI output
+*.tfplan
+tfplan.*
+plan*.out
+apply*.out
+
+# Crash logs / var files with potential secrets
+crash.log
+crash.*.log
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+
+# Keep the provider lock file committed (intentionally NOT ignored):
+# .terraform.lock.hcl
