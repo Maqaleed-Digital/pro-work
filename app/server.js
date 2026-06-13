@@ -14,6 +14,7 @@ const ProductionConfig = require("./config/production")
 const { buildZip }   = require("./lib/zip")
 const { validateProductionConfig } = require("./config/validate")
 const { getDataDir, getAppDataDir } = require("./lib/data_paths")
+const PaymentsRoutes = require("./modules/payments/payments_routes") // WO-WC-HYPERPAY-001
 
 validateProductionConfig()
 
@@ -928,6 +929,13 @@ function matchRoute(method, pathname) {
   if (m === "GET" && pathname === "/api/health") return { name: "api.health",  params: {} }
   if (m === "GET" && pathname === "/api/ready")  return { name: "api.ready",   params: {} }
 
+  // WO-WC-HYPERPAY-001: HyperPay (OPPWA) Copy&Pay payment routes. The webhook is
+  // public — OPPWA authenticates it via the AES-GCM tag, not the admin token.
+  if (m === "POST" && pathname === "/api/payments/checkouts") return { name: "payments.checkout.create", params: {} }
+  if (m === "POST" && pathname === "/api/payments/webhook")   return { name: "payments.webhook", params: {} }
+  const payStatusMatch = pathname.match(/^\/api\/payments\/([^/]+)\/status$/)
+  if (m === "GET" && payStatusMatch) return { name: "payments.status.get", params: { id: payStatusMatch[1] } }
+
   if (m === "POST" && pathname === "/api/jobs") return { name: "jobs.create", params: {} }
   if (m === "GET" && pathname === "/api/jobs") return { name: "jobs.list", params: {} }
 
@@ -1282,6 +1290,11 @@ const server = http.createServer(async (req, res) => {
 
     const tenantId = resolveTenantId(req)
     const tenant = getTenantStore(tenantId)
+
+    // WO-WC-HYPERPAY-001: payment routes (own module; webhook is fail-closed).
+    if (route.name.startsWith("payments.")) {
+      return PaymentsRoutes.dispatch(route, req, res, { ok, fail, readJson })
+    }
 
     if (route.name === "health") return ok(res, { service: "pro-work", health: "ok", time: nowIso(), ...bootMeta() }, 200)
 
