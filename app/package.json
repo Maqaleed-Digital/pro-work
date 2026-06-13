@@ -12,7 +12,8 @@
     "ports:kill": "bash ./scripts/ports_kill.sh",
     "lint": "node -c server.js",
     "typecheck": "node -e \"console.log('typecheck: ok (genesis scaffold)')\"",
-    "test": "node --test frontend/src/components/__tests__/",
+    "test": "node --test frontend/src/components/__tests__/ modules/payments/__tests__/",
+    "test:payments-db": "bash modules/payments/__tests__/run_payments_db_tests.sh",
     "build": "cd frontend && npm install --no-audit --no-fund && npm run build"
   },
   "engines": {

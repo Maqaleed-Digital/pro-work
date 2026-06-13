@@ -34,6 +34,16 @@ function validateProductionConfig() {
     }
   }
 
+  // WO-WC-HYPERPAY-001: require HyperPay secrets ONLY when payments run in
+  // production mode (the G5-gated live flip). Names only; values never read here.
+  if (String(process.env.HYPERPAY_MODE || "").trim().toLowerCase() === "production") {
+    for (const key of ["HYPERPAY_ENTITY_ID", "HYPERPAY_ACCESS_TOKEN", "HYPERPAY_WEBHOOK_SECRET"]) {
+      const val = process.env[key]
+      if (!val || !String(val).trim()) errors.push(`  MISSING: ${key} (required when HYPERPAY_MODE=production)`)
+      else if (isUnsafe(val)) errors.push(`  UNSAFE:  ${key} (looks like a placeholder value)`)
+    }
+  }
+
   if (errors.length === 0) {
     console.log("[config] production config validated OK")
     return
