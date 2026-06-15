@@ -1,0 +1,26 @@
+{
+  "version": "v1",
+  "probationPeriods": [90, 180],
+  "defaultPeriodDays": 90,
+  "defaultProbationDays": 90,
+  "maxTotalDays": 180,
+  "day80TriggerOffsetDays": 10,
+  "extensionOptions": [30, 60, 90],
+  "decisionExpiryDays": 14,
+  "evidencePackRequiredItems": [
+    "manager_reviews",
+    "policy_acknowledgements",
+    "wps_pack_status",
+    "disciplinary_events"
+  ],
+  "transitions": {
+    "ACTIVE":              ["EVIDENCE_PACK_READY", "TERMINATED"],
+    "EVIDENCE_PACK_READY": ["AWAITING_DECISION"],
+    "AWAITING_DECISION":   ["CONFIRMED", "EXTENDED", "TERMINATED", "EXPIRED"],
+    "CONFIRMED":           [],
+    "EXTENDED":            ["ACTIVE"],
+    "TERMINATED":          [],
+    "EXPIRED":             []
+  },
+  "terminal": ["CONFIRMED", "TERMINATED", "EXPIRED"]
+}

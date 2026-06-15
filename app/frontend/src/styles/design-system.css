@@ -1,0 +1,33 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+ * WorkCaptain — App-layer design system (NOT canonical G1 — WC-local only)
+ *
+ * As of 2026-05-11 (Day 1), the colour / typography / spacing / shadow /
+ * radius declarations that used to live here have been MOVED to:
+ *   - /src/tokens/index.css       — canonical @maqaleed/design-tokens V1.1.1
+ *   - /src/styles/legacy-alias.css — temporary --color-* → --maq-* bridge
+ *                                    (removed by D-1 / 2026-05-15)
+ *
+ * This file now declares ONLY the WC-app-specific layout primitives that
+ * have no canonical G1 analogue (sidebar width, topbar height, content
+ * padding). These are application-shell decisions, not design substrate.
+ *
+ * Per PROPOSAL §5.2 audit + §11.A5 portfolio reuse rule: these are
+ * candidates for portfolio extraction post-D15+41 if Crédito / Società /
+ * S2PPRO / VetiCare adopt the same shell pattern.
+ *
+ * Anti-mutation discipline (V1.1.1 §10): no rename / restructure /
+ * value-mutation of any canonical --maq-* token in this file.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── App-shell layout (WC-local; not in canonical G1) ──────────────── */
+  --sidebar-width:     240px;
+  --sidebar-collapsed: 64px;
+  --topbar-height:     64px;
+  --content-padding:   var(--maq-space-8);  /* 32px — canonical */
+
+  /* ── Transition shorthands (alias canonical durations) ─────────────── */
+  --transition-fast: var(--maq-duration-fast) var(--maq-ease-default);
+  --transition-base: var(--maq-duration-default) var(--maq-ease-default);
+  --transition-slow: var(--maq-duration-deliberate) var(--maq-ease-default);
+}

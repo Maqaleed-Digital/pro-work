@@ -1,0 +1,48 @@
+{
+  "version": "v1",
+  "ibanRules": {
+    "ksa": {
+      "countryCode": "SA",
+      "length": 24,
+      "bankCodeOffset": 4,
+      "bankCodeLength": 2
+    },
+    "knownBankCodes": {
+      "10": "Al Rajhi Bank",
+      "05": "Arab National Bank",
+      "20": "Riyad Bank",
+      "40": "Bank AlBilad",
+      "30": "Bank AlJazira",
+      "55": "Alinma Bank",
+      "45": "National Commercial Bank",
+      "60": "Banque Saudi Fransi",
+      "80": "Arab Bank",
+      "15": "SABB"
+    }
+  },
+  "salaryFileFields": [
+    "employeeId",
+    "nationalId",
+    "bankCode",
+    "ibanHash",
+    "basicSalary",
+    "housingAllowance",
+    "transportAllowance",
+    "totalSalary",
+    "paymentMonth",
+    "paymentYear",
+    "currency"
+  ],
+  "currency": "SAR",
+  "evidencePack": {
+    "id": "EP-WOS-ONBOARD-01",
+    "version": "v1",
+    "requiredSteps": [
+      "IBAN_VERIFIED",
+      "IDENTITY_VERIFIED",
+      "BANK_CONFIRMED",
+      "WPS_PACKAGE_GENERATED"
+    ]
+  },
+  "packageVersionPrefix": "WPS-SA-v1"
+}

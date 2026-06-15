@@ -1,0 +1,12 @@
+node_modules
+frontend/src/
+frontend/node_modules/
+frontend/.vite/
+storage/
+scripts/
+tests/
+*.md
+*.test.js
+.git
+.env*
+infrastructure/

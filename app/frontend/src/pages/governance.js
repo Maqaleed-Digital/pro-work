@@ -111,7 +111,7 @@ export default {
         if (notes.length > 0) {
           container.appendChild(section("Notes"))
           const ul = document.createElement("ul")
-          ul.style.cssText = "font-size:13px;padding-left:18px;display:flex;flex-direction:column;gap:4px"
+          ul.style.cssText = "font-size:13px;padding-inline-start:18px;display:flex;flex-direction:column;gap:4px"
           notes.forEach(n => {
             const li = document.createElement("li"); li.textContent = n; ul.appendChild(li)
           })

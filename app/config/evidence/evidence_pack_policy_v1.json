@@ -1,0 +1,61 @@
+{
+  "version": "v1",
+  "packTypes": [
+    "EP_WOS_RECRUIT_01",
+    "EP_WOS_HIRE_01",
+    "EP_WOS_ONBOARD_01",
+    "EP_WOS_PROB_01",
+    "EP_WOS_OFFBOARD_01"
+  ],
+  "requiredFields": [
+    "actor",
+    "action",
+    "timestamp",
+    "data_snapshot",
+    "attached_files",
+    "approval_chain",
+    "ai_artifacts",
+    "redaction_rules"
+  ],
+  "actorRoles": ["HR", "AI", "SYSTEM", "MANAGER", "FINANCE", "VIEWER"],
+  "status": ["OPEN", "CLOSED", "EXPORTED"],
+  "hashAlgorithm": "sha256",
+  "hashCoreFields": [
+    "pack_id",
+    "pack_type",
+    "tenant_id",
+    "actor",
+    "action",
+    "timestamp",
+    "data_snapshot"
+  ],
+  "redaction": {
+    "rules": [
+      {
+        "field_pattern": "national_id",
+        "allowed_roles": ["HR"],
+        "pdpl_article": "23"
+      },
+      {
+        "field_pattern": "salary",
+        "allowed_roles": ["HR", "FINANCE"],
+        "pdpl_article": "23"
+      },
+      {
+        "field_pattern": "medical",
+        "allowed_roles": ["HR"],
+        "pdpl_article": "23"
+      },
+      {
+        "field_pattern": "iban_hash",
+        "allowed_roles": ["HR", "FINANCE"],
+        "pdpl_article": "23"
+      }
+    ],
+    "redactionPlaceholder": "[REDACTED]"
+  },
+  "export": {
+    "slaSinglePackSeconds": 60,
+    "supportedFormats": ["JSON", "PDF", "ZIP"]
+  }
+}

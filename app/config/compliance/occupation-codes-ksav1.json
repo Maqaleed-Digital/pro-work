@@ -1,0 +1,162 @@
+{
+  "version": "ksav1",
+  "effectiveDate": "2026-01-01",
+  "description": "Saudi Arabia HRSD occupation code registry — aligned with GOSI/Qiwa classification",
+  "codes": [
+    {
+      "code": "2512",
+      "titleEN": "Software Developer",
+      "titleAR": "مطور برمجيات",
+      "category": "ICT",
+      "skills": ["software", "programming", "development", "coding", "javascript", "python", "java", "react", "node", "api", "backend", "frontend", "typescript", "git"],
+      "requiredCredentials": [],
+      "isProhibited": false
+    },
+    {
+      "code": "2513",
+      "titleEN": "Web Developer",
+      "titleAR": "مطور ويب",
+      "category": "ICT",
+      "skills": ["web", "html", "css", "javascript", "frontend", "ui", "ux", "react", "vue", "angular", "responsive"],
+      "requiredCredentials": [],
+      "isProhibited": false
+    },
+    {
+      "code": "2519",
+      "titleEN": "ICT Professional",
+      "titleAR": "متخصص تقنية معلومات",
+      "category": "ICT",
+      "skills": ["technology", "systems", "network", "infrastructure", "cloud", "devops", "aws", "gcp", "azure", "linux", "security"],
+      "requiredCredentials": [],
+      "isProhibited": false
+    },
+    {
+      "code": "2141",
+      "titleEN": "Civil Engineer",
+      "titleAR": "مهندس مدني",
+      "category": "ENGINEERING",
+      "skills": ["civil", "engineering", "construction", "structural", "design", "autocad", "project", "infrastructure", "building"],
+      "requiredCredentials": ["Saudi Council of Engineers Registration"],
+      "isProhibited": false
+    },
+    {
+      "code": "2142",
+      "titleEN": "Mechanical Engineer",
+      "titleAR": "مهندس ميكانيكي",
+      "category": "ENGINEERING",
+      "skills": ["mechanical", "engineering", "machinery", "manufacturing", "maintenance", "hvac", "solidworks", "autocad"],
+      "requiredCredentials": ["Saudi Council of Engineers Registration"],
+      "isProhibited": false
+    },
+    {
+      "code": "2143",
+      "titleEN": "Electrical Engineer",
+      "titleAR": "مهندس كهربائي",
+      "category": "ENGINEERING",
+      "skills": ["electrical", "engineering", "power", "electronics", "plc", "automation", "circuits", "systems"],
+      "requiredCredentials": ["Saudi Council of Engineers Registration"],
+      "isProhibited": false
+    },
+    {
+      "code": "2211",
+      "titleEN": "Physician",
+      "titleAR": "طبيب",
+      "category": "HEALTHCARE",
+      "skills": ["medical", "medicine", "clinical", "diagnosis", "treatment", "patient", "healthcare", "physician", "doctor"],
+      "requiredCredentials": ["Saudi Commission for Health Specialties License", "MBBS or equivalent"],
+      "isProhibited": false
+    },
+    {
+      "code": "3256",
+      "titleEN": "Medical Technician",
+      "titleAR": "فني طبي",
+      "category": "HEALTHCARE",
+      "skills": ["medical", "laboratory", "radiology", "technician", "diagnostic", "clinical", "analysis", "equipment"],
+      "requiredCredentials": ["Saudi Commission for Health Specialties License"],
+      "isProhibited": false
+    },
+    {
+      "code": "2411",
+      "titleEN": "Accountant",
+      "titleAR": "محاسب",
+      "category": "FINANCE",
+      "skills": ["accounting", "finance", "audit", "tax", "bookkeeping", "ifrs", "gaap", "excel", "erp", "financial"],
+      "requiredCredentials": [],
+      "isProhibited": false
+    },
+    {
+      "code": "2412",
+      "titleEN": "Financial Analyst",
+      "titleAR": "محلل مالي",
+      "category": "FINANCE",
+      "skills": ["financial", "analysis", "modeling", "forecasting", "investment", "valuation", "excel", "bloomberg", "risk"],
+      "requiredCredentials": [],
+      "isProhibited": false
+    },
+    {
+      "code": "2310",
+      "titleEN": "University Lecturer",
+      "titleAR": "محاضر جامعي",
+      "category": "EDUCATION",
+      "skills": ["teaching", "education", "university", "research", "academic", "lecturing", "curriculum", "phd"],
+      "requiredCredentials": ["PhD or equivalent advanced degree"],
+      "isProhibited": false
+    },
+    {
+      "code": "2320",
+      "titleEN": "School Teacher",
+      "titleAR": "معلم مدرسة",
+      "category": "EDUCATION",
+      "skills": ["teaching", "education", "school", "curriculum", "classroom", "students", "pedagogy"],
+      "requiredCredentials": ["Teaching License (Ministry of Education)"],
+      "isProhibited": false
+    },
+    {
+      "code": "1211",
+      "titleEN": "Director General",
+      "titleAR": "مدير عام",
+      "category": "MANAGEMENT",
+      "skills": ["management", "leadership", "strategy", "director", "executive", "operations", "governance"],
+      "requiredCredentials": [],
+      "isProhibited": false
+    },
+    {
+      "code": "4110",
+      "titleEN": "Office Clerk",
+      "titleAR": "موظف مكتبي",
+      "category": "SUPPORT",
+      "skills": ["office", "administration", "clerical", "data", "entry", "filing", "support", "microsoft", "word", "excel"],
+      "requiredCredentials": [],
+      "isProhibited": false
+    },
+    {
+      "code": "5111",
+      "titleEN": "Travel Attendant",
+      "titleAR": "مضيف سفر",
+      "category": "SERVICES",
+      "skills": ["travel", "hospitality", "service", "customer", "airline", "cabin", "attendant", "safety"],
+      "requiredCredentials": [],
+      "isProhibited": false
+    },
+    {
+      "code": "9991",
+      "titleEN": "Prohibited Classification A",
+      "titleAR": "تصنيف محظور أ",
+      "category": "PROHIBITED",
+      "skills": [],
+      "requiredCredentials": [],
+      "isProhibited": true,
+      "prohibitedReason": "Reserved classification — not assignable under current regulatory framework"
+    },
+    {
+      "code": "9992",
+      "titleEN": "Prohibited Classification B",
+      "titleAR": "تصنيف محظور ب",
+      "category": "PROHIBITED",
+      "skills": [],
+      "requiredCredentials": [],
+      "isProhibited": true,
+      "prohibitedReason": "Restricted to Saudi nationals only under Saudization mandate"
+    }
+  ]
+}

@@ -14,8 +14,172 @@ const ProductionConfig = require("./config/production")
 const { buildZip }   = require("./lib/zip")
 const { validateProductionConfig } = require("./config/validate")
 const { getDataDir, getAppDataDir } = require("./lib/data_paths")
+// S36-G2: AI governance
+const { createAiRouter }                               = require("./api/ai_router")
+const { createAuditLogService, InMemoryAuditLogStore } = require("./modules/ai/audit_log_service")
+// S36-G3: Nitaqat compliance
+const { createNitaqatRouter }                              = require("./api/nitaqat_router")
+const { createNitaqatPolicyEngine, InMemoryOverrideStore } = require("./modules/compliance/nitaqat_service")
+// S36-G4: Occupation code compliance
+const { createOccupationCodeRouter }  = require("./api/occupation_code_router")
+const { createOccupationCodeService } = require("./modules/compliance/occupation_code_service")
+// S36-G6: Command Center dashboard
+const { createDashboardRouter } = require("./api/dashboard_router")
+// S37-G1: WPS Readiness Pack
+const { createWpsReadinessRouter }                                           = require("./api/wps_readiness_router")
+const { createWpsReadinessService, InMemoryWpsReadinessStore }               = require("./modules/onboarding/wps_readiness_service")
+// S37-G2: Probation Governance
+const { createProbationGovernanceService, InMemoryProbationGovernanceStore } = require("./modules/onboarding/probation_governance_service")
+// S37-G4: Document store
+const { InMemoryDocumentStore }                                              = require("./modules/onboarding/document_service")
+// S37-G6: Compliance Risk Screen
+const { createComplianceRiskService } = require("./modules/compliance/compliance_risk_service")
+const { createComplianceRiskRouter }  = require("./api/compliance_risk_router")
+// S38-G3: Evidence Pack
+const { createEvidencePackRouter } = require("./api/evidence_pack_router")
+// S38-G6 / S39-G6 wiring 4: PDPL — single require, S39 implementation (real event bus)
+const { createPdplRouter }         = require("./api/pdpl_router")
+// S39-G4: Fee Transparency
+const { createFeeTransparencyRouter }       = require("./api/fee_transparency_router")
+// S39-G5: Work Identity / ERI
+const { createIdentityEriRouter }           = require("./api/identity_eri_router")
+// S39-G6 wiring 1: audit log (S39 module — distinct from S36 AI audit log)
+const { createAuditLogService: createS39AuditLogService,
+        InMemoryAuditStore }                = require("./modules/audit/audit_log_service")
+// S39-G6 wiring 3: Evidence Pack Service
+const { createEvidencePackService,
+        InMemoryEvidencePackStore }         = require("./modules/lifecycle/evidence_pack_service")
+// S39-G6 wiring 2: Compliance Dashboard
+const { createComplianceDashboardService }  = require("./modules/compliance/compliance_dashboard_service")
+// S39-G6 Part 2: Beta access + KPI
+const { createBetaAccessService,
+        InMemoryBetaStore }                 = require("./modules/beta/beta_access_service")
+const { createKpiTracker }                  = require("./modules/beta/kpi_tracker")
+const { createBetaRouter }                  = require("./api/beta_router")
+// S40-G2: Auth + JWT
+const { createAuthService }                 = require("./modules/auth/auth_service")
+const { createAuthRouter }                  = require("./api/auth_router")
+const { requireAuth, requireRole, requirePermission } = require("./modules/auth/auth_middleware")
+const { PERMISSIONS }                       = require("./modules/auth/rbac_policy")
+// S40-G5: Employer onboarding
+const { createEmployerOnboardingRouter }    = require("./api/employer_onboarding_router")
+// S40-G6: Team invitations
+const { createInvitationService }           = require("./modules/auth/invitation_service")
+const { createInvitationRouter }            = require("./api/invitation_router")
+// S43-G1: Requisitions
+const { createRequisitionService }          = require("./modules/hiring/requisition_service")
+const { createRequisitionRouter }           = require("./api/requisition_router")
+const { createAiMatchingService }           = require("./modules/hiring/ai_matching_service")
+const { createOfferService }               = require("./modules/hiring/offer_service")
+const { createOfferRouter }                = require("./api/offer_router")
+const { createContractService }            = require("./modules/contracts/contract_service")
+const { createContractRouter }             = require("./api/contract_router")
+const { createCandidateService }            = require("./modules/hiring/candidate_service")
+const { createApplicationService }          = require("./modules/hiring/application_service")
+// WC-CB Day 3 (D-3, 2026-05-13): Cohort access request intake
+//   brief §2 — "Submission stored for sponsor review and manual
+//   invitation issuance (no auto-approval)."
+const { createCohortRouter }               = require("./api/cohort_router")
+
+// S38-G3: evidence pack router — shared store across all requests
+const _evidencePackRouter = createEvidencePackRouter()
+
+// WC-CB Day 3: cohort request router — in-memory store; persistence is
+// a known post-D15+41 follow-up (acceptable for ~25–30 cohort window).
+const _cohortRouter = createCohortRouter()
 
 validateProductionConfig()
+
+const _aiAuditStore   = new InMemoryAuditLogStore()
+const _aiAuditService = createAuditLogService({ store: _aiAuditStore })
+const _aiRouter = createAiRouter({
+  auditLogService: _aiAuditService,
+  authenticate:    (req) => Admin.authenticate(req),
+})
+
+const _nitaqatOverrideStore = new InMemoryOverrideStore()
+const _nitaqatPolicy        = createNitaqatPolicyEngine(require("./config/compliance/nitaqat_policy_v1.json"))
+const _nitaqatRouter        = createNitaqatRouter({
+  nitaqatEngine: _nitaqatPolicy,
+  overrideStore: _nitaqatOverrideStore,
+  authenticate:  (req) => Admin.authenticate(req),
+})
+
+const _occupationCodeService = createOccupationCodeService({
+  config:          require("./config/compliance/occupation-codes-ksav1.json"),
+  auditLogService: _aiAuditService,
+})
+const _occupationCodeRouter = createOccupationCodeRouter({
+  occupationCodeService: _occupationCodeService,
+  authenticate:          (req) => Admin.authenticate(req),
+})
+
+const _dashboardRouter = createDashboardRouter({
+  getTenantStore: (tenantId) => getTenantStore(tenantId),
+  authenticate:   (req) => Admin.authenticate(req),
+})
+
+// S38-G6 / S39-G6 wiring 4: PDPL router — real event bus (S39 supersedes S38 stub)
+const _pdplRouter         = createPdplRouter()
+// S39-G4: fee transparency router
+const _feeRouter          = createFeeTransparencyRouter()
+// S39-G5: work identity / ERI router
+const _identityEriRouter  = createIdentityEriRouter()
+// S39-G6 wiring 1: audit log service (S39)
+const _auditLog           = createS39AuditLogService({ store: new InMemoryAuditStore() })
+// S39-G6 wiring 2: compliance dashboard
+const _complianceDashboard = createComplianceDashboardService()
+// S39-G6 wiring 3: evidence pack service
+const _evidencePackSvc    = createEvidencePackService({ store: new InMemoryEvidencePackStore() })
+// S39-G6 Part 2: beta
+const _betaAccessSvc      = createBetaAccessService({ store: new InMemoryBetaStore() })
+const _kpiTracker         = createKpiTracker()
+const _betaRouter         = createBetaRouter({ betaAccessService: _betaAccessSvc, kpiTracker: _kpiTracker })
+
+// S40-G2: Auth service + router (JWT-based)
+const _pgPool = process.env.DATABASE_URL
+  ? new (require("pg").Pool)({ connectionString: process.env.DATABASE_URL, max: 20 })
+  : null
+const _authService = _pgPool && process.env.JWT_SECRET
+  ? createAuthService({ pool: _pgPool, secret: process.env.JWT_SECRET })
+  : null
+const _authRouter = _authService
+  ? createAuthRouter({ authService: _authService, pool: _pgPool })
+  : null
+const _requireAuth = _authService ? requireAuth(_authService) : null
+const _employerOnboardingRouter = _pgPool
+  ? createEmployerOnboardingRouter({ pool: _pgPool })
+  : null
+const _invitationService = _pgPool && _authService
+  ? createInvitationService({ pool: _pgPool, authService: _authService, baseUrl: process.env.PUBLIC_BASE_URL || 'https://api.workcaptain.ai' })
+  : null
+const _invitationRouter = _invitationService
+  ? createInvitationRouter({ invitationService: _invitationService })
+  : null
+// S43: Requisition service + router
+const _nitaqatPolicyForHiring = (() => {
+  try { return require("./modules/compliance/nitaqat_service").createNitaqatPolicyEngine(require("./config/compliance/nitaqat_policy_v1.json")) }
+  catch { return null }
+})()
+const _requisitionService = _pgPool
+  ? createRequisitionService({ pool: _pgPool, nitaqatEngine: _nitaqatPolicyForHiring })
+  : null
+const _aiMatchingService = _pgPool
+  ? createAiMatchingService({ pool: _pgPool })
+  : null
+const _candidateService = _pgPool ? createCandidateService({ pool: _pgPool }) : null
+const _offerService = _pgPool ? createOfferService({ pool: _pgPool }) : null
+const _offerRouter = _offerService ? createOfferRouter({ offerService: _offerService }) : null
+const _contractService = _pgPool ? createContractService({ pool: _pgPool }) : null
+const _contractRouter = _contractService ? createContractRouter({ contractService: _contractService }) : null
+const _applicationService = _pgPool ? createApplicationService({ pool: _pgPool }) : null
+const _requisitionRouter = _requisitionService
+  ? createRequisitionRouter({
+      requisitionService: Object.assign(_requisitionService, { _pool_ref: _pgPool }),
+      aiMatchingService: _aiMatchingService,
+      applicationService: _applicationService,
+    })
+  : null
 
 const UI_DIST = path.join(__dirname, "frontend", "dist")
 
@@ -208,6 +372,31 @@ const store = {
   tenants: new Map()
 }
 
+// S37-G1: WPS Readiness Pack router (shared in-memory store; one per server process)
+const _wpsReadinessHooks  = { publish: async () => {} }
+const _wpsReadinessStore  = new InMemoryWpsReadinessStore()
+const _wpsReadinessSvc    = createWpsReadinessService({
+  store: _wpsReadinessStore,
+  hooks: _wpsReadinessHooks,
+})
+const _wpsReadinessRouter = createWpsReadinessRouter({ wpsReadinessService: _wpsReadinessSvc })
+
+// S37-G2: Probation Governance (store shared for compliance risk aggregation)
+const _probationHooks   = { publish: async () => {} }
+const _probationStore   = new InMemoryProbationGovernanceStore()
+// eslint-disable-next-line no-unused-vars
+const _probationGovSvc  = createProbationGovernanceService({ store: _probationStore, hooks: _probationHooks })
+
+// S37-G6: Compliance Risk Screen
+const _documentStore          = new InMemoryDocumentStore()
+const _complianceRiskSvc      = createComplianceRiskService({
+  wpsStore:       _wpsReadinessStore,
+  probationStore: _probationStore,
+  documentStore:  _documentStore,
+  // nitaqatStore omitted until S36-G3 merges; shows insufficient_data for Nitaqat component
+})
+const _complianceRiskRouter   = createComplianceRiskRouter({ complianceRiskService: _complianceRiskSvc })
+
 /* S29: tenant-scoped WOS store */
 function getTenantStore(tenantId) {
   if (!store.tenants.has(tenantId)) {
@@ -340,11 +529,36 @@ function isTenantActive(tenantId) {
   return !!e && String(e.status || "active") === "active"
 }
 
-function requireTenantActive(res, tenantId) {
-  const e = tenantRegistry[tenantId]
-  if (!e) { fail(res, "TENANT_NOT_FOUND", `tenant "${tenantId}" is not registered`, 404); return false }
-  if (!isTenantActive(tenantId)) { fail(res, "TENANT_DISABLED", `tenant "${tenantId}" is disabled`, 403); return false }
-  return true
+async function requireTenantActive(res, tenantId) {
+  // Check in-memory registry first (legacy path)
+  const fromRegistry = tenantRegistry[tenantId]
+  if (fromRegistry) {
+    if (String(fromRegistry.status || "active") !== "active") {
+      fail(res, "TENANT_DISABLED", `tenant "${tenantId}" is disabled`, 403)
+      return false
+    }
+    return true
+  }
+  // Fallback: check PG tenants table (JWT-created tenants)
+  if (_pgPool) {
+    try {
+      const result = await _pgPool.query('SELECT id, status FROM tenants WHERE id = $1', [tenantId])
+      if (result.rows.length === 0) {
+        fail(res, "TENANT_NOT_FOUND", `tenant "${tenantId}" is not registered`, 404)
+        return false
+      }
+      if (result.rows[0].status !== 'active') {
+        fail(res, "TENANT_DISABLED", `tenant "${tenantId}" is disabled`, 403)
+        return false
+      }
+      return true
+    } catch {
+      fail(res, "TENANT_NOT_FOUND", "tenant registry unavailable", 503)
+      return false
+    }
+  }
+  fail(res, "TENANT_NOT_FOUND", `tenant "${tenantId}" is not registered`, 404)
+  return false
 }
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -355,6 +569,9 @@ function resolveTenantId(req) {
   const url = new URL(req.url, "http://localhost")
   const queryTenant = url.searchParams.get("tenant_id")
   if (queryTenant && queryTenant.trim()) return queryTenant.trim()
+
+  // S40: JWT-authenticated users — use tenant from token
+  if (req._jwtPrincipal && req._jwtPrincipal.tenant_id) return req._jwtPrincipal.tenant_id
 
   return "default"
 }
@@ -1258,8 +1475,85 @@ const server = http.createServer(async (req, res) => {
     if (!applyCors(req, res)) return
     if (req.method === "OPTIONS") { res.writeHead(204); return res.end() }
 
+    // S40-G2: JWT pre-auth — set req._jwtPrincipal before ALL route handlers
+    if (_authService) {
+      const authHeader = req.headers && (req.headers.authorization || req.headers.Authorization)
+      const bearerToken = authHeader && String(authHeader).startsWith("Bearer ")
+        ? String(authHeader).slice(7).trim() : null
+      if (bearerToken) {
+        const payload = await _authService.verifySession(bearerToken)
+        if (payload) {
+          req._jwtPrincipal = {
+            id:        payload.sub,
+            name:      payload.role,
+            role:      payload.role === 'OWNER' || payload.role === 'ADMIN' ? 'superadmin' : payload.role.toLowerCase(),
+            _rbacRole: payload.role,
+            status:    'active',
+            tenant_id: payload.tenant_id,
+          }
+        }
+      }
+    }
+
+    // S40-G2: Auth routes — early exit before all other routes
+    if (_authRouter && pathname.startsWith("/api/auth/")) {
+      let body = null
+      if (req.method === "POST") {
+        body = await readJson(req, res)
+        if (body === null) return
+      }
+      return _authRouter.handle(req, res, pathname, req.method, body)
+    }
+
+    // S36-G2: AI governance routes — delegated to aiRouter before inline dispatch
+    if (pathname.startsWith("/api/admin/ai/")) {
+      if (req._jwtPrincipal) {
+        const perm = (req.method === "PATCH" || req.method === "POST") ? PERMISSIONS.APPROVE_AI : PERMISSIONS.VIEW_AI
+        if (!requirePermission(res, { role: req._jwtPrincipal._rbacRole }, perm)) return
+      }
+      const body = (req.method === "PATCH" || req.method === "POST")
+        ? await readJson(req, res)
+        : {}
+      if (body === null) return
+      return _aiRouter.handle(req, res, url, body)
+    }
+
+    // S36-G3: Nitaqat compliance routes — delegated before inline dispatch
+    if (pathname.startsWith("/api/admin/compliance/nitaqat/")) {
+      if (req._jwtPrincipal) {
+        const perm = req.method === "POST" ? PERMISSIONS.MANAGE_COMPLIANCE : PERMISSIONS.VIEW_COMPLIANCE
+        if (!requirePermission(res, { role: req._jwtPrincipal._rbacRole }, perm)) return
+      }
+      const body = req.method === "POST"
+        ? await readJson(req, res)
+        : {}
+      if (body === null) return
+      return _nitaqatRouter.handle(req, res, url, body)
+    }
+
+    // S36-G4: Occupation code compliance routes — delegated before inline dispatch
+    if (pathname.startsWith("/api/admin/compliance/occupation-code/")) {
+      if (req._jwtPrincipal) {
+        if (!requirePermission(res, { role: req._jwtPrincipal._rbacRole }, PERMISSIONS.VIEW_COMPLIANCE)) return
+      }
+      const body = req.method === "POST"
+        ? await readJson(req, res)
+        : {}
+      if (body === null) return
+      return _occupationCodeRouter.handle(req, res, url, body)
+    }
+
+    // S36-G6: Command Center KPI route — delegated before inline dispatch
+    if (pathname.startsWith("/api/admin/dashboard/")) {
+      if (req._jwtPrincipal) {
+        if (!requirePermission(res, { role: req._jwtPrincipal._rbacRole }, PERMISSIONS.VIEW_DASHBOARD)) return
+      }
+      return _dashboardRouter.handle(req, res, url, {})
+    }
+
     // S28: Admin UI static serve
-    if (req.method === "GET" && pathname === "/admin") {
+    if (req.method === "GET" &&
+        (pathname === "/admin" || pathname === "/admin/")) {
       return serveStatic(res, path.join(UI_DIST, "index.html"), "text/html")
     }
 
@@ -1270,6 +1564,254 @@ const server = http.createServer(async (req, res) => {
       return serveStatic(res, assetPath, types[ext] || "application/octet-stream")
     }
 
+    // S44: Contract routes — /api/contracts/*
+    if (_contractRouter && pathname.startsWith("/api/contracts")) {
+      let body = null
+      if (req.method === "POST" || req.method === "PATCH") {
+        body = await readJson(req, res)
+        if (body === null) return
+      }
+      const user = req._jwtPrincipal
+        ? { id: req._jwtPrincipal.id, tenant_id: req._jwtPrincipal.tenant_id, role: req._jwtPrincipal._rbacRole }
+        : null
+      return _contractRouter.handle(req, res, pathname, req.method, body, user)
+    }
+
+    // S43: Hiring routes — /api/hiring/*
+    if (pathname.startsWith("/api/hiring/")) {
+      let body = null
+      if (req.method === "POST" || req.method === "PATCH") {
+        body = await readJson(req, res)
+        if (body === null) return
+      }
+      const user = req._jwtPrincipal
+        ? { id: req._jwtPrincipal.id, tenant_id: req._jwtPrincipal.tenant_id, role: req._jwtPrincipal._rbacRole }
+        : null
+
+      // Offer routes
+      if (_offerRouter && pathname.startsWith("/api/hiring/offers")) {
+        return _offerRouter.handle(req, res, pathname, req.method, body, user)
+      }
+      // Requisition + application + matching routes
+      if (_requisitionRouter) {
+        return _requisitionRouter.handle(req, res, pathname, req.method, body, user)
+      }
+    }
+
+    // S40-G6: Invitation routes — /api/invitations/*
+    if (_invitationRouter && pathname.startsWith("/api/invitations")) {
+      let body = null
+      if (req.method === "POST") {
+        body = await readJson(req, res)
+        if (body === null) return
+      }
+      const user = req._jwtPrincipal
+        ? { id: req._jwtPrincipal.id, tenant_id: req._jwtPrincipal.tenant_id, role: req._jwtPrincipal._rbacRole }
+        : null
+      return _invitationRouter.handle(req, res, pathname, req.method, body, user)
+    }
+
+    // WC-CB Day 3: Cohort request intake — /api/cohort/*
+    //   POST /api/cohort/request  is PUBLIC (no auth) — cohort intake form;
+    //   GET  /api/cohort/requests is auth-gated for sponsor review;
+    //   POST /api/cohort/requests/:id/mark-reviewed is auth-gated.
+    if (_cohortRouter && pathname.startsWith("/api/cohort")) {
+      let body = null
+      if (req.method === "POST") {
+        body = await readJson(req, res)
+        if (body === null) return
+      }
+      const user = req._jwtPrincipal
+        ? { id: req._jwtPrincipal.id, tenant_id: req._jwtPrincipal.tenant_id, role: req._jwtPrincipal._rbacRole }
+        : null
+      return _cohortRouter.handle(req, res, pathname, req.method, body, user)
+    }
+
+    // S40-G5: Employer onboarding routes — profile, status, resend-verification
+    if (_employerOnboardingRouter && (
+      pathname === "/api/onboarding/profile" ||
+      pathname === "/api/onboarding/status" ||
+      pathname === "/api/auth/resend-verification"
+    )) {
+      let body = null
+      if (req.method === "PATCH" || req.method === "POST") {
+        body = await readJson(req, res)
+        if (body === null) return
+      }
+      // Resolve user from JWT — onboarding routes are outside /api/admin so _jwtPrincipal is not set
+      let user = null
+      if (_authService) {
+        const authHeader = req.headers && (req.headers.authorization || req.headers.Authorization)
+        const bearerToken = authHeader && String(authHeader).startsWith("Bearer ")
+          ? String(authHeader).slice(7).trim() : null
+        if (bearerToken) {
+          const payload = await _authService.verifySession(bearerToken)
+          if (payload) {
+            user = { id: payload.sub, tenant_id: payload.tenant_id, role: payload.role }
+          }
+        }
+      }
+      return _employerOnboardingRouter.handle(req, res, pathname, req.method, body, user)
+    }
+
+    // S37-G1: WPS Readiness Pack — early-exit before matchRoute
+    if (pathname.startsWith("/api/onboarding/wps/")) {
+      if (req._jwtPrincipal && !requirePermission(res, { role: req._jwtPrincipal._rbacRole }, PERMISSIONS.MANAGE_PROBATION)) return
+      const body = ["POST", "PATCH", "PUT"].includes(req.method)
+        ? await readJson(req, res)
+        : {}
+      if (body === null) return  // readJson already sent error response
+      const result = await _wpsReadinessRouter.handle({
+        method: req.method, path: pathname.replace("/api", ""), body
+      })
+      return ok(res, result.body, result.status)
+    }
+
+    // S37-G6: Compliance Risk Screen — early-exit before matchRoute
+    if (pathname.startsWith("/api/compliance/risk/")) {
+      const url    = new URL(req.url, "http://localhost")
+      const query  = Object.fromEntries(url.searchParams.entries())
+      try {
+        const result = await _complianceRiskRouter.handle({
+          method: req.method, path: pathname.replace("/api", ""), query
+        })
+        return ok(res, result.body, result.status)
+      } catch (e) {
+        return fail(res, "BAD_REQUEST", e.message, 400)
+      }
+    }
+
+    // S38-G3: evidence pack routes — early exit
+    if (pathname.startsWith("/api/evidence/") && req._jwtPrincipal) {
+      const perm = req.method === "POST" ? PERMISSIONS.MANAGE_EVIDENCE : PERMISSIONS.VIEW_EVIDENCE
+      if (!requirePermission(res, { role: req._jwtPrincipal._rbacRole }, perm)) return
+    }
+    // S44-G7: PG-backed evidence pack listing and export
+    if (_pgPool && pathname === "/api/evidence/packs" && req.method === "GET") {
+      const tenantId = resolveTenantId(req)
+      const tenantUuid = (() => { const h = require("crypto").createHash("md5").update(tenantId).digest("hex"); return h.slice(0,8)+"-"+h.slice(8,12)+"-"+h.slice(12,16)+"-"+h.slice(16,20)+"-"+h.slice(20,32) })()
+      try {
+        const client = await _pgPool.connect()
+        try {
+          const result = await client.query("SELECT pack_id, pack_type, status, created_at, immutable_hash FROM evidence_packs WHERE tenant_id = $1 ORDER BY created_at DESC", [tenantUuid])
+          return ok(res, { packs: result.rows, count: result.rows.length })
+        } finally { client.release() }
+      } catch (e) { return fail(res, "EVIDENCE_ERROR", e.message, 500) }
+    }
+
+    const epExportMatch = pathname.match(/^\/api\/evidence\/packs\/([^/]+)\/export$/)
+    if (_pgPool && epExportMatch && req.method === "POST") {
+      const packId = epExportMatch[1]
+      const tenantId = resolveTenantId(req)
+      const tenantUuid = (() => { const h = require("crypto").createHash("md5").update(tenantId).digest("hex"); return h.slice(0,8)+"-"+h.slice(8,12)+"-"+h.slice(12,16)+"-"+h.slice(16,20)+"-"+h.slice(20,32) })()
+      try {
+        const client = await _pgPool.connect()
+        try {
+          const result = await client.query("SELECT * FROM evidence_packs WHERE pack_id = $1 AND tenant_id = $2", [packId, tenantUuid])
+          if (!result.rows[0]) return fail(res, "NOT_FOUND", "evidence pack not found", 404)
+          const pack = result.rows[0]
+          const snapshot = typeof pack.data_snapshot === "string" ? pack.data_snapshot : JSON.stringify(pack.data_snapshot)
+          const files = {}
+          files["manifest.json"] = Buffer.from(JSON.stringify({ pack_id: pack.pack_id, pack_type: pack.pack_type, created_at: pack.created_at, immutable_hash: pack.immutable_hash, policy_version: pack.policy_version }, null, 2))
+          files["data_snapshot.json"] = Buffer.from(snapshot)
+          const { buildZip } = require("./lib/zip")
+          const zipBuf = buildZip(files)
+          const fname = `evidence-pack-${pack.pack_type}-${pack.pack_id.slice(0,8)}.zip`
+          res.writeHead(200, { "content-type": "application/zip", "content-disposition": `attachment; filename="${fname}"`, "content-length": zipBuf.length })
+          return res.end(zipBuf)
+        } finally { client.release() }
+      } catch (e) { return fail(res, "EXPORT_ERROR", e.message, 500) }
+    }
+
+    if (pathname.startsWith("/api/evidence/")) {
+      const tenantId = resolveTenantId(req)
+      let body = null
+      if (req.method === "POST") {
+        body = await readJson(req, res)
+        if (body === null) return  // readJson already sent error response
+      }
+      return _evidencePackRouter.handle(req, res, pathname, req.method, tenantId, body)
+    }
+
+    // S39-G5: work identity / ERI — public read endpoints
+    if (pathname.startsWith("/api/identity/")) {
+      return _identityEriRouter.handle(req, res, pathname, req.method)
+    }
+
+    // S38-G6 / S39-G6 wiring 4: PDPL DSR routes — real event bus
+    if (pathname.startsWith("/api/compliance/pdpl/") && req._jwtPrincipal) {
+      if (!requirePermission(res, { role: req._jwtPrincipal._rbacRole }, PERMISSIONS.VIEW_COMPLIANCE)) return
+    }
+    if (pathname.startsWith("/api/compliance/pdpl/")) {
+      const tenantId = resolveTenantId(req)
+      let body = null
+      if (req.method === "POST") {
+        body = await readJson(req, res)
+        if (body === null) return  // readJson already sent error response
+      }
+      return _pdplRouter.handle(req, res, pathname, req.method, tenantId, body)
+    }
+
+    // S39-G6 wiring 2: compliance dashboard (Nitaqat) endpoints
+    if (pathname.startsWith("/api/compliance/dashboard/") && req._jwtPrincipal) {
+      if (!requirePermission(res, { role: req._jwtPrincipal._rbacRole }, PERMISSIONS.VIEW_COMPLIANCE)) return
+    }
+    if (pathname.startsWith("/api/compliance/dashboard/")) {
+      if (req.method === "GET") {
+        if (pathname === "/api/compliance/dashboard/summary") {
+          return ok(res, _complianceDashboard.getDashboardSummary())
+        }
+        if (pathname === "/api/compliance/dashboard/nitaqat") {
+          return ok(res, _complianceDashboard.listNitaqatScores())
+        }
+        const nitaqatCandMatch = pathname.match(/^\/api\/compliance\/dashboard\/nitaqat\/([^/]+)$/)
+        if (nitaqatCandMatch) {
+          try {
+            return ok(res, _complianceDashboard.getNitaqatScore(decodeURIComponent(nitaqatCandMatch[1])))
+          } catch (e) {
+            return fail(res, e.code || "NITAQAT_ERROR", e.message, e.code === "NITAQAT_NOT_FOUND" ? 404 : 400)
+          }
+        }
+      }
+      if (req.method === "POST" && pathname === "/api/compliance/dashboard/nitaqat/compute") {
+        const body = await readJson(req, res)
+        if (body === null) return
+        try {
+          return ok(res, _complianceDashboard.computeNitaqatScore(body))
+        } catch (e) {
+          return fail(res, e.code || "NITAQAT_ERROR", e.message, 422)
+        }
+      }
+      return fail(res, "NOT_FOUND", "Compliance dashboard route not found", 404)
+    }
+
+    // S39-G4: fee transparency — public read + calculate endpoints
+    if (pathname.startsWith("/api/payments/fee-transparency/") && req._jwtPrincipal) {
+      if (!requirePermission(res, { role: req._jwtPrincipal._rbacRole }, PERMISSIONS.VIEW_PAYMENTS)) return
+    }
+    if (pathname.startsWith("/api/payments/fee-transparency/")) {
+      let body = null
+      if (req.method === "POST") {
+        body = await readJson(req, res)
+        if (body === null) return
+      }
+      return _feeRouter.handle(req, res, pathname, req.method, body)
+    }
+
+    // S39-G6 Part 2: beta admin routes
+    if (pathname.startsWith("/admin/beta") && req._jwtPrincipal) {
+      if (!requirePermission(res, { role: req._jwtPrincipal._rbacRole }, PERMISSIONS.MANAGE_BETA)) return
+    }
+    if (pathname.startsWith("/admin/beta")) {
+      let body = null
+      if (req.method === "POST" || req.method === "PUT" || req.method === "PATCH") {
+        body = await readJson(req, res)
+        if (body === null) return
+      }
+      return _betaRouter.handle(req, res, pathname, req.method, body)
+    }
+
+
     const route = matchRoute(req.method || "GET", pathname)
     if (!route) return fail(res, "NOT_FOUND", "Route not found", 404)
 
@@ -1279,6 +1821,8 @@ const server = http.createServer(async (req, res) => {
     } else if (req.method !== "GET" && req.method !== "HEAD" && pathname.startsWith("/api/")) {
       if (!checkRateLimit(req, res, _RL_WRITE_MAX)) return
     }
+
+    // (JWT pre-auth block moved earlier — before all early-exit routes)
 
     const tenantId = resolveTenantId(req)
     const tenant = getTenantStore(tenantId)
@@ -1480,7 +2024,7 @@ const server = http.createServer(async (req, res) => {
 
     // S30: enforce tenant registry on all WOS routes
     if (route.name.startsWith("wos.")) {
-      if (!requireTenantActive(res, tenantId)) return
+      if (!(await requireTenantActive(res, tenantId))) return
       // S30: auth gate for WOS writes when WOS_PUBLIC_WRITE=false (default)
       if (!WOS_PUBLIC_WRITE && (req.method === "POST" || req.method === "PATCH")) {
         const ap = Admin.authenticate(req)
@@ -1610,7 +2154,7 @@ const server = http.createServer(async (req, res) => {
       if (!ap.ok) return failFromAdmin(res, ap)
       if (!requireAdminPerm(res, ap.principal, "admin:workers:read")) return
       if (!requireTenantAccess(res, ap.principal, tenantId)) return  // S30
-      if (!requireTenantActive(res, tenantId)) return                // S30
+      if (!(await requireTenantActive(res, tenantId))) return                // S30
       // S24-C-RBAC
       const auth = ap  // S24-C: authenticated by guard above
       const out = listAdminWorkers(tenantId, url.searchParams)
@@ -1623,7 +2167,7 @@ const server = http.createServer(async (req, res) => {
       if (!ap.ok) return failFromAdmin(res, ap)
       if (!requireAdminPerm(res, ap.principal, "admin:pods:read")) return
       if (!requireTenantAccess(res, ap.principal, tenantId)) return  // S30
-      if (!requireTenantActive(res, tenantId)) return                // S30
+      if (!(await requireTenantActive(res, tenantId))) return                // S30
       // S24-C-RBAC
       const auth = ap  // S24-C: authenticated by guard above
       return ok(res, { ...bootMeta(), admin: { id: auth.principal.id, name: auth.principal.name, role: auth.principal.role }, pods: [] }, 200)
@@ -1633,7 +2177,7 @@ const server = http.createServer(async (req, res) => {
       if (!ap.ok) return failFromAdmin(res, ap)
       if (!requireAdminPerm(res, ap.principal, "admin:workers:read")) return
       if (!requireTenantAccess(res, ap.principal, tenantId)) return  // S30
-      if (!requireTenantActive(res, tenantId)) return                // S30
+      if (!(await requireTenantActive(res, tenantId))) return                // S30
 
       const items = Array.from(tenant.wosAssignments.values())
       return ok(res, { items, count: items.length })
@@ -1802,7 +2346,7 @@ function runSchedulerForTenant(tenantId, tenant, limit, dryRun) {
       if (!ap.ok) return failFromAdmin(res, ap)
       if (!requireAdminPerm(res, ap.principal, "admin:governance:read")) return
       if (!requireTenantAccess(res, ap.principal, tenantId)) return  // S30
-      if (!requireTenantActive(res, tenantId)) return                // S30
+      if (!(await requireTenantActive(res, tenantId))) return                // S30
 
       const evidenceResult = adminListEvidence(tenantId, url.searchParams)
       return ok(res, { tenant_id: tenantId, ...evidenceResult })

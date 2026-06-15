@@ -1,0 +1,19 @@
+{
+  "version": "v1",
+  "items": [
+    { "id": "iban_captured",       "label_en": "IBAN captured",        "label_ar": "تم إدخال الآيبان",       "weight": 20 },
+    { "id": "iban_verified",       "label_en": "IBAN verified",        "label_ar": "تم التحقق من الآيبان",    "weight": 20 },
+    { "id": "identity_verified",   "label_en": "Identity verified",    "label_ar": "تم التحقق من الهوية",     "weight": 20 },
+    { "id": "bank_confirmed",      "label_en": "Bank confirmed",       "label_ar": "تم تأكيد البنك",         "weight": 20 },
+    { "id": "salary_populated",    "label_en": "Salary amount set",    "label_ar": "تم تحديد مبلغ الراتب",    "weight": 10 },
+    { "id": "breakdown_populated", "label_en": "Salary breakdown set", "label_ar": "تم تحديد تفاصيل الراتب",  "weight": 10 }
+  ],
+  "ibanFormat": {
+    "prefix": "SA",
+    "totalLength": 24,
+    "pattern": "^SA[0-9]{22}$"
+  },
+  "allowedBanks": [
+    "RJHI", "SABB", "BSFR", "RIBL", "ARNB", "SAMBA", "ALBI", "AAAL", "NCBK", "BKAM"
+  ]
+}

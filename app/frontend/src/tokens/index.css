@@ -1,0 +1,28 @@
+/*
+ * WorkCaptain — Design Token Aggregator
+ *
+ * Replicated locally from canonical @maqaleed/design-tokens per Sponsor
+ * decision B-extra (2026-05-11). Files in this directory are byte-identical
+ * to canonical; the WC-local Nitaqat zone palette in zones-wc.css is the
+ * single additive-on-canonical extension.
+ *
+ * Canonical source: /Users/waheebmahmoud/dev/credito-platform/packages/design-tokens/src/
+ * Governance authority: UX-G1-TOKENS V1.1.1 (RATIFIED 2026-05-09)
+ * Anti-mutation discipline: per V1.1.1 §10 (file diff must show only
+ * additions / unchanged lines vs canonical).
+ * Extraction TODO: post-D15+41 (~2026-06-26), extract to shared package
+ * consumable by credito-platform + prowork (and Società, S2PPRO, VetiCare
+ * in subsequent waves per PROPOSAL §11.A1).
+ *
+ * Consumers should import this single file:
+ *   <link rel="stylesheet" href="/src/tokens/index.css" />
+ */
+
+@import './colour.css';
+@import './typography.css';
+@import './spacing.css';
+@import './motion.css';
+@import './iconography.css';
+@import './elevation.css';
+@import './radius.css';
+@import './zones-wc.css';

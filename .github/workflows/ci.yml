@@ -37,6 +37,11 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      # BRD A6: builds fail if translation keys missing — S36-G5 HARD BUILD GATE
+      - name: Verify translations
+        working-directory: .
+        run: node scripts/i18n/check-translations.js
+
       - name: Test
         run: npm test
 
@@ -74,3 +79,133 @@ jobs:
         env:
           NODE_ENV: test
           APP_PORT: "3010"
+
+  # ── WCAG 2.2 AA Accessibility Gate ────────────────────────────────────────
+  # BRD A6 + Maqaleed Eval required
+  # Runs AFTER build, BEFORE deploy.
+  # Exit code 1 on ANY critical violation — blocks deploy pipeline.
+  # Checks WCAG 2.2 criteria: 2.4.11 Focus Appearance, 2.5.8 Target Size.
+  wcag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Runs after app job succeeds — ensures code quality gate is met first
+    needs: app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      - name: Install root deps (puppeteer + axe)
+        run: npm ci
+        # puppeteer auto-downloads Chromium on install
+
+      - name: Setup frontend preview deps
+        run: cd app/frontend && npm ci
+
+      - name: Build frontend
+        # WCAG audit runs against the BUILT frontend, not source — catches
+        # any build-time transformation issues that affect accessibility
+        run: npm run build:ui
+
+      - name: Start vite preview server
+        run: |
+          cd app/frontend
+          npx vite preview --port 4173 &
+          echo "PREVIEW_PID=$!" >> $GITHUB_ENV
+          # Wait for preview server to be ready
+          for i in $(seq 1 15); do
+            sleep 1
+            curl -sf http://localhost:4173 >/dev/null 2>&1 && break
+          done
+          echo "Preview server ready"
+
+      - name: Run WCAG 2.2 AA audit — EXIT 1 on critical violation
+        # BRD A6 + Maqaleed Eval required
+        # This step BLOCKS deploy if any critical/serious violation is found.
+        # Routes audited: / /ai /workforce /compliance /evidence
+        #                 /payments /admin /programs /identity (9 total)
+        run: node scripts/wcag_audit.js
+        env:
+          AUDIT_URL: "http://localhost:4173"
+          AUDIT_CI_TOKEN: "ci-wcag-token"
+
+      - name: Upload accessibility report
+        if: always()   # upload even on failure — needed for violation review
+        uses: actions/upload-artifact@v4
+        with:
+          name: wcag-accessibility-report
+          path: reports/accessibility/
+          retention-days: 30
+
+      - name: Stop preview server
+        if: always()
+        run: kill $PREVIEW_PID 2>/dev/null || true
+
+  # ── Core Web Vitals Budget Gate ───────────────────────────────────────────
+  # BRD A6 + Maqaleed Eval required
+  # Runs AFTER wcag job, BEFORE deploy.
+  # EXIT 1 if any critical route: LCP > 4s OR INP > 500ms OR CLS > 0.25
+  # Budget thresholds in app/frontend/src/performance-budget.json
+  # Budget file changes require PR review — see file comment.
+  cwv:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Runs after wcag job — deploy pipeline: app → wcag → cwv → deploy
+    needs: wcag
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      - name: Install root deps
+        run: npm ci
+
+      - name: Setup frontend preview deps
+        run: cd app/frontend && npm ci
+
+      - name: Build frontend
+        # CWV audit runs against BUILT bundle — bundle size determines estimated LCP
+        run: npm run build:ui
+
+      - name: Start vite preview server
+        run: |
+          cd app/frontend
+          npx vite preview --port 4173 &
+          echo "CWV_PREVIEW_PID=$!" >> $GITHUB_ENV
+          for i in $(seq 1 15); do
+            sleep 1
+            curl -sf http://localhost:4173 >/dev/null 2>&1 && break
+          done
+          echo "CWV preview server ready"
+
+      - name: Run CWV budget audit — EXIT 1 if LCP > 4s / INP > 500ms / CLS > 0.25
+        # BRD A6 + Maqaleed Eval required
+        # --lighthouse: real Lighthouse measurement using pre-installed Chrome
+        # Audits 4 critical routes: / /ai /workforce /compliance
+        run: node scripts/cwv_audit.js --lighthouse
+        env:
+          AUDIT_URL: "http://localhost:4173"
+
+      - name: Upload performance report
+        if: always()   # upload even on failure — needed for budget review
+        uses: actions/upload-artifact@v4
+        with:
+          name: cwv-performance-report
+          path: reports/performance/
+          retention-days: 30
+
+      - name: Stop preview server
+        if: always()
+        run: kill $CWV_PREVIEW_PID 2>/dev/null || true

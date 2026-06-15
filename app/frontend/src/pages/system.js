@@ -22,7 +22,7 @@ function uptimeStr(s) {
 function statusDot(on) {
   const span = document.createElement("span")
   span.style.cssText = `display:inline-block;width:8px;height:8px;border-radius:50%;
-    background:${on ? "#1a7f37" : "#888"};margin-right:6px`
+    background:${on ? "#1a7f37" : "#888"};margin-inline-end:6px`
   return span
 }
 
@@ -132,7 +132,7 @@ export default {
           const hr = document.createElement("tr")
           ;["Tenant", "Queue", "Last Run", "Last Error"].forEach(h => {
             const th = document.createElement("th")
-            th.style.cssText = "text-align:left;padding:4px 8px;border-bottom:1px solid #eee;color:#888;font-weight:600"
+            th.style.cssText = "text-align:start;padding:4px 8px;border-bottom:1px solid #eee;color:#888;font-weight:600"
             th.textContent = h; hr.appendChild(th)
           })
           thead.appendChild(hr); tbl.appendChild(thead)

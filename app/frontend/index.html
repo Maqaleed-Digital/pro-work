@@ -1,13 +1,29 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" dir="ltr" data-brand="workcaptain">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ProWork Admin</title>
-    <link rel="stylesheet" href="/src/style.css" />
+    <title>WorkCaptain — Saudi workforce decision-support</title>
+    <meta name="description" content="Saudisation (Nitaqat), Payroll, Workforce Analytics, GOSI, Mudad, Qiwa integrations via licensed partners. Currently in controlled beta." />
+
+    <!-- Controlled-beta indexing policy: not for public crawl.
+         Authority: WC Controlled-Launch Memo V1.1. Lifted post-D15+41. -->
+    <meta name="robots" content="noindex,nofollow,noarchive,nosnippet" />
+    <meta name="googlebot" content="noindex,nofollow" />
+    <meta name="bingbot" content="noindex,nofollow" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=IBM+Plex+Mono&display=swap" rel="stylesheet">
+
+    <!-- Canonical tokens — must load first so consumers see --maq-* vars -->
+    <link rel="stylesheet" href="/src/tokens/index.css" />
+    <link rel="stylesheet" href="/src/public/landing.css" />
   </head>
   <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.js"></script>
+    <!-- WCAG 2.4.1: Skip to main content link — hidden until focused -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+    <div id="landing-root"></div>
+    <script type="module" src="/src/public/main.js"></script>
   </body>
 </html>

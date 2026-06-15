@@ -28,6 +28,7 @@ ProtectHome=true
 CapabilityBoundingSet=
 RestrictNamespaces=true
 RestrictRealtime=true
+ReadWritePaths=/var/lib/prowork/evidence /var/log/prowork
 
 [Install]
 WantedBy=multi-user.target
