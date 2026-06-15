@@ -1,0 +1,110 @@
+{
+  "version": "v1",
+  "routing": {
+    "rules": [
+      {
+        "comment": "KSA buyer + mada → Tap primary, HyperPay fallback",
+        "buyerCountry": "SA",
+        "paymentMethod": "MADA",
+        "primaryPsp":  "TAP",
+        "fallbackPsp": "HYPERPAY"
+      },
+      {
+        "comment": "KSA buyer + Visa → Tap",
+        "buyerCountry": "SA",
+        "paymentMethod": "VISA",
+        "primaryPsp":  "TAP",
+        "fallbackPsp": null
+      },
+      {
+        "comment": "KSA buyer + Mastercard → Tap",
+        "buyerCountry": "SA",
+        "paymentMethod": "MASTERCARD",
+        "primaryPsp":  "TAP",
+        "fallbackPsp": null
+      },
+      {
+        "comment": "KSA buyer + Apple Pay → Tap",
+        "buyerCountry": "SA",
+        "paymentMethod": "APPLEPAY",
+        "primaryPsp":  "TAP",
+        "fallbackPsp": null
+      },
+      {
+        "comment": "KSA buyer + stcPay → Tap",
+        "buyerCountry": "SA",
+        "paymentMethod": "STCPAY",
+        "primaryPsp":  "TAP",
+        "fallbackPsp": null
+      }
+    ],
+    "defaultPsp": "STRIPE",
+    "defaultComment": "Global buyer or unmatched country → Stripe (existing)"
+  },
+  "circuitBreaker": {
+    "failureThreshold":   3,
+    "windowSeconds":     60,
+    "resetTimeoutSeconds": 120
+  },
+  "payoutMatrix": {
+    "SA": {
+      "MADA": {
+        "psp": "TAP",
+        "currency": "SAR",
+        "feePercent": 1.75,
+        "feeFixed": 0,
+        "etaMinutes": 30,
+        "cutOffUtc": "20:00",
+        "instantAvailable": true,
+        "failureHandling": "retry_then_manual_review"
+      },
+      "VISA": {
+        "psp": "TAP",
+        "currency": "SAR",
+        "feePercent": 2.50,
+        "feeFixed": 0,
+        "etaMinutes": 1440,
+        "cutOffUtc": "18:00",
+        "instantAvailable": false,
+        "failureHandling": "retry_then_manual_review"
+      },
+      "MASTERCARD": {
+        "psp": "TAP",
+        "currency": "SAR",
+        "feePercent": 2.50,
+        "feeFixed": 0,
+        "etaMinutes": 1440,
+        "cutOffUtc": "18:00",
+        "instantAvailable": false,
+        "failureHandling": "retry_then_manual_review"
+      }
+    },
+    "DEFAULT": {
+      "VISA": {
+        "psp": "STRIPE",
+        "currency": "USD",
+        "feePercent": 2.90,
+        "feeFixed": 0.30,
+        "etaMinutes": 2880,
+        "cutOffUtc": null,
+        "instantAvailable": false,
+        "failureHandling": "retry_once_then_flag"
+      },
+      "MASTERCARD": {
+        "psp": "STRIPE",
+        "currency": "USD",
+        "feePercent": 2.90,
+        "feeFixed": 0.30,
+        "etaMinutes": 2880,
+        "cutOffUtc": null,
+        "instantAvailable": false,
+        "failureHandling": "retry_once_then_flag"
+      }
+    }
+  },
+  "supportedMethods": {
+    "TAP":      ["MADA", "VISA", "MASTERCARD", "APPLEPAY", "STCPAY"],
+    "HYPERPAY": ["MADA", "VISA", "MASTERCARD"],
+    "STRIPE":   ["VISA", "MASTERCARD", "AMEX"]
+  }
+}

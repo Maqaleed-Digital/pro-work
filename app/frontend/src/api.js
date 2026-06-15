@@ -84,3 +84,20 @@ export async function apiPost(path, body) {
     body: body !== undefined ? JSON.stringify(body) : undefined
   }))
 }
+
+export async function apiPatch(path, body) {
+  return handleResp(await fetch(path, {
+    method: "PATCH",
+    headers: authHeaders({ "content-type": "application/json" }),
+    body: body !== undefined ? JSON.stringify(body) : undefined
+  }))
+}
+
+// S40-G5: unauthenticated POST (for register/login before token exists)
+export async function apiPostPublic(path, body) {
+  return handleResp(await fetch(path, {
+    method: "POST",
+    headers: { "content-type": "application/json", "cache-control": "no-store" },
+    body: body !== undefined ? JSON.stringify(body) : undefined
+  }))
+}

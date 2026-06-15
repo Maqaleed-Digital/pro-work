@@ -1,0 +1,59 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Global Reset + Base — S42
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--maq-font-latin);
+  color: var(--maq-neutral-900);
+  background: var(--maq-neutral-50);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+[dir="rtl"] body {
+  font-family: var(--maq-font-arabic);
+}
+
+a { color: var(--maq-brand-accent); text-decoration: none; }
+a:hover { color: #E8B84B; }
+
+img, svg { max-width: 100%; display: block; }
+
+/* Selection */
+::selection {
+  background: rgba(196, 146, 42, 0.2);
+  color: var(--maq-neutral-900);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--maq-brand-primary-hover);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--maq-brand-primary); }
+
+/* Accessibility */
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0,0,0,0); border: 0;
+}
+
+.skip-link {
+  position: absolute; top: -40px; left: 0;
+  background: var(--maq-brand-primary); color: #fff;
+  padding: var(--maq-space-2) var(--maq-space-4);
+  z-index: 1000;
+}
+.skip-link:focus { top: 0; }

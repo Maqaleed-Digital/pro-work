@@ -1,0 +1,19 @@
+{
+  "version": "v1",
+  "transitions": {
+    "APPLIED":      ["SCREENING", "REJECTED", "WITHDRAWN"],
+    "SCREENING":    ["SHORTLISTED", "REJECTED", "WITHDRAWN"],
+    "SHORTLISTED":  ["INTERVIEWED", "REJECTED", "WITHDRAWN"],
+    "INTERVIEWED":  ["OFFERED", "REJECTED", "WITHDRAWN"],
+    "OFFERED":      ["HIRED", "REJECTED", "WITHDRAWN"],
+    "HIRED":        [],
+    "REJECTED":     [],
+    "WITHDRAWN":    []
+  },
+  "terminal": ["HIRED", "REJECTED", "WITHDRAWN"],
+  "requiresReason": ["REJECTED"],
+  "validStatuses": [
+    "APPLIED", "SCREENING", "SHORTLISTED", "INTERVIEWED",
+    "OFFERED", "HIRED", "REJECTED", "WITHDRAWN"
+  ]
+}

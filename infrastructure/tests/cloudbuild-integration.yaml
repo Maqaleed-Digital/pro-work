@@ -1,0 +1,5 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-f', 'infrastructure/tests/Dockerfile.integration', '-t', 'me-central2-docker.pkg.dev/$PROJECT_ID/workcaptain/integration-test-runner:latest', '.']
+images:
+  - 'me-central2-docker.pkg.dev/$PROJECT_ID/workcaptain/integration-test-runner:latest'

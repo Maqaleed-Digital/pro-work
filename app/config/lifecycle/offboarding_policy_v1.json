@@ -1,0 +1,79 @@
+{
+  "version": "v1",
+  "effectiveDate": "2026-01-01",
+  "description": "Default offboarding checklist policy — configurable per tenant",
+  "defaultChecklist": [
+    {
+      "item_id":           "notice-ack",
+      "title":             "Notice Period Acknowledgement",
+      "title_ar":          "إقرار فترة الإشعار",
+      "category":          "HR",
+      "mandatory":         true,
+      "requires_evidence": true,
+      "description":       "Employee signs acknowledgement of notice period terms"
+    },
+    {
+      "item_id":           "handover-tasks",
+      "title":             "Knowledge Handover Tasks",
+      "title_ar":          "مهام نقل المعرفة",
+      "category":          "OPERATIONS",
+      "mandatory":         true,
+      "requires_evidence": false,
+      "description":       "All knowledge handover tasks assigned and completed by employee"
+    },
+    {
+      "item_id":           "asset-return",
+      "title":             "Asset Return (Laptop, Access Cards)",
+      "title_ar":          "إعادة الأصول (حاسوب، بطاقات الوصول)",
+      "category":          "OPERATIONS",
+      "mandatory":         true,
+      "requires_evidence": true,
+      "description":       "All company assets returned and logged"
+    },
+    {
+      "item_id":           "access-revoke",
+      "title":             "System Access Revocation",
+      "title_ar":          "إلغاء صلاحيات النظام",
+      "category":          "IT",
+      "mandatory":         true,
+      "requires_evidence": false,
+      "description":       "IT confirms all system access revoked"
+    },
+    {
+      "item_id":           "payroll-confirm",
+      "title":             "Final Payroll Confirmation",
+      "title_ar":          "تأكيد الراتب الأخير",
+      "category":          "FINANCE",
+      "mandatory":         true,
+      "requires_evidence": true,
+      "description":       "Finance confirms final payroll amount including accruals"
+    },
+    {
+      "item_id":           "esb-review",
+      "title":             "ESB Calculation Review and Approval",
+      "title_ar":          "مراجعة واعتماد مكافأة نهاية الخدمة",
+      "category":          "HR",
+      "mandatory":         true,
+      "requires_evidence": true,
+      "description":       "HR reviews and approves ESB calculation before final payment"
+    },
+    {
+      "item_id":           "reference-letter",
+      "title":             "Reference Letter Issued",
+      "title_ar":          "إصدار خطاب توصية",
+      "category":          "HR",
+      "mandatory":         false,
+      "requires_evidence": false,
+      "description":       "Optional: reference letter prepared and issued to employee"
+    },
+    {
+      "item_id":           "exit-interview",
+      "title":             "Exit Interview Completed",
+      "title_ar":          "إجراء مقابلة الخروج",
+      "category":          "HR",
+      "mandatory":         false,
+      "requires_evidence": false,
+      "description":       "Optional: exit interview conducted and notes recorded"
+    }
+  ]
+}

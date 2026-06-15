@@ -1,0 +1,28 @@
+{
+  "version": "v1",
+  "salaryRanges": {
+    "FTE": { "min": 4000, "max": 500000, "currency": "SAR" },
+    "FREELANCER": { "min": 500, "max": 200000, "currency": "SAR" },
+    "AI_EXECUTABLE": { "min": 0, "max": 1000000, "currency": "SAR" }
+  },
+  "prohibitedOccupationCodes": [
+    "ISCO-0110",
+    "ISCO-0210",
+    "ISCO-5411"
+  ],
+  "requiredFields": {
+    "FTE": ["title", "contract_type", "salary_min", "salary_max"],
+    "FREELANCER": ["title", "contract_type", "salary_min"],
+    "AI_EXECUTABLE": ["title", "contract_type"]
+  },
+  "validContractTypes": ["FTE", "FREELANCER", "AI_EXECUTABLE"],
+  "validStatuses": ["DRAFT", "NITAQAT_PREVIEWED", "PUBLISHED", "CLOSED", "FILLED"],
+  "statusTransitions": {
+    "DRAFT": ["NITAQAT_PREVIEWED"],
+    "NITAQAT_PREVIEWED": ["PUBLISHED", "DRAFT"],
+    "PUBLISHED": ["CLOSED", "FILLED"],
+    "CLOSED": [],
+    "FILLED": []
+  },
+  "nitaqatPreviewStalenessHours": 24
+}

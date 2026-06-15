@@ -101,6 +101,19 @@ function findPrincipalByToken(db, token) {
 }
 
 function authenticate(req) {
+  // S40-G2: JWT-authenticated principal takes priority (set by server.js pre-auth)
+  if (req && req._jwtPrincipal) {
+    const dbPath = principalsFilePath()
+    const loaded = loadDbFromPath(dbPath)
+    const db = loaded.ok ? loaded.data.db : { principals: [], roles: {} }
+    return {
+      ok: true,
+      principal: req._jwtPrincipal,
+      db,
+      dbPath
+    }
+  }
+
   const auth = parseAuthorization(req)
   if (!auth.ok) return auth
 

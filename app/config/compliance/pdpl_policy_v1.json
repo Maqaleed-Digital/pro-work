@@ -1,0 +1,125 @@
+{
+  "version": "v1",
+  "effectiveDate": "2026-01-01",
+  "description": "KSA PDPL + UAE Federal PDPL compliance policy — DSR SLA, lawful basis registry, document templates",
+  "coverage": [
+    {
+      "jurisdiction": "KSA",
+      "regulation": "KSA_PDPL",
+      "fullName": "Kingdom of Saudi Arabia Personal Data Protection Law",
+      "effectiveDate": "2023-09-14",
+      "authority": "National Data Management Office (NDMO)"
+    },
+    {
+      "jurisdiction": "UAE",
+      "regulation": "UAE_PDPL_LAW_45_2021",
+      "fullName": "UAE Federal Decree-Law No. 45 of 2021 on Personal Data Protection",
+      "effectiveDate": "2023-01-02",
+      "authority": "Telecommunications and Digital Government Regulatory Authority (TDRA)"
+    }
+  ],
+  "dsrSlaConfig": {
+    "sla_days": 30,
+    "alert_threshold_days": 25,
+    "extension_days": 30,
+    "overdue_threshold_days": 30
+  },
+  "dsrTypes": [
+    { "type": "ACCESS",      "title": "Right to Access",      "title_ar": "حق الوصول",        "description": "Request a copy of personal data held" },
+    { "type": "CORRECTION",  "title": "Right to Correction",  "title_ar": "حق التصحيح",       "description": "Request correction of inaccurate personal data" },
+    { "type": "DELETION",    "title": "Right to Deletion",    "title_ar": "حق الحذف",         "description": "Request deletion of personal data (right to be forgotten)" },
+    { "type": "PORTABILITY", "title": "Right to Portability", "title_ar": "حق نقل البيانات",  "description": "Request personal data in machine-readable format" },
+    { "type": "OBJECTION",   "title": "Right to Object",      "title_ar": "حق الاعتراض",      "description": "Object to specific processing of personal data" },
+    { "type": "RESTRICTION", "title": "Right to Restriction", "title_ar": "حق التقييد",       "description": "Request restriction of processing" }
+  ],
+  "dsrStatuses":      ["SUBMITTED", "ACKNOWLEDGED", "IN_REVIEW", "COMPLETED", "REJECTED"],
+  "terminalStatuses": ["COMPLETED", "REJECTED"],
+  "lawfulBasisRegistry": [
+    {
+      "registry_id":        "LB-001",
+      "data_category":      "Worker Personal Identification",
+      "data_elements":      ["full_name", "national_id", "date_of_birth", "nationality"],
+      "processing_purpose": "Employment contract execution and payroll",
+      "lawful_basis":       "CONTRACT",
+      "retention_period_days": 1825,
+      "jurisdiction":       ["KSA", "UAE"],
+      "notes":              "Required for employment contract under KSA Labour Law"
+    },
+    {
+      "registry_id":        "LB-002",
+      "data_category":      "Worker Contact Information",
+      "data_elements":      ["email", "phone", "address"],
+      "processing_purpose": "Business communication and contract performance",
+      "lawful_basis":       "CONTRACT",
+      "retention_period_days": 1825,
+      "jurisdiction":       ["KSA", "UAE"],
+      "notes":              "Necessary for employment relationship"
+    },
+    {
+      "registry_id":        "LB-003",
+      "data_category":      "Payroll and Compensation",
+      "data_elements":      ["basic_salary", "housing_allowance", "bank_account", "iban"],
+      "processing_purpose": "Payroll processing and salary payments",
+      "lawful_basis":       "CONTRACT",
+      "retention_period_days": 2555,
+      "jurisdiction":       ["KSA", "UAE"],
+      "notes":              "Required for WPS compliance and GOSI contributions"
+    },
+    {
+      "registry_id":        "LB-004",
+      "data_category":      "Performance and Analytics",
+      "data_elements":      ["performance_ratings", "attendance_records", "kpi_scores"],
+      "processing_purpose": "Workforce analytics and business improvement",
+      "lawful_basis":       "LEGITIMATE_INTEREST",
+      "retention_period_days": 730,
+      "jurisdiction":       ["KSA", "UAE"],
+      "notes":              "Legitimate interest: workforce planning and productivity analysis"
+    },
+    {
+      "registry_id":        "LB-005",
+      "data_category":      "Recruitment and Candidate Data",
+      "data_elements":      ["cv_data", "interview_notes", "skill_assessments"],
+      "processing_purpose": "Recruitment process and candidate evaluation",
+      "lawful_basis":       "CONSENT",
+      "retention_period_days": 365,
+      "jurisdiction":       ["KSA", "UAE"],
+      "notes":              "Candidate provides explicit consent on job application"
+    },
+    {
+      "registry_id":        "LB-006",
+      "data_category":      "Optional Benefits and Preferences",
+      "data_elements":      ["dietary_preferences", "emergency_contacts", "optional_certifications"],
+      "processing_purpose": "Enhanced employee experience and emergency preparedness",
+      "lawful_basis":       "CONSENT",
+      "retention_period_days": 365,
+      "jurisdiction":       ["KSA", "UAE"],
+      "notes":              "Worker provides explicit consent for optional data collection"
+    },
+    {
+      "registry_id":        "LB-007",
+      "data_category":      "System Access and Audit Logs",
+      "data_elements":      ["login_timestamps", "ip_addresses", "action_logs"],
+      "processing_purpose": "Security monitoring and regulatory compliance",
+      "lawful_basis":       "LEGITIMATE_INTEREST",
+      "retention_period_days": 1095,
+      "jurisdiction":       ["KSA", "UAE"],
+      "notes":              "Legitimate interest: fraud prevention and security compliance"
+    },
+    {
+      "registry_id":        "LB-008",
+      "data_category":      "End-of-Service and Offboarding",
+      "data_elements":      ["termination_reason", "esb_calculation", "exit_interview_notes"],
+      "processing_purpose": "End-of-service benefit calculation and legal compliance",
+      "lawful_basis":       "CONTRACT",
+      "retention_period_days": 1825,
+      "jurisdiction":       ["KSA"],
+      "notes":              "Required by KSA Labour Law for ESB calculation and GOSI"
+    }
+  ],
+  "documents": [
+    { "doc_type": "DPIA",            "title": "Data Protection Impact Assessment",    "title_ar": "تقييم أثر حماية البيانات",         "filename": "DPIA_ProWork_v1.txt" },
+    { "doc_type": "SCC",             "title": "Standard Contractual Clauses",         "title_ar": "الشروط التعاقدية القياسية",         "filename": "SCC_ProWork_v1.txt" },
+    { "doc_type": "DPO_APPOINTMENT", "title": "Data Protection Officer Appointment",  "title_ar": "تعيين مسؤول حماية البيانات",        "filename": "DPO_Appointment_ProWork_v1.txt" },
+    { "doc_type": "DATA_RESIDENCY",  "title": "Data Residency Statement",             "title_ar": "بيان إقامة البيانات",               "filename": "DataResidency_ProWork_v1.txt" }
+  ]
+}

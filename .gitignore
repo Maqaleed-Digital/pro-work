@@ -14,7 +14,6 @@ data/tenants/
 # Node artifacts
 node_modules/
 npm-debug.log*
-package-lock.json
 
 # OS / editor noise
 .DS_Store
@@ -26,3 +25,11 @@ app/server.js.bak.*
 app/data/tenants.json
 app/data/scheduler.json
 app/data/analytics_snapshots.json
+
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfplan
+infrastructure/gcp/env/dev/dev.tfvars
+infrastructure/gcp/local_backend_override.tf

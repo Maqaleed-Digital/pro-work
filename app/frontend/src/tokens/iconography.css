@@ -1,0 +1,21 @@
+/*
+ * Maqaleed Design Tokens — Iconography
+ * Per UX-G1-TOKENS-V1.0 §7
+ * Icon library: Lucide (lucide-react), confirmed 6 May 2026.
+ *
+ * Icon classes (human-action / agent-attributed / Mode-D-aware / HITL-pending /
+ * regulator-facing) are specified at the COMPONENT layer (§7.3), not the token
+ * layer. This file provides only the size tokens.
+ */
+
+:root {
+  /* ============================================================
+   * §7.2 — Icon size tokens
+   * ============================================================ */
+  --maq-icon-xs: 12px;     /* Inline with body text */
+  --maq-icon-sm: 16px;     /* Form fields, small buttons */
+  --maq-icon-md: 20px;     /* Default — standard buttons */
+  --maq-icon-lg: 24px;     /* Navigation, primary actions */
+  --maq-icon-xl: 32px;     /* Empty states, feature icons */
+  --maq-icon-2xl: 48px;    /* Hero icons, major empty states */
+}

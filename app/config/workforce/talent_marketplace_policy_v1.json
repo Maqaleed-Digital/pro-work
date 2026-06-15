@@ -1,0 +1,39 @@
+{
+  "version": "v1",
+  "fteFirst": {
+    "minimumSkillMatchPercent": 60,
+    "minimumAvailabilityPercent": 20,
+    "fallbackTriggers": {
+      "noFteFound":         "no_fte_workers_in_tenant",
+      "capacityExhausted":  "all_fte_at_capacity",
+      "skillGap":           "no_fte_meets_skill_threshold",
+      "partialCapacity":    "fte_capacity_insufficient_for_role"
+    },
+    "fallbackRationale": {
+      "no_fte_workers_in_tenant":           "No FTE workers registered in this tenant",
+      "all_fte_at_capacity":                "All FTE workers are at or above capacity limit",
+      "no_fte_meets_skill_threshold":       "No FTE worker meets the minimum skill match threshold",
+      "fte_capacity_insufficient_for_role": "FTE workers found but available hours insufficient for role requirements"
+    }
+  },
+  "allocation": {
+    "weeklyStandardHours":        40,
+    "maxUtilizationPercent":      100,
+    "conflictThresholdPercent":   100,
+    "conflictSeverity":           "CONFLICT"
+  },
+  "skillMatch": {
+    "exactMatchWeight":           1.0,
+    "partialMatchWeight":         0.5,
+    "minimumMatchPercentToInclude": 0
+  },
+  "search": {
+    "maxResults": 20,
+    "topMatchResults": 3
+  },
+  "auditLog": {
+    "modelVersion":       "talent-marketplace-v1",
+    "actionType":         "RECOMMENDATION",
+    "fallbackConfidence": 0.65
+  }
+}
