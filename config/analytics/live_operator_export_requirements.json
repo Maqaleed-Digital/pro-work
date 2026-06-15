@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0",
+  "phase": 95,
+  "scope": "LIVE_OPERATOR_VARIABLE_EXPORT",
+  "required_env_vars": [
+    {
+      "name": "WORKCAPTAIN_BQ_PROJECT_ID",
+      "description": "GCP project ID hosting the BigQuery dataset",
+      "required": true,
+      "example": "prj-maq-workcaptain-nonprod"
+    },
+    {
+      "name": "WORKCAPTAIN_BQ_DATASET",
+      "description": "BigQuery dataset name for analytics warehouse",
+      "required": true,
+      "example": "workcaptain_analytics"
+    }
+  ],
+  "optional_env_vars": [
+    {
+      "name": "GOOGLE_APPLICATION_CREDENTIALS",
+      "description": "Path to service account key JSON; not required if ADC is active",
+      "required": false
+    }
+  ],
+  "blocked_status_if_missing": "BLOCKED_MISSING_ENV",
+  "truth_mode": "PASS_OR_BLOCKED_ONLY"
+}

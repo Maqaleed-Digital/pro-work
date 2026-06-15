@@ -1,0 +1,49 @@
+{
+  "version": "v1",
+  "fieldMap": {
+    "role_title":               "POSITION_TITLE",
+    "wage_base":                "BASIC_WAGE",
+    "housing_allowance":        "HOUSING_ALLOWANCE",
+    "transport_allowance":      "TRANSPORT_ALLOWANCE",
+    "other_allowances":         "OTHER_ALLOWANCES",
+    "probation_days":           "PROBATION_PERIOD",
+    "notice_days":              "NOTICE_PERIOD",
+    "contract_duration_months": "CONTRACT_DURATION",
+    "work_location":            "WORK_LOCATION",
+    "worker_national_id":       "EMPLOYEE_NATIONAL_ID",
+    "employer_cr_number":       "EMPLOYER_CR_NUMBER",
+    "contract_start_date":      "CONTRACT_START_DATE",
+    "contract_end_date":        "CONTRACT_END_DATE",
+    "working_hours_per_week":   "WEEKLY_WORKING_HOURS",
+    "occupation_code":          "OCCUPATION_CODE",
+    "nationality":              "EMPLOYEE_NATIONALITY"
+  },
+  "requiredFields": [
+    "role_title",
+    "wage_base",
+    "probation_days",
+    "notice_days",
+    "work_location",
+    "worker_national_id",
+    "employer_cr_number",
+    "contract_start_date",
+    "occupation_code"
+  ],
+  "stateTransitions": {
+    "DRAFT":      ["REVIEW"],
+    "REVIEW":     ["DRAFT", "SIGNED"],
+    "SIGNED":     ["ACTIVATED"],
+    "ACTIVATED":  ["AMENDED", "TERMINATED"],
+    "AMENDED":    [],
+    "TERMINATED": []
+  },
+  "humanApprovalRequired": ["SIGNED", "TERMINATED"],
+  "terminalStates": ["TERMINATED"],
+  "transitionGuards": {
+    "DRAFT_to_REVIEW":        ["qiwa_completeness"],
+    "REVIEW_to_SIGNED":       ["human_actor", "both_party_signatures"],
+    "SIGNED_to_ACTIVATED":    ["activation_date"],
+    "ACTIVATED_to_AMENDED":   ["amendment_reason", "amended_fields"],
+    "ACTIVATED_to_TERMINATED":["human_actor", "termination_code", "notice_details"]
+  }
+}

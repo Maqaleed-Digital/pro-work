@@ -1,0 +1,80 @@
+[
+  {
+    "template_type": "EVENT_MEDIA",
+    "version": "v1",
+    "default_roles": [
+      {"role": "Producer", "count": 2},
+      {"role": "Videographer", "count": 4},
+      {"role": "Editor", "count": 2},
+      {"role": "Translator", "count": 3}
+    ],
+    "default_outcome_criteria": [
+      {"name": "Daily highlights", "target": 1, "unit": "video/day"},
+      {"name": "Live coverage hours", "target": 12, "unit": "hours/day"}
+    ],
+    "typical_duration_days": 30,
+    "compliance_notes": ["Outcome-based — no shift scheduling", "Language skills critical for multilingual events"]
+  },
+  {
+    "template_type": "MULTILINGUAL_SUPPORT",
+    "version": "v1",
+    "default_roles": [
+      {"role": "Arabic Interpreter", "count": 5},
+      {"role": "English Interpreter", "count": 3},
+      {"role": "Urdu Interpreter", "count": 3},
+      {"role": "French Interpreter", "count": 2}
+    ],
+    "default_outcome_criteria": [
+      {"name": "Translation accuracy", "target": 98, "unit": "percent"},
+      {"name": "Response time", "target": 5, "unit": "minutes"}
+    ],
+    "typical_duration_days": 14,
+    "compliance_notes": ["Outcome-based delivery windows", "No attendance tracking"]
+  },
+  {
+    "template_type": "DIGITAL_OPERATIONS",
+    "version": "v1",
+    "default_roles": [
+      {"role": "DevOps Engineer", "count": 3},
+      {"role": "Backend Developer", "count": 4},
+      {"role": "Frontend Developer", "count": 3},
+      {"role": "QA Engineer", "count": 2}
+    ],
+    "default_outcome_criteria": [
+      {"name": "System uptime", "target": 99.9, "unit": "percent"},
+      {"name": "Incident response", "target": 15, "unit": "minutes"}
+    ],
+    "typical_duration_days": 60,
+    "compliance_notes": ["Delivery windows not shifts", "Milestone-based outcomes"]
+  },
+  {
+    "template_type": "ANALYTICS_MONITORING",
+    "version": "v1",
+    "default_roles": [
+      {"role": "Data Analyst", "count": 3},
+      {"role": "Dashboard Developer", "count": 2},
+      {"role": "Report Writer", "count": 2}
+    ],
+    "default_outcome_criteria": [
+      {"name": "Daily reports delivered", "target": 1, "unit": "report/day"},
+      {"name": "Dashboard refresh rate", "target": 15, "unit": "minutes"}
+    ],
+    "typical_duration_days": 45,
+    "compliance_notes": ["Outcome-driven", "No hourly scheduling"]
+  },
+  {
+    "template_type": "CYBERSECURITY_SOC",
+    "version": "v1",
+    "default_roles": [
+      {"role": "SOC Analyst", "count": 4},
+      {"role": "Incident Responder", "count": 2},
+      {"role": "Threat Hunter", "count": 2}
+    ],
+    "default_outcome_criteria": [
+      {"name": "Threat detection rate", "target": 95, "unit": "percent"},
+      {"name": "Mean time to respond", "target": 30, "unit": "minutes"}
+    ],
+    "typical_duration_days": 90,
+    "compliance_notes": ["Outcome-based coverage windows", "No shift rotation scheduling"]
+  }
+]

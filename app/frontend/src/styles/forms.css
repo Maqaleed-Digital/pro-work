@@ -1,0 +1,328 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Forms — S42
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Field group ─────────────────────────────────────────────────────────── */
+
+.field-group {
+  margin-bottom: var(--maq-space-4);
+}
+
+.field-group label {
+  display: block;
+  font-size: var(--maq-text-sm);
+  font-weight: 500;
+  color: var(--maq-neutral-600);
+  margin-bottom: 6px;
+}
+
+.field-group input,
+.field-group select,
+.field-group textarea {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--maq-neutral-0);
+  border: 1px solid var(--maq-neutral-200);
+  border-radius: var(--maq-radius-md);
+  font-size: var(--maq-text-base);
+  font-family: inherit;
+  color: var(--maq-neutral-900);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  outline: none;
+}
+
+.field-group input:focus,
+.field-group select:focus,
+.field-group textarea:focus {
+  border-color: var(--maq-brand-accent);
+  box-shadow: 0 0 0 3px rgba(196,146,42,0.15);
+}
+
+.field-group input::placeholder {
+  color: var(--maq-neutral-400);
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border-radius: var(--maq-radius-md);
+  font-size: var(--maq-text-sm);
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: 1px solid transparent;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--maq-brand-primary);
+  color: #fff;
+  border-color: var(--maq-brand-primary);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--maq-brand-primary-hover);
+  border-color: var(--maq-brand-primary-hover);
+}
+
+.btn-accent {
+  background: var(--maq-brand-accent);
+  color: var(--maq-brand-primary);
+  border-color: var(--maq-brand-accent);
+}
+
+.btn-accent:hover:not(:disabled) {
+  background: #E8B84B;
+  border-color: #E8B84B;
+}
+
+.btn-secondary {
+  background: var(--maq-neutral-0);
+  color: var(--maq-neutral-900);
+  border-color: var(--maq-neutral-300);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  border-color: var(--maq-brand-primary);
+  background: var(--maq-neutral-50);
+}
+
+.btn-danger {
+  background: var(--maq-semantic-danger);
+  color: #fff;
+  border-color: var(--maq-semantic-danger);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #B91C1C;
+}
+
+.btn-link {
+  background: transparent;
+  color: var(--maq-brand-accent);
+  border: none;
+  padding: var(--maq-space-2) 0;
+  font-weight: 500;
+}
+
+.btn-link:hover { color: #E8B84B; }
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: var(--maq-text-xs);
+}
+
+.btn-danger-sm {
+  padding: 4px 10px;
+  font-size: var(--maq-text-xs);
+  background: transparent;
+  color: var(--maq-semantic-danger);
+  border: 1px solid rgba(220,38,38,0.3);
+  border-radius: var(--maq-radius-sm);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.btn-danger-sm:hover { background: rgba(220,38,38,0.05); }
+
+/* ── Form card (auth screens) ────────────────────────────────────────────── */
+
+.form-card {
+  background: var(--maq-neutral-0);
+  border-radius: var(--maq-radius-xl);
+  box-shadow: var(--maq-elevation-lg);
+  padding: var(--maq-space-8);
+  width: 100%;
+  max-width: 440px;
+}
+
+/* ── Auth screen layout ──────────────────────────────────────────────────── */
+
+.onboarding-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--maq-neutral-50);
+  padding: var(--maq-space-8) var(--maq-space-4);
+}
+
+.onboarding-box {
+  background: var(--maq-neutral-0);
+  border-radius: var(--maq-radius-xl);
+  box-shadow: var(--maq-elevation-lg);
+  padding: var(--maq-space-8);
+  width: 100%;
+  max-width: 440px;
+}
+
+.onboarding-box.onboarding-wide {
+  max-width: 560px;
+}
+
+.onboarding-box h1,
+.onboarding-box h2 {
+  font-family: var(--maq-font-latin);
+  font-size: var(--maq-text-2xl);
+  font-weight: 700;
+  color: var(--maq-neutral-900);
+  margin-bottom: var(--maq-space-1);
+}
+
+.onboarding-subtitle {
+  font-size: var(--maq-text-sm);
+  color: var(--maq-neutral-400);
+  margin-bottom: var(--maq-space-6);
+}
+
+.onboarding-btn {
+  width: 100%;
+  margin-top: var(--maq-space-2);
+}
+
+.onboarding-err {
+  color: var(--maq-semantic-danger);
+  font-size: var(--maq-text-sm);
+  min-height: 20px;
+  margin-bottom: var(--maq-space-2);
+}
+
+.onboarding-msg {
+  font-size: var(--maq-text-sm);
+  color: var(--maq-semantic-success);
+  min-height: 20px;
+  margin-top: var(--maq-space-2);
+}
+
+.onboarding-link {
+  text-align: center;
+  font-size: var(--maq-text-sm);
+  color: var(--maq-neutral-400);
+  margin-top: var(--maq-space-4);
+}
+
+.onboarding-link a { color: var(--maq-brand-accent); font-weight: 500; }
+
+.onboarding-step-label {
+  text-align: center;
+  font-size: var(--maq-text-xs);
+  color: var(--maq-neutral-400);
+  margin-top: var(--maq-space-6);
+}
+
+.onboarding-icon {
+  text-align: center;
+  margin-bottom: var(--maq-space-4);
+}
+
+/* ── Nitaqat preview (onboarding) ────────────────────────────────────────── */
+
+.nitaqat-preview {
+  margin-top: var(--maq-space-4);
+  padding: var(--maq-space-4);
+  border-radius: var(--maq-radius-md);
+  border: 1px solid var(--maq-neutral-200);
+}
+
+.nitaqat-preview h3 {
+  font-size: var(--maq-text-sm);
+  font-weight: 600;
+  margin-bottom: var(--maq-space-1);
+}
+
+.nitaqat-zone {
+  font-family: var(--maq-font-latin);
+  font-size: var(--maq-text-xl);
+  font-weight: 700;
+  margin-bottom: var(--maq-space-1);
+}
+
+.nitaqat-hint {
+  font-size: var(--maq-text-xs);
+  color: var(--maq-neutral-400);
+}
+
+.nitaqat-green      { border-color: var(--maq-wc-zone-high-green);   background: rgba(5,150,105,0.04); }
+.nitaqat-high_green { border-color: var(--maq-wc-zone-high-green);   background: rgba(5,150,105,0.04); }
+.nitaqat-low_green  { border-color: var(--maq-wc-zone-low-green);    background: rgba(101,163,13,0.04); }
+.nitaqat-yellow     { border-color: var(--maq-wc-zone-yellow);       background: rgba(217,119,6,0.04); }
+.nitaqat-red        { border-color: var(--maq-wc-zone-red);          background: rgba(220,38,38,0.04); }
+.nitaqat-platinum   { border-color: var(--maq-wc-zone-platinum);     background: rgba(124,58,237,0.04); }
+
+/* ── Action cards (step 4) ───────────────────────────────────────────────── */
+
+.action-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--maq-space-4);
+  margin-top: var(--maq-space-4);
+}
+
+.action-card {
+  display: block;
+  padding: var(--maq-space-4);
+  border: 1px solid var(--maq-neutral-200);
+  border-radius: var(--maq-radius-lg);
+  text-decoration: none;
+  color: var(--maq-neutral-900);
+  transition: all var(--transition-fast);
+}
+
+.action-card:hover {
+  border-color: var(--maq-brand-accent);
+  box-shadow: var(--maq-elevation-md);
+  transform: translateY(-1px);
+}
+
+.action-icon {
+  font-size: var(--maq-text-2xl);
+  margin-bottom: var(--maq-space-2);
+}
+
+.action-card h3 {
+  font-size: var(--maq-text-base);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.action-card p {
+  font-size: var(--maq-text-sm);
+  color: var(--maq-neutral-400);
+}
+
+/* ── Invite page ─────────────────────────────────────────────────────────── */
+
+.invite-link-input {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: var(--maq-text-sm);
+  font-family: var(--maq-font-mono);
+  border: 1px solid var(--maq-neutral-200);
+  border-radius: var(--maq-radius-sm);
+  background: var(--maq-neutral-50);
+  margin-top: var(--maq-space-1);
+}
+
+.invite-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--maq-space-2) 0;
+  border-bottom: 1px solid var(--maq-neutral-200);
+  font-size: var(--maq-text-sm);
+}
+
+.invite-status-expired { opacity: 0.5; }
+.invite-status-accepted { color: var(--maq-semantic-success); }

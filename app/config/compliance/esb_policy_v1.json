@@ -1,0 +1,34 @@
+{
+  "version": "ksa-labor-law-v2015",
+  "effective_from": "2015-01-01",
+  "rules": {
+    "unlimited_contract": {
+      "first_5_years_multiplier": 0.5,
+      "past_5_years_multiplier": 1.0,
+      "termination_adjustments": {
+        "RESIGNATION": {
+          "under_2_years": 0,
+          "2_to_5_years_factor": 0.333,
+          "5_to_10_years_factor": 0.667,
+          "over_10_years_factor": 1.0
+        },
+        "EMPLOYER_TERMINATION": { "factor": 1.0 },
+        "EXPIRY_OF_FIXED_TERM": { "factor": 1.0 },
+        "DEATH": { "factor": 1.0 },
+        "DISABILITY": { "factor": 1.0 },
+        "MUTUAL_AGREEMENT": { "factor": 1.0 }
+      }
+    },
+    "fixed_term_contract": {
+      "first_5_years_multiplier": 0.5,
+      "past_5_years_multiplier": 1.0,
+      "termination_adjustments": {
+        "EXPIRY_OF_FIXED_TERM": { "factor": 1.0 },
+        "EMPLOYER_TERMINATION": { "factor": 1.0 },
+        "RESIGNATION": { "factor": 0 }
+      }
+    }
+  },
+  "basis": "total_salary",
+  "basisNote": "Total salary including eligible allowances per Saudi Labor Law Art. 84"
+}

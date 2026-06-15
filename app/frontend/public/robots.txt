@@ -1,0 +1,10 @@
+# WorkCaptain — Controlled-Beta robots policy
+# Active D15 → D15+41 (~2026-05-16 → ~2026-06-26)
+# Authority: WC Controlled-Launch Memo V1.1 — no public indexing during
+# controlled-beta cohort window.
+#
+# Lifted post-D15+41 by deploy-config flip (PROPOSAL §11.A2 stricter
+# default: stay disallowed unless explicitly authorised).
+
+User-agent: *
+Disallow: /

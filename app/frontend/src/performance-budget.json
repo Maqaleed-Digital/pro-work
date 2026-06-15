@@ -1,0 +1,47 @@
+{
+  "version": "v1",
+  "description": "Core Web Vitals performance budget — BRD A6 + Maqaleed Eval required",
+  "_comment": "Changes to this file require PR review. Thresholds are CI gates — raising them degrades user experience. See WCAG/CWV policy in BRD A6.",
+  "criticalRoutes": [
+    { "path": "/",           "hash": "",           "label": "Home / Login"     },
+    { "path": "/ai",         "hash": "analytics",  "label": "AI / Analytics"   },
+    { "path": "/workforce",  "hash": "workers",    "label": "Workforce"        },
+    { "path": "/compliance", "hash": "governance", "label": "Compliance"       }
+  ],
+  "thresholds": {
+    "lcp": {
+      "_description": "Largest Contentful Paint — time until largest element is rendered",
+      "good":             2500,
+      "needsImprovement": 4000,
+      "fail":             4000,
+      "_unit": "milliseconds — EXIT 1 if any critical route LCP > fail"
+    },
+    "inp": {
+      "_description": "Interaction to Next Paint — responsiveness to user input",
+      "good":             200,
+      "needsImprovement": 500,
+      "fail":             500,
+      "_unit": "milliseconds — EXIT 1 if INP > fail"
+    },
+    "cls": {
+      "_description": "Cumulative Layout Shift — visual stability",
+      "good":             0.10,
+      "needsImprovement": 0.25,
+      "fail":             0.25,
+      "_unit": "score (unitless) — EXIT 1 if CLS > fail"
+    }
+  },
+  "bundleBudgets": {
+    "_description": "Bundle size budgets used in static analysis mode (no browser). Maps to estimated LCP.",
+    "totalJsKb":         400,
+    "totalCssKb":         60,
+    "maxSingleChunkKb":  300,
+    "_lcp_estimate_map": [
+      { "maxJsKb": 150,  "estimatedLcpMs": 1500, "label": "EXCELLENT" },
+      { "maxJsKb": 300,  "estimatedLcpMs": 2000, "label": "GOOD"      },
+      { "maxJsKb": 600,  "estimatedLcpMs": 3000, "label": "ADEQUATE"  },
+      { "maxJsKb": 1200, "estimatedLcpMs": 4500, "label": "POOR"      },
+      { "maxJsKb": null, "estimatedLcpMs": 6000, "label": "FAIL"      }
+    ]
+  }
+}

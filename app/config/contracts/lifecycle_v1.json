@@ -1,0 +1,39 @@
+{
+  "version": "v1",
+  "transitions": {
+    "DRAFT":      ["REVIEW", "TERMINATED"],
+    "REVIEW":     ["SIGNED", "DRAFT", "TERMINATED"],
+    "SIGNED":     ["ACTIVATED", "TERMINATED"],
+    "ACTIVATED":  ["AMENDED", "TERMINATED", "EXPIRED"],
+    "AMENDED":    ["ACTIVATED", "TERMINATED"],
+    "TERMINATED": [],
+    "EXPIRED":    []
+  },
+  "terminal": ["TERMINATED", "EXPIRED"],
+  "requiresReason": ["TERMINATED"],
+  "requiresCompleteness": {
+    "REVIEW": 100
+  },
+  "validStatuses": [
+    "DRAFT", "REVIEW", "SIGNED", "ACTIVATED",
+    "AMENDED", "TERMINATED", "EXPIRED"
+  ],
+  "eventTypeMap": {
+    "DRAFT":      "DRAFT_CREATED",
+    "REVIEW":     "MOVED_TO_REVIEW",
+    "SIGNED":     "SIGNED",
+    "ACTIVATED":  "ACTIVATED",
+    "AMENDED":    "AMENDED",
+    "TERMINATED": "TERMINATED"
+  },
+  "templateTypeMap": {
+    "FTE":            "FTE_STANDARD_KSA",
+    "FREELANCER":     "FREELANCER_MILESTONE",
+    "AI_EXECUTABLE":  "AI_EXECUTABLE_OUTCOME"
+  },
+  "qiwaRequiredFields": {
+    "FTE":            ["role", "wage_base", "probation_days", "notice_period_days", "work_location", "nationality", "occupation_code"],
+    "FREELANCER":     ["milestones", "total_value", "escrow_terms"],
+    "AI_EXECUTABLE":  ["delivery_window", "outcome_criteria", "model_version"]
+  }
+}

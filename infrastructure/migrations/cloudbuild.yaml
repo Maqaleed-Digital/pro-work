@@ -1,0 +1,11 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - build
+      - '-f'
+      - 'infrastructure/migrations/Dockerfile'
+      - '-t'
+      - 'me-central2-docker.pkg.dev/$PROJECT_ID/workcaptain/migration-runner:latest'
+      - '.'
+images:
+  - 'me-central2-docker.pkg.dev/$PROJECT_ID/workcaptain/migration-runner:latest'

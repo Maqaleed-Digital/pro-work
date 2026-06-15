@@ -1,0 +1,54 @@
+/*
+ * Maqaleed Design Tokens — Typography
+ * Per UX-G1-TOKENS-V1.0 §4
+ * Font stack confirmed 6 May 2026 (IBM Plex family).
+ */
+
+:root {
+  /* ============================================================
+   * §4.1–§4.2 — Font stacks (Arabic-first per UX-001 §4.4)
+   * ============================================================ */
+  --maq-font-arabic:
+    'IBM Plex Sans Arabic', system-ui, -apple-system, 'Segoe UI Arabic',
+    'Noto Sans Arabic', sans-serif;
+
+  --maq-font-latin:
+    'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto,
+    sans-serif;
+
+  --maq-font-mono:
+    'IBM Plex Mono', 'SF Mono', Consolas, 'Courier New', monospace;
+
+  /* ============================================================
+   * §4.3 — Type scale (1.250 "Major Third" ratio)
+   * ============================================================ */
+  --maq-text-xs: 12px;     /* Captions, footnotes */
+  --maq-text-sm: 14px;     /* Secondary text, table cells */
+  --maq-text-base: 16px;   /* Body default */
+  --maq-text-md: 18px;     /* Body emphasized */
+  --maq-text-lg: 20px;     /* Subheadings */
+  --maq-text-xl: 24px;     /* Section headings */
+  --maq-text-2xl: 30px;    /* Page-level headings */
+  --maq-text-3xl: 36px;    /* Hero / display */
+  --maq-text-4xl: 48px;    /* Marketing hero */
+
+  /* ============================================================
+   * §4.4 — Font weights
+   * ============================================================ */
+  --maq-weight-light: 300;
+  --maq-weight-regular: 400;
+  --maq-weight-medium: 500;
+  --maq-weight-semibold: 600;
+  --maq-weight-bold: 700;
+
+  /* ============================================================
+   * §4.5 — Line heights & letter spacing
+   * ============================================================ */
+  --maq-leading-tight: 1.25;
+  --maq-leading-normal: 1.5;
+  --maq-leading-relaxed: 1.75;
+
+  --maq-tracking-tight: -0.01em;
+  --maq-tracking-normal: 0;
+  --maq-tracking-wide: 0.05em;
+}

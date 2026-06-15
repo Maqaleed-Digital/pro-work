@@ -1,0 +1,39 @@
+/*
+ * Maqaleed Design Tokens — Motion
+ * Per UX-G1-TOKENS-V1.0 §6
+ * Reduced-motion override (§6.3) is mandatory for WCAG 2.2 AA.
+ */
+
+:root {
+  /* ============================================================
+   * §6.1 — Duration tokens
+   * ============================================================ */
+  --maq-duration-instant: 0ms;
+  --maq-duration-fast: 150ms;        /* Hover, focus rings */
+  --maq-duration-default: 250ms;     /* Default UI transitions */
+  --maq-duration-deliberate: 400ms;  /* Modal / page transitions */
+  --maq-duration-slow: 600ms;        /* Onboarding flows */
+
+  /* ============================================================
+   * §6.2 — Easing curves
+   * ============================================================ */
+  --maq-ease-linear: linear;
+  --maq-ease-default: cubic-bezier(0.4, 0.0, 0.2, 1);   /* Material standard */
+  --maq-ease-in: cubic-bezier(0.4, 0.0, 1, 1);          /* Element exits */
+  --maq-ease-out: cubic-bezier(0.0, 0.0, 0.2, 1);       /* Element entries */
+  --maq-ease-in-out: cubic-bezier(0.4, 0.0, 0.2, 1);    /* Bidirectional */
+}
+
+/* ============================================================
+ * §6.3 — Reduced-motion alternatives (MANDATORY for WCAG 2.2 AA)
+ * When user OS/browser indicates reduced-motion preference,
+ * all transitions become instant.
+ * ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --maq-duration-fast: 0ms;
+    --maq-duration-default: 0ms;
+    --maq-duration-deliberate: 0ms;
+    --maq-duration-slow: 0ms;
+  }
+}

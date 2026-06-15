@@ -1,0 +1,32 @@
+{
+  "version": "v1",
+  "modelVersion": "workcaptain-match-v1.0",
+  "promptVersion": "rubric-v1.0",
+  "signalWeights": {
+    "skills_match":              0.30,
+    "experience_years":          0.20,
+    "occupation_code_match":     0.15,
+    "salary_fit":                0.15,
+    "language_overlap":          0.10,
+    "prior_delivery_history":    0.10
+  },
+  "normalization": {
+    "skills_match":           { "min": 0, "max": 100 },
+    "experience_years":       { "min": 0, "max": 40 },
+    "occupation_code_match":  { "min": 0, "max": 100 },
+    "salary_fit":             { "min": 0, "max": 100 },
+    "language_overlap":       { "min": 0, "max": 100 },
+    "prior_delivery_history": { "min": 0, "max": 100 }
+  },
+  "biasMonitoredDimensions": [
+    "nationality",
+    "gender",
+    "age_band"
+  ],
+  "biasMonitoredNote": "These dimensions are NOT used as positive signals. They are monitored for disparate impact only.",
+  "minimumMatchThreshold": 40,
+  "disparateImpactThreshold": 0.8,
+  "confidenceDecay": {
+    "missingSignalPenalty": 0.1
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "version": "v1",
+  "gosi": {
+    "employerContributionRate": 0.12,
+    "employeeContributionRate": 0.10,
+    "monthlyContributionCap": 45000,
+    "disclaimer": {
+      "en": "These are indicative estimates based on policy rules. Confirm with your compliance advisor before filing.",
+      "ar": "هذه تقديرات استرشادية بناءً على قواعد السياسة. يرجى التأكيد مع مستشار الامتثال قبل التقديم."
+    }
+  },
+  "breakdown": {
+    "requiredFields": ["base_salary", "housing_allowance", "transport_allowance"],
+    "totalToleranceSAR": 1
+  },
+  "thresholds": {
+    "JUNIOR": {
+      "RIYADH": { "minBaseSalary": 4000,  "maxBaseSalary": 12000  },
+      "JEDDAH": { "minBaseSalary": 3500,  "maxBaseSalary": 11000  },
+      "OTHER":  { "minBaseSalary": 3000,  "maxBaseSalary": 10000  }
+    },
+    "MID": {
+      "RIYADH": { "minBaseSalary": 8000,  "maxBaseSalary": 25000  },
+      "JEDDAH": { "minBaseSalary": 7000,  "maxBaseSalary": 22000  },
+      "OTHER":  { "minBaseSalary": 6000,  "maxBaseSalary": 20000  }
+    },
+    "SENIOR": {
+      "RIYADH": { "minBaseSalary": 15000, "maxBaseSalary": 60000  },
+      "JEDDAH": { "minBaseSalary": 13000, "maxBaseSalary": 55000  },
+      "OTHER":  { "minBaseSalary": 12000, "maxBaseSalary": 50000  }
+    },
+    "EXECUTIVE": {
+      "RIYADH": { "minBaseSalary": 30000, "maxBaseSalary": 150000 },
+      "JEDDAH": { "minBaseSalary": 25000, "maxBaseSalary": 130000 },
+      "OTHER":  { "minBaseSalary": 20000, "maxBaseSalary": 120000 }
+    }
+  },
+  "housingAllowanceRules": {
+    "minimumPercentOfBase": 0.25
+  },
+  "violationSeverity": {
+    "below_minimum_salary":  "RED",
+    "above_maximum_salary":  "AMBER",
+    "breakdown_mismatch":    "RED",
+    "missing_required_field":"RED",
+    "housing_below_minimum": "AMBER",
+    "unknown_role_category": "AMBER",
+    "unknown_region":        "AMBER"
+  }
+}

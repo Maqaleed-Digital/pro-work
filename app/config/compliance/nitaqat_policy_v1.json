@@ -1,0 +1,56 @@
+{
+  "version": "v1",
+  "effectiveDate": "2026-01-01",
+  "description": "Nitaqat Saudization policy thresholds — Saudi Arabia Vision 2030 framework",
+  "zones": {
+    "PLATINUM": {
+      "minPercentage": 50,
+      "label": { "en": "Platinum", "ar": "البلاتيني" }
+    },
+    "HIGH_GREEN": {
+      "minPercentage": 40,
+      "label": { "en": "High Green", "ar": "الأخضر العالي" }
+    },
+    "MEDIUM_GREEN": {
+      "minPercentage": 35,
+      "label": { "en": "Medium Green", "ar": "الأخضر المتوسط" }
+    },
+    "LOW_GREEN": {
+      "minPercentage": 25,
+      "label": { "en": "Low Green", "ar": "الأخضر المنخفض" }
+    },
+    "YELLOW": {
+      "minPercentage": 15,
+      "label": { "en": "Yellow", "ar": "الأصفر" }
+    },
+    "RED": {
+      "minPercentage": 0,
+      "label": { "en": "Red", "ar": "الأحمر" }
+    }
+  },
+  "confidenceBand": {
+    "defaultSpreadPct": 2,
+    "freelancerSpreadPct": 4,
+    "boundaryProximityThreshold": 3,
+    "boundarySpreadMultiplier": 1.5
+  },
+  "activityMultipliers": {
+    "default":      1.0,
+    "TECH":         0.9,
+    "CONSTRUCTION": 1.1,
+    "RETAIL":       1.0,
+    "HEALTHCARE":   0.95,
+    "FINANCE":      1.0,
+    "EDUCATION":    0.95
+  },
+  "contractTypeFactors": {
+    "FTE":        1.0,
+    "FREELANCER": 0.5
+  },
+  "roleCategoryWeights": {
+    "default":    1.0,
+    "LEADERSHIP": 1.0,
+    "TECHNICAL":  1.0,
+    "SUPPORT":    1.0
+  }
+}
