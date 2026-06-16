@@ -88,7 +88,12 @@ psql "$MIGRATION_URL" \
   -f 20260418_create_invitations.sql
 echo "✓ create_invitations"
 
-echo "All 17 migrations complete."
+psql "$MIGRATION_URL" \
+  -v ON_ERROR_STOP=1 \
+  -f 20260616_create_tos_acceptances.sql
+echo "✓ create_tos_acceptances"
+
+echo "All 18 migrations complete."
 
 psql "$MIGRATION_URL" \
   -c "\dt" | head -50

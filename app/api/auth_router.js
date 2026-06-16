@@ -1,6 +1,7 @@
 'use strict'
 
 const crypto = require('crypto')
+const { recordTosAcceptance } = require('../modules/auth/tos')
 
 /**
  * S40-G2: Auth API router.
@@ -54,42 +55,46 @@ function createAuthRouter(opts) {
       if (!password)    return fail(res, 'VALIDATION_ERROR', 'password is required', 422)
       if (!companyName) return fail(res, 'VALIDATION_ERROR', 'companyName is required', 422)
 
-      // Create tenant atomically with first user
+      // WC-02: ToS acceptance gate — no tenant/user is created without it
+      const tosAccepted = body.tosAccepted === true || body.tosAccepted === 'true'
+      if (!tosAccepted) return fail(res, 'VALIDATION_ERROR', 'Terms of Service acceptance is required', 422)
+
+      // Create tenant + user + ToS atomically in ONE transaction
       const tenantId = 'tn-' + crypto.randomUUID().slice(0, 8)
+      let user
+      const client = await pool.connect()
       try {
-        // Insert tenant
-        await pool.query(
+        await client.query('BEGIN')
+        await client.query(
           `INSERT INTO tenants (id, name, status, config, created_at)
            VALUES ($1, $2, 'active', $3, NOW())`,
           [tenantId, companyName, JSON.stringify({ establishment_profile: {} })]
         )
-
-        // Register owner user
-        const user = await authService.register({
-          email, password, tenantId, role: role || undefined,
-        })
-
-        // Issue JWT immediately (auto-login after registration)
-        const loginResult = await authService.login({
-          email, password, tenantId,
-          ipAddress: req.socket && req.socket.remoteAddress,
-          userAgent: req.headers && req.headers['user-agent'],
-        })
-
-        return ok(res, {
-          token:  loginResult.token,
-          user:   loginResult.user,
-          tenant: { id: tenantId, name: companyName },
-        }, 201)
+        user = await authService.register({ email, password, tenantId, role: role || undefined, client })
+        await recordTosAcceptance(client, { userId: user.id, tenantId, source: 'auth_register' })
+        await client.query('COMMIT')
+        client.release()
       } catch (e) {
-        console.error('[auth/register] error:', e.message, 'status:', e.status, 'stack:', e.stack && e.stack.split('\n')[1])
-        // Clean up tenant on failure
-        await pool.query('DELETE FROM tenants WHERE id = $1', [tenantId]).catch(() => {})
+        await client.query('ROLLBACK').catch(() => {})
+        client.release()
+        console.error('[auth/register] error:', e.message, 'status:', e.status)
         if (e.status === 409) return fail(res, 'CONFLICT', e.message, 409)
         if (e.status === 422) return fail(res, 'VALIDATION_ERROR', e.message, 422)
         if (e.status)         return fail(res, 'AUTH_ERROR', e.message, e.status)
         return fail(res, 'INTERNAL_ERROR', 'registration failed', 500)
       }
+
+      // login AFTER commit (account is durable; session creation is separate)
+      const loginResult = await authService.login({
+        email, password, tenantId,
+        ipAddress: req.socket && req.socket.remoteAddress,
+        userAgent: req.headers && req.headers['user-agent'],
+      })
+      return ok(res, {
+        token:  loginResult.token,
+        user:   loginResult.user,
+        tenant: { id: tenantId, name: companyName },
+      }, 201)
     }
 
     // ── POST /api/auth/login ────────────────────────────────────────────

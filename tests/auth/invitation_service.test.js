@@ -11,11 +11,47 @@ function createMockPool() {
   const users       = new Map()
   const sessions    = new Map()
   const tenants     = new Map()
+  const tosAcceptances = []
+
+  // Transaction snapshot state (shared by pool + client). Deep-copied on BEGIN,
+  // restored on ROLLBACK, discarded on COMMIT.
+  const state = { snapshot: null, failNextTosInsert: false }
+
+  function snapshot() {
+    state.snapshot = {
+      users:       new Map(Array.from(users.entries()).map(([k, v]) => [k, { ...v }])),
+      invitations: new Map(Array.from(invitations.entries()).map(([k, v]) => [k, { ...v }])),
+      tos:         tosAcceptances.map(r => ({ ...r })),
+    }
+  }
+  function restore() {
+    if (!state.snapshot) return
+    users.clear();       for (const [k, v] of state.snapshot.users)       users.set(k, v)
+    invitations.clear(); for (const [k, v] of state.snapshot.invitations) invitations.set(k, v)
+    tosAcceptances.length = 0; for (const r of state.snapshot.tos) tosAcceptances.push(r)
+    state.snapshot = null
+  }
 
   const mockClient = {
-    query(sql, params) {
-      if (/^(BEGIN|COMMIT|ROLLBACK)/i.test(sql)) return { rows: [], rowCount: 0 }
+    async query(sql, params) {
+      if (/^BEGIN/i.test(sql))    { snapshot(); return { rows: [], rowCount: 0 } }
+      if (/^ROLLBACK/i.test(sql)) { restore();  return { rows: [], rowCount: 0 } }
+      if (/^COMMIT/i.test(sql))   { state.snapshot = null; return { rows: [], rowCount: 0 } }
       if (/set_config/i.test(sql)) return { rows: [{}] }
+
+      // INSERT INTO tos_acceptances (WC-02)
+      if (/INSERT INTO tos_acceptances/i.test(sql)) {
+        if (state.failNextTosInsert) {
+          state.failNextTosInsert = false
+          throw Object.assign(new Error('simulated tos_acceptances insert failure'), { status: 500 })
+        }
+        const row = {
+          user_id: params[0], tenant_id: params[1],
+          tos_version: params[2], acceptance_source: params[3],
+        }
+        tosAcceptances.push(row)
+        return { rows: [row], rowCount: 1 }
+      }
 
       // INSERT INTO invitations
       if (/INSERT INTO invitations/i.test(sql)) {
@@ -109,12 +145,19 @@ function createMockPool() {
     release() {},
   }
 
-  return {
+  const pool = {
     connect() { return Promise.resolve(mockClient) },
     query(sql, params) { return Promise.resolve(mockClient.query(sql, params)) },
     _invitations: invitations,
     _users: users,
+    tosAcceptances,
   }
+  // Injectable failure hook: setting this makes the next tos_acceptances INSERT throw.
+  Object.defineProperty(pool, 'failNextTosInsert', {
+    get() { return state.failNextTosInsert },
+    set(v) { state.failNextTosInsert = v },
+  })
+  return pool
 }
 
 function createMockRes() {
@@ -209,8 +252,12 @@ async function run() {
     const result = await svc.acceptInvitation(inviteToken, 'StrongPass1!')
     assert.ok(result.token)
     assert.strictEqual(result.user.role, 'VIEWER')
+    // WC-02: service persists a tos_acceptances row on accept
+    const tosRow = pool.tosAcceptances.find(r => r.acceptance_source === 'invitation_accept' && r.user_id === result.user.id)
+    assert.ok(tosRow, 'tos_acceptances row should exist for accepted invite')
+    assert.strictEqual(tosRow.tos_version, '2026-06-16.v1')
     passed++
-    console.log('  ✓ accept creates user with correct role')
+    console.log('  ✓ accept creates user with correct role + records tos_acceptances')
   }
 
   // 8. already accepted token is rejected
@@ -351,12 +398,16 @@ async function run() {
     const acceptToken = link.split('token=')[1]
 
     const res = createMockRes()
-    await router.handle({}, res, '/api/invitations/accept', 'POST', { token: acceptToken, password: 'StrongPass5!' }, null)
+    await router.handle({}, res, '/api/invitations/accept', 'POST', { token: acceptToken, password: 'StrongPass5!', tosAccepted: true }, null)
     assert.strictEqual(res.status, 201)
     assert.ok(res.body.data.token)
     assert.strictEqual(res.body.data.user.role, 'HIRING_MANAGER')
+    // WC-02: tos_acceptances row recorded via invitation_accept path
+    const tosRow = pool.tosAcceptances.find(r => r.acceptance_source === 'invitation_accept' && r.user_id === res.body.data.user.id)
+    assert.ok(tosRow, 'tos_acceptances row should exist via router accept')
+    assert.strictEqual(tosRow.acceptance_source, 'invitation_accept')
     passed++
-    console.log('  ✓ POST /api/invitations/accept — public, creates user')
+    console.log('  ✓ POST /api/invitations/accept — public, creates user + records tos')
   }
 
   // 20. POST /api/invitations — rejects missing auth
@@ -414,12 +465,64 @@ async function run() {
     console.log('  ✓ invite.js and accept_invite.js export render')
   }
 
-  console.log(`  invitation_service: ${passed}/25 passed`)
+  // 26. WC-02: POST /api/invitations/accept WITHOUT tosAccepted → 422 (clean primary-path proof)
+  {
+    const createRes = createMockRes()
+    await router.handle({}, createRes, '/api/invitations', 'POST', { email: 'no-tos-accept@test.com', role: 'VIEWER' }, ownerUser)
+    const noTosToken = createRes.body.data.inviteLink.split('token=')[1]
+
+    const usersBefore = pool._users.size
+    const tosBefore   = pool.tosAcceptances.length
+
+    const res = createMockRes()
+    await router.handle({}, res, '/api/invitations/accept', 'POST', { token: noTosToken, password: 'StrongPass6!' }, null)
+    // (a) HTTP 422
+    assert.strictEqual(res.status, 422)
+    assert.ok(res.body.error.message.includes('Terms of Service'))
+    // (b) no user created
+    assert.strictEqual(pool._users.size, usersBefore, 'no user should be created on 422')
+    assert.ok(!Array.from(pool._users.values()).find(u => u.email === 'no-tos-accept@test.com'), 'no user row for rejected email')
+    // (c) invitation NOT marked ACCEPTED
+    const invRow = Array.from(pool._invitations.values()).find(i => i.token === noTosToken)
+    assert.strictEqual(invRow.status, 'PENDING', 'invitation must remain PENDING on 422')
+    // (d) no tos_acceptances row
+    assert.strictEqual(pool.tosAcceptances.length, tosBefore, 'no tos_acceptances row on 422')
+    passed++
+    console.log('  ✓ POST /api/invitations/accept without tosAccepted → 422 (no side effects)')
+  }
+
+  // 27. tos_acceptances insert failure rolls back — no orphaned user, invitation not ACCEPTED
+  {
+    const createRes = createMockRes()
+    await router.handle({}, createRes, '/api/invitations', 'POST', { email: 'rollback-invite@test.com', role: 'VIEWER' }, ownerUser)
+    const rbToken = createRes.body.data.inviteLink.split('token=')[1]
+
+    const usersBefore = pool._users.size
+    pool.failNextTosInsert = true
+    let threw = false
+    try {
+      await svc.acceptInvitation(rbToken, 'StrongPass7!')
+    } catch (e) {
+      threw = true
+    }
+    assert.ok(threw, 'acceptInvitation should throw when tos insert fails')
+    // The whole transaction rolled back — no orphaned user
+    const orphanUser = Array.from(pool._users.values()).find(u => u.email === 'rollback-invite@test.com')
+    assert.ok(!orphanUser, 'no orphaned user should remain after rollback')
+    assert.strictEqual(pool._users.size, usersBefore, 'user map unchanged after rollback')
+    // Invitation NOT left ACCEPTED
+    const invRow = Array.from(pool._invitations.values()).find(i => i.token === rbToken)
+    assert.strictEqual(invRow.status, 'PENDING', 'invitation must NOT be left ACCEPTED after rollback')
+    passed++
+    console.log('  ✓ tos_acceptances insert failure rolls back — no orphaned user, invitation not ACCEPTED')
+  }
+
+  console.log(`  invitation_service: ${passed}/27 passed`)
   return passed
 }
 
 module.exports = { run }
 
 if (require.main === module) {
-  run().then(p => process.exit(p === 25 ? 0 : 1))
+  run().then(p => process.exit(p === 27 ? 0 : 1))
 }

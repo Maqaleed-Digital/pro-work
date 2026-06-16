@@ -64,6 +64,20 @@ function render(el) {
   pw2Group.appendChild(pw2Input)
   form.appendChild(pw2Group)
 
+  // WC-02: required Terms of Service acceptance
+  const tosGroup = document.createElement("div")
+  tosGroup.className = "field-group"
+  const tosLabel = document.createElement("label")
+  tosLabel.htmlFor = "accept-tos"
+  const tosInput = document.createElement("input")
+  tosInput.type = "checkbox"
+  tosInput.id = "accept-tos"
+  tosInput.required = true
+  tosLabel.appendChild(tosInput)
+  tosLabel.appendChild(document.createTextNode(" I agree to the Terms of Service."))
+  tosGroup.appendChild(tosLabel)
+  form.appendChild(tosGroup)
+
   const errEl = document.createElement("div")
   errEl.className = "onboarding-err"
   errEl.setAttribute("role", "alert")
@@ -81,12 +95,13 @@ function render(el) {
 
     if (password.length < 8) { errEl.textContent = t("register.err.passwordShort"); return }
     if (password !== confirm) { errEl.textContent = t("register.err.passwordMismatch"); return }
+    if (!tosInput.checked) { errEl.textContent = "You must accept the Terms of Service."; return }
 
     btn.disabled = true
     btn.textContent = t("invite.accept.accepting")
 
     try {
-      const data = await apiPostPublic("/api/invitations/accept", { token, password })
+      const data = await apiPostPublic("/api/invitations/accept", { token, password, tosAccepted: true })
       setToken(data.token)
       try { localStorage.setItem("pw_email", data.user && data.user.email || '') } catch {}
       location.hash = "dashboard"

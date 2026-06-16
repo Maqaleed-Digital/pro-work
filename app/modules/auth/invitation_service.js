@@ -1,6 +1,7 @@
 'use strict'
 
 const crypto = require('crypto')
+const { recordTosAcceptance } = require('./tos')
 
 const VALID_ROLES  = new Set(['OWNER', 'ADMIN', 'HIRING_MANAGER', 'FINANCE_APPROVER', 'VIEWER'])
 const INVITE_TTL_H = 48
@@ -79,16 +80,27 @@ function createInvitationService(opts) {
         throw Object.assign(new Error('invitation has expired'), { status: 410 })
       }
 
-      // Create user account with the invitation role
-      const user = await authService.register({
-        email:    inv.email,
-        password: password,
-        tenantId: inv.tenant_id,
-        role:     inv.role,
-      })
-
-      // Mark invitation as accepted
-      await pool.query(`UPDATE invitations SET status = 'ACCEPTED' WHERE id = $1`, [inv.id])
+      // Create user + mark invitation accepted + record ToS atomically
+      const client = await pool.connect()
+      let user
+      try {
+        await client.query('BEGIN')
+        user = await authService.register({
+          email:    inv.email,
+          password: password,
+          tenantId: inv.tenant_id,
+          role:     inv.role,
+          client,
+        })
+        await client.query(`UPDATE invitations SET status = 'ACCEPTED' WHERE id = $1`, [inv.id])
+        await recordTosAcceptance(client, { userId: user.id, tenantId: inv.tenant_id, source: 'invitation_accept' })
+        await client.query('COMMIT')
+        client.release()
+      } catch (e) {
+        await client.query('ROLLBACK').catch(() => {})
+        client.release()
+        throw e
+      }
 
       // Auto-login
       const loginResult = await authService.login({
