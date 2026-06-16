@@ -10,11 +10,11 @@
 //   setLocale("ar")
 //   t("common.approve")       // → "موافقة"
 
-import en from './locales/en.json'
-import ar from './locales/ar.json'
-import ur from './locales/ur.json'
-import fr from './locales/fr.json'
-import es from './locales/es.json'
+import en from './locales/en.json' with { type: 'json' }
+import ar from './locales/ar.json' with { type: 'json' }
+import ur from './locales/ur.json' with { type: 'json' }
+import fr from './locales/fr.json' with { type: 'json' }
+import es from './locales/es.json' with { type: 'json' }
 
 const LOCALES = { en, ar, ur, fr, es }
 

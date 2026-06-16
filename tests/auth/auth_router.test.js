@@ -13,11 +13,47 @@ function createMockPool() {
   const users    = new Map()
   const sessions = new Map()
   const tenants  = new Map()
+  const tosAcceptances = []
+
+  // Transaction snapshot state (shared by pool + client). Deep-copied on BEGIN,
+  // restored on ROLLBACK, discarded on COMMIT.
+  const state = { snapshot: null, failNextTosInsert: false }
+
+  function snapshot() {
+    state.snapshot = {
+      users:   new Map(Array.from(users.entries()).map(([k, v]) => [k, { ...v }])),
+      tenants: new Map(Array.from(tenants.entries()).map(([k, v]) => [k, { ...v }])),
+      tos:     tosAcceptances.map(r => ({ ...r })),
+    }
+  }
+  function restore() {
+    if (!state.snapshot) return
+    users.clear();   for (const [k, v] of state.snapshot.users)   users.set(k, v)
+    tenants.clear(); for (const [k, v] of state.snapshot.tenants) tenants.set(k, v)
+    tosAcceptances.length = 0; for (const r of state.snapshot.tos) tosAcceptances.push(r)
+    state.snapshot = null
+  }
 
   const mockClient = {
-    query(sql, params) {
-      if (/^(BEGIN|COMMIT|ROLLBACK)/i.test(sql)) return { rows: [], rowCount: 0 }
+    async query(sql, params) {
+      if (/^BEGIN/i.test(sql))    { snapshot(); return { rows: [], rowCount: 0 } }
+      if (/^ROLLBACK/i.test(sql)) { restore();  return { rows: [], rowCount: 0 } }
+      if (/^COMMIT/i.test(sql))   { state.snapshot = null; return { rows: [], rowCount: 0 } }
       if (/set_config/i.test(sql)) return { rows: [{}], rowCount: 0 }
+
+      // INSERT INTO tos_acceptances (WC-02)
+      if (/INSERT INTO tos_acceptances/i.test(sql)) {
+        if (state.failNextTosInsert) {
+          state.failNextTosInsert = false
+          throw Object.assign(new Error('simulated tos_acceptances insert failure'), { status: 500 })
+        }
+        const row = {
+          user_id: params[0], tenant_id: params[1],
+          tos_version: params[2], acceptance_source: params[3],
+        }
+        tosAcceptances.push(row)
+        return { rows: [row], rowCount: 1 }
+      }
 
       // INSERT INTO tenants
       if (/INSERT INTO tenants/i.test(sql)) {
@@ -139,13 +175,20 @@ function createMockPool() {
     release() {},
   }
 
-  return {
+  const pool = {
     connect() { return Promise.resolve(mockClient) },
     query(sql, params) { return Promise.resolve(mockClient.query(sql, params)) },
     _users: users,
     _sessions: sessions,
     _tenants: tenants,
+    tosAcceptances,
   }
+  // Injectable failure hook: setting this makes the next tos_acceptances INSERT throw.
+  Object.defineProperty(pool, 'failNextTosInsert', {
+    get() { return state.failNextTosInsert },
+    set(v) { state.failNextTosInsert = v },
+  })
+  return pool
 }
 
 /**
@@ -188,7 +231,7 @@ async function run() {
     const req = createMockReq('POST', '/api/auth/register', { 'content-type': 'application/json' })
     const res = createMockRes()
     await router.handle(req, res, '/api/auth/register', 'POST', {
-      email: 'owner@company.com', password: 'StrongPass1!', companyName: 'Acme Corp',
+      email: 'owner@company.com', password: 'StrongPass1!', companyName: 'Acme Corp', tosAccepted: true,
     })
     assert.strictEqual(res.status, 201)
     assert.ok(res.body.ok)
@@ -488,19 +531,72 @@ async function run() {
   {
     const res = createMockRes()
     await router.handle(createMockReq('POST', '/api/auth/register'), res, '/api/auth/register', 'POST', {
-      email: 'weak@test.com', password: 'short', companyName: 'Test Co',
+      email: 'weak@test.com', password: 'short', companyName: 'Test Co', tosAccepted: true,
     })
     assert.ok(res.status >= 400)
     passed++
     console.log('  ✓ register rejects weak password')
   }
 
-  console.log(`  auth_router: ${passed}/25 passed`)
+  // ── WC-02: ToS acceptance gate ───────────────────────────────────────────
+
+  // 26. register WITHOUT tosAccepted → 422 and NO user/tenant created
+  {
+    const usersBefore   = pool._users.size
+    const tenantsBefore = pool._tenants.size
+    const res = createMockRes()
+    await router.handle(createMockReq('POST', '/api/auth/register'), res, '/api/auth/register', 'POST', {
+      email: 'no-tos@company.com', password: 'StrongPass9!', companyName: 'NoTos Inc',
+    })
+    assert.strictEqual(res.status, 422)
+    assert.ok(res.body.error.message.includes('Terms of Service'))
+    assert.strictEqual(pool._users.size, usersBefore, 'no user should be created')
+    assert.strictEqual(pool._tenants.size, tenantsBefore, 'no tenant should be created')
+    passed++
+    console.log('  ✓ register without tosAccepted → 422, no user/tenant created')
+  }
+
+  // 27. register with tosAccepted:true → 201 and records tos_acceptances row
+  {
+    const res = createMockRes()
+    await router.handle(createMockReq('POST', '/api/auth/register'), res, '/api/auth/register', 'POST', {
+      email: 'tos-ok@company.com', password: 'StrongPass8!', companyName: 'Tos Co', tosAccepted: true,
+    })
+    assert.strictEqual(res.status, 201)
+    const row = pool.tosAcceptances.find(r => r.acceptance_source === 'auth_register' && r.user_id === res.body.data.user.id)
+    assert.ok(row, 'tos_acceptances row should exist for the new user')
+    assert.strictEqual(row.tos_version, '2026-06-16.v1')
+    assert.strictEqual(row.acceptance_source, 'auth_register')
+    passed++
+    console.log('  ✓ register with tosAccepted:true → 201, records tos_acceptances row')
+  }
+
+  // 28. tos_acceptances insert failure rolls back — no orphaned user/tenant
+  {
+    const usersBefore   = pool._users.size
+    const tenantsBefore = pool._tenants.size
+    pool.failNextTosInsert = true
+    const res = createMockRes()
+    await router.handle(createMockReq('POST', '/api/auth/register'), res, '/api/auth/register', 'POST', {
+      email: 'rollback@company.com', password: 'StrongPass7!', companyName: 'Rollback Inc', tosAccepted: true,
+    })
+    // Errors (non-2xx) because the tos insert threw inside the transaction
+    assert.ok(res.status >= 400, 'register should fail when tos insert throws')
+    // The whole transaction rolled back — no orphaned user or tenant
+    const orphanUser = Array.from(pool._users.values()).find(u => u.email === 'rollback@company.com')
+    assert.ok(!orphanUser, 'no orphaned user should remain after rollback')
+    assert.strictEqual(pool._users.size, usersBefore, 'user map should be unchanged after rollback')
+    assert.strictEqual(pool._tenants.size, tenantsBefore, 'tenant map should be unchanged after rollback')
+    passed++
+    console.log('  ✓ tos_acceptances insert failure rolls back — no orphaned user/tenant')
+  }
+
+  console.log(`  auth_router: ${passed}/28 passed`)
   return passed
 }
 
 module.exports = { run }
 
 if (require.main === module) {
-  run().then(p => process.exit(p === 25 ? 0 : 1))
+  run().then(p => process.exit(p === 28 ? 0 : 1))
 }

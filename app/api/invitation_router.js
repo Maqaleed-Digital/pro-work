@@ -37,6 +37,10 @@ function createInvitationRouter(opts) {
       if (!token)    return fail(res, 'VALIDATION_ERROR', 'token is required', 422)
       if (!password) return fail(res, 'VALIDATION_ERROR', 'password is required', 422)
 
+      // WC-02: ToS acceptance gate
+      const tosAccepted = body.tosAccepted === true || body.tosAccepted === 'true'
+      if (!tosAccepted) return fail(res, 'VALIDATION_ERROR', 'Terms of Service acceptance is required', 422)
+
       try {
         const result = await invitationService.acceptInvitation(token, password)
         return ok(res, result, 201)

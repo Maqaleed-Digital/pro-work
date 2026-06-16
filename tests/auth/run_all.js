@@ -29,7 +29,7 @@ async function main() {
   const p6 = await invitation.run()
 
   const total = p1 + p2 + p3 + p4 + p5 + p6
-  const expected = 9 + 13 + 23 + 25 + 35 + 25
+  const expected = 9 + 13 + 23 + 28 + 35 + 27
   console.log(`\n=== Total: ${total}/${expected} passed ===`)
 
   if (total < expected) {

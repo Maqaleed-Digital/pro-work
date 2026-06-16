@@ -33,7 +33,7 @@ function createAuthService(opts) {
     /**
      * Register a new user. The first user in a tenant gets OWNER role.
      */
-    async register({ email, password, tenantId, role }) {
+    async register({ email, password, tenantId, role, client: extClient }) {
       if (!email || !password || !tenantId) {
         throw Object.assign(new Error('email, password, and tenantId are required'), { status: 400 })
       }
@@ -43,9 +43,13 @@ function createAuthService(opts) {
       }
 
       const passwordHash = await passwordService.hash(password)
-      const client = await pool.connect()
+      // When an external client is passed, the caller owns the transaction
+      // (no BEGIN/COMMIT/ROLLBACK/release here). Backward-compatible: callers
+      // that pass no client get their own transaction.
+      const client = extClient || await pool.connect()
+      const ownTx  = !extClient
       try {
-        await client.query('BEGIN')
+        if (ownTx) await client.query('BEGIN')
         await withTenant(client, tenantId, async (c) => {
           // Check for duplicate email within tenant
           const dup = await c.query(
@@ -70,13 +74,13 @@ function createAuthService(opts) {
            RETURNING id, email, tenant_id, role, status, created_at`,
           [crypto.randomUUID(), email, passwordHash, tenantId, assignedRole]
         )
-        await client.query('COMMIT')
+        if (ownTx) await client.query('COMMIT')
         return result.rows[0]
       } catch (err) {
-        await client.query('ROLLBACK')
+        if (ownTx) await client.query('ROLLBACK')
         throw err
       } finally {
-        client.release()
+        if (ownTx) client.release()
       }
     },
 
