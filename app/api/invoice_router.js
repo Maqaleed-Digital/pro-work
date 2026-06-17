@@ -1,5 +1,7 @@
 'use strict'
 
+const { emitMetric } = require('../modules/telemetry/emf')
+
 /**
  * WC-06: Invoice API router.
  *
@@ -64,6 +66,10 @@ function createInvoiceRouter(opts) {
           tenantId,
           issuedBy: user.id,
         })
+        // F-06: emit ONE operational metric on the issue success path.
+        // Non-blocking by construction — emitMetric swallows all errors and
+        // can never throw into the request path.
+        emitMetric({ name: 'InvoicesIssued', value: 1, unit: 'Count' })
         return ok(res, invoice, 200)
       } catch (e) {
         return fail(res, e.status === 404 ? 'NOT_FOUND' : 'INVOICE_ERROR', e.message, e.status || 400)
