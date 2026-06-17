@@ -6,6 +6,7 @@ const auth       = require('./auth_service.test')
 const authRouter = require('./auth_router.test')
 const rbac       = require('./rbac_policy.test')
 const invitation = require('./invitation_service.test')
+const invoiceRouter = require('../invoices/invoice_router.test')
 
 async function main() {
   console.log('\n=== S40 Auth Test Suite ===\n')
@@ -28,8 +29,11 @@ async function main() {
   console.log('\n[invitation_service]')
   const p6 = await invitation.run()
 
-  const total = p1 + p2 + p3 + p4 + p5 + p6
-  const expected = 9 + 13 + 23 + 28 + 35 + 27
+  console.log('\n[invoice_router]')
+  const p7 = await invoiceRouter.run()
+
+  const total = p1 + p2 + p3 + p4 + p5 + p6 + p7
+  const expected = 9 + 13 + 23 + 28 + 35 + 27 + 13
   console.log(`\n=== Total: ${total}/${expected} passed ===`)
 
   if (total < expected) {

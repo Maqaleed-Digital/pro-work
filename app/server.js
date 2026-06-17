@@ -66,6 +66,9 @@ const { createEmployerOnboardingRouter }    = require("./api/employer_onboarding
 // S40-G6: Team invitations
 const { createInvitationService }           = require("./modules/auth/invitation_service")
 const { createInvitationRouter }            = require("./api/invitation_router")
+// WC-06: Invoice create/issue mechanism
+const { createInvoiceService }              = require("./modules/invoices/invoice_service")
+const { createInvoiceRouter }               = require("./api/invoice_router")
 // S43-G1: Requisitions
 const { createRequisitionService }          = require("./modules/hiring/requisition_service")
 const { createRequisitionRouter }           = require("./api/requisition_router")
@@ -155,6 +158,13 @@ const _invitationService = _pgPool && _authService
   : null
 const _invitationRouter = _invitationService
   ? createInvitationRouter({ invitationService: _invitationService })
+  : null
+// WC-06: Invoice service + router (gated on _pgPool like the auth-adjacent routers)
+const _invoiceService = _pgPool
+  ? createInvoiceService({ pool: _pgPool })
+  : null
+const _invoiceRouter = _invoiceService
+  ? createInvoiceRouter({ invoiceService: _invoiceService })
   : null
 // S43: Requisition service + router
 const _nitaqatPolicyForHiring = (() => {
@@ -1609,6 +1619,19 @@ const server = http.createServer(async (req, res) => {
         ? { id: req._jwtPrincipal.id, tenant_id: req._jwtPrincipal.tenant_id, role: req._jwtPrincipal._rbacRole }
         : null
       return _invitationRouter.handle(req, res, pathname, req.method, body, user)
+    }
+
+    // WC-06: Invoice routes — /api/invoices/* (auth-gated)
+    if (_invoiceRouter && pathname.startsWith("/api/invoices")) {
+      let body = null
+      if (req.method === "POST") {
+        body = await readJson(req, res)
+        if (body === null) return
+      }
+      const user = req._jwtPrincipal
+        ? { id: req._jwtPrincipal.id, tenant_id: req._jwtPrincipal.tenant_id, role: req._jwtPrincipal._rbacRole }
+        : null
+      return _invoiceRouter.handle(req, res, pathname, req.method, body, user)
     }
 
     // WC-CB Day 3: Cohort request intake — /api/cohort/*
