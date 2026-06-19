@@ -2,6 +2,8 @@
 
 const crypto = require('crypto')
 const { recordTosAcceptance } = require('../modules/auth/tos')
+// WO-WC-SEC-01: shared tenant-context helper for FORCE-RLS-scoped writes.
+const { withTenant: _withTenantShared } = require('../lib/persistence/with_tenant')
 
 /**
  * S40-G2: Auth API router.
@@ -105,17 +107,21 @@ function createAuthRouter(opts) {
       if (!email)    return fail(res, 'VALIDATION_ERROR', 'email is required', 422)
       if (!password) return fail(res, 'VALIDATION_ERROR', 'password is required', 422)
 
-      // If tenantId not provided, look up user's tenant by email
-      // RLS policy allows cross-tenant email lookup when app.current_tenant_id is empty
+      // If tenantId not provided, look up user's tenant by email via the bounded SECURITY DEFINER
+      // function (replaces the bare cross-tenant `SELECT ... FROM users`, which only worked under
+      // owner-bypass and would return zero rows once `users` is FORCE RLS).
       let resolvedTenantId = tenantId
       if (!resolvedTenantId) {
         const lookup = await pool.query(
-          'SELECT tenant_id FROM users WHERE email = $1 LIMIT 1',
+          'SELECT id, tenant_id, password_hash, role, status FROM wc_login_lookup($1)',
           [email.toLowerCase().trim()]
         )
         if (lookup.rows.length === 0) {
           return fail(res, 'UNAUTHORIZED', 'invalid credentials', 401)
         }
+        // KNOWN FOLLOW-UP: email is UNIQUE per (email, tenant_id), so this may return multiple rows
+        // across tenants. We preserve today's single-tenant behavior by adopting the first row's
+        // tenant; proper multi-tenant resolution (verify password against each row) is a follow-up.
         resolvedTenantId = lookup.rows[0].tenant_id
       }
 
@@ -146,8 +152,12 @@ function createAuthRouter(opts) {
       if (!payload) return fail(res, 'UNAUTHORIZED', 'invalid or expired token', 401)
 
       const tokenHash = authService.jwt.hashToken(token)
-      // Delete session by token hash
-      await pool.query('DELETE FROM sessions WHERE token_hash = $1', [tokenHash])
+      // WO-WC-SEC-01: the bearer token has been verified to a payload that carries tenant_id, so the
+      // session DELETE is now tenant-scoped through the shared helper. Under FORCE RLS on `sessions`
+      // the prior bare pool.query would affect ZERO rows (logout would silently fail to revoke).
+      if (!payload.tenant_id) return fail(res, 'UNAUTHORIZED', 'invalid or expired token', 401)
+      await _withTenantShared(pool, payload.tenant_id, (client) =>
+        client.query('DELETE FROM sessions WHERE token_hash = $1', [tokenHash]))
 
       return ok(res, { message: 'logged out' })
     }
@@ -178,7 +188,8 @@ function createAuthRouter(opts) {
       const payload = await authService.verifySession(token)
       if (!payload) return fail(res, 'UNAUTHORIZED', 'invalid or expired token', 401)
 
-      const user = await authService.getUserById(payload.sub)
+      // WO-WC-SEC-01: thread the verified JWT's tenant_id so the FORCE-RLS users read is tenant-scoped.
+      const user = await authService.getUserById(payload.sub, payload.tenant_id)
       if (!user) return fail(res, 'NOT_FOUND', 'user not found', 404)
 
       // Add company name from tenants table

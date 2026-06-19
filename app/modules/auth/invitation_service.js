@@ -2,6 +2,7 @@
 
 const crypto = require('crypto')
 const { recordTosAcceptance } = require('./tos')
+const { withTenant: _withTenantShared } = require('../../lib/persistence/with_tenant')
 
 const VALID_ROLES  = new Set(['OWNER', 'ADMIN', 'HIRING_MANAGER', 'FINANCE_APPROVER', 'VIEWER'])
 const INVITE_TTL_H = 48
@@ -36,12 +37,12 @@ function createInvitationService(opts) {
       const token     = crypto.randomBytes(32).toString('hex')
       const expiresAt = new Date(Date.now() + INVITE_TTL_H * 3600 * 1000)
 
-      const result = await pool.query(
+      const result = await _withTenantShared(pool, tenantId, (client) => client.query(
         `INSERT INTO invitations (id, tenant_id, email, role, token, invited_by, status, expires_at, created_at)
          VALUES ($1, $2, $3, $4, $5, $6, 'PENDING', $7, NOW())
          RETURNING id, tenant_id, email, role, status, expires_at, created_at`,
         [crypto.randomUUID(), tenantId, email, role, token, invitedBy, expiresAt]
-      )
+      ))
 
       const invitation = result.rows[0]
       const inviteLink = `${baseUrl}/admin/#accept-invite?token=${token}`
@@ -57,9 +58,13 @@ function createInvitationService(opts) {
       if (!token)    throw Object.assign(new Error('token is required'), { status: 400 })
       if (!password) throw Object.assign(new Error('password is required'), { status: 400 })
 
-      // Look up invitation
+      // Look up invitation — PRE-AUTH, token-only: there is no tenantId in scope yet (the tenant is
+      // discovered FROM this row), so the shared withTenant(pool, tenantId, ...) helper cannot be used.
+      // WO-WC-SEC-01: routed through the bounded SECURITY DEFINER fn wc_invitation_lookup($1) (mirrors
+      // wc_login_lookup) so it returns the row under FORCE RLS on `invitations` without a bare,
+      // owner-bypass cross-tenant table read. Returns ONLY the six accept-invite columns for one token.
       const invResult = await pool.query(
-        `SELECT id, tenant_id, email, role, status, expires_at FROM invitations WHERE token = $1`,
+        `SELECT id, tenant_id, email, role, status, expires_at FROM wc_invitation_lookup($1)`,
         [token]
       )
       if (invResult.rows.length === 0) {
@@ -75,8 +80,10 @@ function createInvitationService(opts) {
         throw Object.assign(new Error('invitation has been revoked'), { status: 410 })
       }
       if (new Date(inv.expires_at) < new Date()) {
-        // Mark as expired
-        await pool.query(`UPDATE invitations SET status = 'EXPIRED' WHERE id = $1`, [inv.id])
+        // Mark as expired. tenant_id is now known (from the looked-up row), so this write CAN be
+        // tenant-scoped through the shared helper.
+        await _withTenantShared(pool, inv.tenant_id, (client) =>
+          client.query(`UPDATE invitations SET status = 'EXPIRED' WHERE id = $1`, [inv.id]))
         throw Object.assign(new Error('invitation has expired'), { status: 410 })
       }
 
@@ -116,12 +123,12 @@ function createInvitationService(opts) {
      * List active invitations for a tenant.
      */
     async listInvitations(tenantId) {
-      const result = await pool.query(
+      const result = await _withTenantShared(pool, tenantId, (client) => client.query(
         `SELECT id, email, role, status, expires_at, created_at
          FROM invitations WHERE tenant_id = $1
          ORDER BY created_at DESC`,
         [tenantId]
-      )
+      ))
       return result.rows
     },
 
@@ -129,12 +136,12 @@ function createInvitationService(opts) {
      * Revoke an invitation — sets status to EXPIRED.
      */
     async revokeInvitation(id, tenantId) {
-      const result = await pool.query(
+      const result = await _withTenantShared(pool, tenantId, (client) => client.query(
         `UPDATE invitations SET status = 'EXPIRED'
          WHERE id = $1 AND tenant_id = $2 AND status = 'PENDING'
          RETURNING id`,
         [id, tenantId]
-      )
+      ))
       if (result.rowCount === 0) {
         throw Object.assign(new Error('invitation not found or already resolved'), { status: 404 })
       }

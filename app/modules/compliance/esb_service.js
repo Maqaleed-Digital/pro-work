@@ -1,6 +1,7 @@
 'use strict'
 
 const crypto = require('crypto')
+const { withTenant: _withTenantShared } = require('../../lib/persistence/with_tenant')
 const policyV1 = require('../../config/compliance/esb_policy_v1.json')
 
 const POLICIES = { 'ksa-labor-law-v2015': policyV1 }
@@ -69,13 +70,7 @@ function createEsbService(opts) {
   if (!opts || !opts.pool) throw new Error('pool is required')
   const pool = opts.pool
 
-  async function withTenant(tenantId, fn) {
-    const client = await pool.connect()
-    try {
-      await client.query("SELECT set_config('app.current_tenant_id', $1, false)", [tenantId])
-      return await fn(client)
-    } finally { client.release() }
-  }
+  async function withTenant(tenantId, fn) { return _withTenantShared(pool, tenantId, fn) }
 
   async function emitEvent(client, tenantId, calcId, eventType, actorUserId, actorType, payload) {
     await client.query(

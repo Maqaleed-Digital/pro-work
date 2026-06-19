@@ -1,6 +1,7 @@
 'use strict'
 
 const crypto = require('crypto')
+const { withTenant: _withTenantShared } = require('../../lib/persistence/with_tenant')
 const checklist = require('../../config/compliance/wps_checklist_v1.json')
 
 const IBAN_PATTERN = new RegExp(checklist.ibanFormat.pattern)
@@ -40,13 +41,7 @@ function createWpsReadinessPgService(opts) {
   if (!opts || !opts.pool) throw new Error('pool is required')
   const pool = opts.pool
 
-  async function withTenant(tenantId, fn) {
-    const client = await pool.connect()
-    try {
-      await client.query("SELECT set_config('app.current_tenant_id', $1, false)", [tenantId])
-      return await fn(client)
-    } finally { client.release() }
-  }
+  async function withTenant(tenantId, fn) { return _withTenantShared(pool, tenantId, fn) }
 
   async function emitEvent(client, tenantId, packId, eventType, actorUserId, actorType, payload) {
     await client.query(

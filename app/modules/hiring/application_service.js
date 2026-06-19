@@ -1,6 +1,7 @@
 'use strict'
 
 const crypto = require('crypto')
+const { withTenant: _withTenantShared } = require('../../lib/persistence/with_tenant')
 const stateMachine = require('../../config/hiring/application_state_machine.json')
 
 const TRANSITIONS   = stateMachine.transitions
@@ -16,15 +17,7 @@ function createApplicationService(opts) {
   if (!opts || !opts.pool) throw new Error('pool is required')
   const pool = opts.pool
 
-  async function withTenant(tenantId, fn) {
-    const client = await pool.connect()
-    try {
-      await client.query("SELECT set_config('app.current_tenant_id', $1, false)", [tenantId])
-      return await fn(client)
-    } finally {
-      client.release()
-    }
-  }
+  async function withTenant(tenantId, fn) { return _withTenantShared(pool, tenantId, fn) }
 
   async function generateRecruitEvidencePack(client, tenantId, applicationId, actorUserId) {
     try {
@@ -37,14 +30,11 @@ function createApplicationService(opts) {
       const reqRow = await client.query('SELECT * FROM requisitions WHERE id = $1', [app.requisition_id])
       const eventsRow = await client.query('SELECT * FROM application_events WHERE application_id = $1 ORDER BY created_at ASC', [applicationId])
 
-      // Optional: recommendation audit log
+      // Optional: recommendation audit log.
+      // app.tenant_id (UUID GUC) is already set txn-local by the shared withTenant, so no inline
+      // set_config('app.tenant_id', ...) is needed here.
       let auditLog = null
       if (app.ai_recommendation_log_id) {
-        const tenantUuid = (() => {
-          const h = require('crypto').createHash('md5').update(tenantId).digest('hex')
-          return h.slice(0,8)+'-'+h.slice(8,12)+'-'+h.slice(12,16)+'-'+h.slice(16,20)+'-'+h.slice(20,32)
-        })()
-        await client.query("SELECT set_config('app.tenant_id', $1, false)", [tenantUuid])
         const logRow = await client.query('SELECT * FROM recommendation_audit_logs WHERE id = $1', [app.ai_recommendation_log_id])
         auditLog = logRow.rows[0] || null
       }

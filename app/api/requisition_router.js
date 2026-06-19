@@ -203,15 +203,11 @@ function createRequisitionRouter(opts) {
     // GET /api/hiring/recommendations/:logId — detail
     if (recDetailMatch && method === 'GET') {
       try {
-        const client = await opts.requisitionService._pool_ref.connect()
-        try {
-          await client.query("SELECT set_config('app.current_tenant_id', $1, false)", [user.tenant_id])
-          const crypto = require('crypto')
-          const tenantUuid = (() => {
-            const h = crypto.createHash('md5').update(user.tenant_id).digest('hex')
-            return h.slice(0,8)+'-'+h.slice(8,12)+'-'+h.slice(12,16)+'-'+h.slice(16,20)+'-'+h.slice(20,32)
-          })()
-          await client.query("SELECT set_config('app.tenant_id', $1, false)", [tenantUuid])
+        // Shared helper opens ONE transaction and sets BOTH GUCs (app.current_tenant_id and the
+        // app.tenant_id UUID that recommendation_audit_logs RLS keys on) txn-local; no inline md5
+        // or set_config needed.
+        const { withTenant } = require('../lib/persistence/with_tenant')
+        return await withTenant(opts.requisitionService._pool_ref, user.tenant_id, async (client) => {
           const result = await client.query('SELECT * FROM recommendation_audit_logs WHERE id = $1', [recDetailMatch[1]])
           if (!result.rows[0]) return fail(res, 'NOT_FOUND', 'recommendation not found', 404)
           const log = result.rows[0]
@@ -226,7 +222,7 @@ function createRequisitionRouter(opts) {
             reviewer_decision: log.reviewer_decision,
             output_snapshot: log.output_snapshot,
           })
-        } finally { client.release() }
+        })
       } catch (e) {
         return fail(res, 'RECOMMENDATION_ERROR', e.message, e.status || 500)
       }

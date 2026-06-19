@@ -14,6 +14,8 @@ const ProductionConfig = require("./config/production")
 const { buildZip }   = require("./lib/zip")
 const { validateProductionConfig } = require("./config/validate")
 const { getDataDir, getAppDataDir } = require("./lib/data_paths")
+// WO-WC-SEC-01: shared tenant-context helper (sets app.current_tenant_id + app.tenant_id txn-local).
+const { withTenant: _withTenant, tenantUuid: _tenantUuid } = require("./lib/persistence/with_tenant")
 // S36-G2: AI governance
 const { createAiRouter }                               = require("./api/ai_router")
 const { createAuditLogService, InMemoryAuditLogStore } = require("./modules/ai/audit_log_service")
@@ -1712,13 +1714,13 @@ const server = http.createServer(async (req, res) => {
     // S44-G7: PG-backed evidence pack listing and export
     if (_pgPool && pathname === "/api/evidence/packs" && req.method === "GET") {
       const tenantId = resolveTenantId(req)
-      const tenantUuid = (() => { const h = require("crypto").createHash("md5").update(tenantId).digest("hex"); return h.slice(0,8)+"-"+h.slice(8,12)+"-"+h.slice(12,16)+"-"+h.slice(16,20)+"-"+h.slice(20,32) })()
+      // WO-WC-SEC-01: route through the shared tenant helper. It sets app.tenant_id =
+      // tenantUuid(tenantId) (the same md5-derived UUID this handler computed inline), so the
+      // evidence_packs read is correctly scoped under FORCE RLS instead of relying on owner-bypass.
       try {
-        const client = await _pgPool.connect()
-        try {
-          const result = await client.query("SELECT pack_id, pack_type, status, created_at, immutable_hash FROM evidence_packs WHERE tenant_id = $1 ORDER BY created_at DESC", [tenantUuid])
-          return ok(res, { packs: result.rows, count: result.rows.length })
-        } finally { client.release() }
+        const result = await _withTenant(_pgPool, tenantId, (client) =>
+          client.query("SELECT pack_id, pack_type, status, created_at, immutable_hash FROM evidence_packs WHERE tenant_id = $1 ORDER BY created_at DESC", [_tenantUuid(tenantId)]))
+        return ok(res, { packs: result.rows, count: result.rows.length })
       } catch (e) { return fail(res, "EVIDENCE_ERROR", e.message, 500) }
     }
 
@@ -1726,23 +1728,23 @@ const server = http.createServer(async (req, res) => {
     if (_pgPool && epExportMatch && req.method === "POST") {
       const packId = epExportMatch[1]
       const tenantId = resolveTenantId(req)
-      const tenantUuid = (() => { const h = require("crypto").createHash("md5").update(tenantId).digest("hex"); return h.slice(0,8)+"-"+h.slice(8,12)+"-"+h.slice(12,16)+"-"+h.slice(16,20)+"-"+h.slice(20,32) })()
+      // WO-WC-SEC-01: route the evidence_packs read through the shared tenant helper (sets
+      // app.tenant_id = tenantUuid(tenantId), the same md5 UUID computed inline before) so it is
+      // FORCE-RLS-scoped, not owner-bypassed.
       try {
-        const client = await _pgPool.connect()
-        try {
-          const result = await client.query("SELECT * FROM evidence_packs WHERE pack_id = $1 AND tenant_id = $2", [packId, tenantUuid])
-          if (!result.rows[0]) return fail(res, "NOT_FOUND", "evidence pack not found", 404)
-          const pack = result.rows[0]
-          const snapshot = typeof pack.data_snapshot === "string" ? pack.data_snapshot : JSON.stringify(pack.data_snapshot)
-          const files = {}
-          files["manifest.json"] = Buffer.from(JSON.stringify({ pack_id: pack.pack_id, pack_type: pack.pack_type, created_at: pack.created_at, immutable_hash: pack.immutable_hash, policy_version: pack.policy_version }, null, 2))
-          files["data_snapshot.json"] = Buffer.from(snapshot)
-          const { buildZip } = require("./lib/zip")
-          const zipBuf = buildZip(files)
-          const fname = `evidence-pack-${pack.pack_type}-${pack.pack_id.slice(0,8)}.zip`
-          res.writeHead(200, { "content-type": "application/zip", "content-disposition": `attachment; filename="${fname}"`, "content-length": zipBuf.length })
-          return res.end(zipBuf)
-        } finally { client.release() }
+        const result = await _withTenant(_pgPool, tenantId, (client) =>
+          client.query("SELECT * FROM evidence_packs WHERE pack_id = $1 AND tenant_id = $2", [packId, _tenantUuid(tenantId)]))
+        if (!result.rows[0]) return fail(res, "NOT_FOUND", "evidence pack not found", 404)
+        const pack = result.rows[0]
+        const snapshot = typeof pack.data_snapshot === "string" ? pack.data_snapshot : JSON.stringify(pack.data_snapshot)
+        const files = {}
+        files["manifest.json"] = Buffer.from(JSON.stringify({ pack_id: pack.pack_id, pack_type: pack.pack_type, created_at: pack.created_at, immutable_hash: pack.immutable_hash, policy_version: pack.policy_version }, null, 2))
+        files["data_snapshot.json"] = Buffer.from(snapshot)
+        const { buildZip } = require("./lib/zip")
+        const zipBuf = buildZip(files)
+        const fname = `evidence-pack-${pack.pack_type}-${pack.pack_id.slice(0,8)}.zip`
+        res.writeHead(200, { "content-type": "application/zip", "content-disposition": `attachment; filename="${fname}"`, "content-length": zipBuf.length })
+        return res.end(zipBuf)
       } catch (e) { return fail(res, "EXPORT_ERROR", e.message, 500) }
     }
 

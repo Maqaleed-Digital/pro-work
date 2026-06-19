@@ -25,6 +25,7 @@
  */
 
 const crypto = require('crypto')
+const { withTenant: _withTenantShared } = require('../../lib/persistence/with_tenant')
 const rubric = require('../../config/ai/matching_rubric_v1.json')
 const { evaluateRankingBias } = require('./bias_monitor')
 
@@ -44,17 +45,9 @@ function createAiMatchingService(opts) {
   if (!opts || !opts.pool) throw new Error('pool is required')
   const pool = opts.pool
 
-  async function withTenant(tenantId, fn) {
-    const client = await pool.connect()
-    try {
-      await client.query("SELECT set_config('app.current_tenant_id', $1, false)", [tenantId])
-      // recommendation_audit_logs RLS uses app.tenant_id (UUID)
-      await client.query("SELECT set_config('app.tenant_id', $1, false)", [toUuid(tenantId)])
-      return await fn(client)
-    } finally {
-      client.release()
-    }
-  }
+  // Shared helper sets BOTH app.current_tenant_id AND app.tenant_id (UUID) txn-local; the
+  // recommendation_audit_logs RLS keys on app.tenant_id (UUID) and is now covered by the helper.
+  async function withTenant(tenantId, fn) { return _withTenantShared(pool, tenantId, fn) }
 
   function normalize(value, signal) {
     const range = NORM[signal]
