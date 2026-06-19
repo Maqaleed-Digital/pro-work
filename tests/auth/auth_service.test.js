@@ -299,7 +299,7 @@ async function run() {
     await svc.login({
       email: 'owner@test.com', password: 'StrongPass1!', tenantId: 'T1',
     })
-    const count = await svc.revokeAllSessions(user.id)
+    const count = await svc.revokeAllSessions(user.id, user.tenant_id)
     assert.ok(count >= 2)
     passed++
     console.log('  ✓ revokeAllSessions clears all sessions for user')
@@ -374,7 +374,7 @@ async function run() {
       email: 'session@test.com', password: 'StrongPass7!', tenantId: 'T4',
       ipAddress: '10.0.0.1', userAgent: 'TestAgent/1.0',
     })
-    const sessions = await svc2.listSessions(user.id)
+    const sessions = await svc2.listSessions(user.id, user.tenant_id)
     assert.strictEqual(sessions.length, 1)
     assert.strictEqual(sessions[0].ip_address, '10.0.0.1')
     assert.strictEqual(sessions[0].user_agent, 'TestAgent/1.0')

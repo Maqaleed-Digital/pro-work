@@ -3,6 +3,7 @@
 const crypto = require('crypto')
 const { createJwtService } = require('./jwt_service')
 const passwordService       = require('./password_service')
+const { withTenant: _withTenantShared, setTenantContext: _setTenantContextShared } = require('../../lib/persistence/with_tenant')
 
 const VALID_ROLES    = new Set(['OWNER', 'ADMIN', 'HIRING_MANAGER', 'FINANCE_APPROVER', 'VIEWER'])
 const VALID_STATUSES = new Set(['ACTIVE', 'INVITED', 'SUSPENDED'])
@@ -22,8 +23,10 @@ function createAuthService(opts) {
   const jwt  = createJwtService({ secret: opts.secret, ttl: opts.ttl })
 
   // ── Tenant context helper ───────────────────────────────────────────────
+  // Caller owns the transaction (register passes its own client inside a BEGIN/COMMIT).
+  // Delegate to the shared helper, which sets BOTH GUCs txn-local (is_local=true).
   async function withTenant(client, tenantId, fn) {
-    await client.query("SELECT set_config('app.current_tenant_id', $1, false)", [tenantId])
+    await _setTenantContextShared(client, tenantId)
     return fn(client)
   }
 
@@ -93,11 +96,8 @@ function createAuthService(opts) {
       }
       email = email.toLowerCase().trim()
 
-      const client = await pool.connect()
-      try {
-        // Set tenant context for RLS
-        await client.query("SELECT set_config('app.current_tenant_id', $1, false)", [tenantId])
-
+      // Run the whole login in ONE transaction with the tenant GUCs set txn-local (is_local=true).
+      return _withTenantShared(pool, tenantId, async (client) => {
         const result = await client.query(
           'SELECT id, email, password_hash, tenant_id, role, status FROM users WHERE email = $1 AND tenant_id = $2',
           [email, tenantId]
@@ -134,9 +134,7 @@ function createAuthService(opts) {
           expiresAt,
           user: { id: user.id, email: user.email, role: user.role, tenant_id: user.tenant_id },
         }
-      } finally {
-        client.release()
-      }
+      })
     },
 
     /**
@@ -147,12 +145,11 @@ function createAuthService(opts) {
       if (!payload) return null
 
       const tokenHash = jwt.hashToken(token)
-      const client = await pool.connect()
-      try {
-        // Set tenant context for RLS
-        if (payload.tenant_id) {
-          await client.query("SELECT set_config('app.current_tenant_id', $1, false)", [payload.tenant_id])
-        }
+      // Run the session lookup in ONE transaction with the tenant GUCs set txn-local. JWTs in this
+      // codebase always carry tenant_id; the prior code's conditional was defensive. We require it
+      // here so the sessions read is correctly tenant-scoped under (FORCE) RLS.
+      if (!payload.tenant_id) return null
+      return _withTenantShared(pool, payload.tenant_id, async (client) => {
         const result = await client.query(
           'SELECT id, user_id, expires_at FROM sessions WHERE token_hash = $1',
           [tokenHash]
@@ -163,9 +160,7 @@ function createAuthService(opts) {
         if (new Date(session.expires_at) < new Date()) return null
 
         return payload
-      } finally {
-        client.release()
-      }
+      })
     },
 
     /**
@@ -175,12 +170,11 @@ function createAuthService(opts) {
       const payload = jwt.verify(token)
       if (!payload) return null
 
-      const client = await pool.connect()
-      try {
-        if (payload.tenant_id) {
-          await client.query("SELECT set_config('app.current_tenant_id', $1, false)", [payload.tenant_id])
-        }
-
+      // Run the revoke-old + create-new session in ONE transaction with tenant GUCs set txn-local.
+      // JWTs always carry tenant_id here; require it so the sessions writes are tenant-scoped under
+      // (FORCE) RLS.
+      if (!payload.tenant_id) return null
+      return _withTenantShared(pool, payload.tenant_id, async (client) => {
         const oldHash = jwt.hashToken(token)
         await client.query('DELETE FROM sessions WHERE token_hash = $1', [oldHash])
 
@@ -194,37 +188,50 @@ function createAuthService(opts) {
         )
 
         return { token: newToken, expiresAt }
-      } finally {
-        client.release()
-      }
+      })
     },
 
     /**
      * Revoke a session by session ID.
+     *
+     * WO-WC-SEC-01: `sessions` is a FORCE-RLS table. tenantId is MANDATORY — the DELETE is routed
+     * through the shared withTenant helper and is correctly tenant-scoped. The former bare-query
+     * fallback (zero rows under FORCE RLS) is removed so a future caller cannot silently no-op.
      */
-    async revokeSession(sessionId) {
-      const result = await pool.query(
-        'DELETE FROM sessions WHERE id = $1 RETURNING id',
-        [sessionId]
-      )
+    async revokeSession(sessionId, tenantId) {
+      if (!tenantId) throw Object.assign(new Error('tenantId is required'), { status: 400 })
+      const result = await _withTenantShared(pool, tenantId, (client) => client.query(
+        'DELETE FROM sessions WHERE id = $1 RETURNING id', [sessionId]))
       return result.rowCount > 0
     },
 
     /**
      * Revoke all sessions for a user (e.g. password change, account suspension).
+     *
+     * WO-WC-SEC-01: same FORCE-RLS treatment as revokeSession — tenantId MANDATORY, helper-scoped;
+     * the bare fallback is removed.
      */
-    async revokeAllSessions(userId) {
-      const result = await pool.query(
-        'DELETE FROM sessions WHERE user_id = $1',
-        [userId]
-      )
+    async revokeAllSessions(userId, tenantId) {
+      if (!tenantId) throw Object.assign(new Error('tenantId is required'), { status: 400 })
+      const result = await _withTenantShared(pool, tenantId, (client) => client.query(
+        'DELETE FROM sessions WHERE user_id = $1', [userId]))
       return result.rowCount
     },
 
     /**
      * Get user by ID (excludes password_hash).
+     *
+     * WO-WC-SEC-01: `users` is a FORCE-RLS table. The /api/auth/me caller now threads the verified
+     * JWT's tenant_id, so the read is tenant-scoped through the shared helper. The bare fallback (no
+     * tenantId) returns ZERO rows under FORCE RLS — retained only for legacy/test callers.
      */
-    async getUserById(userId) {
+    async getUserById(userId, tenantId) {
+      if (tenantId) {
+        const result = await _withTenantShared(pool, tenantId, (client) => client.query(
+          'SELECT id, email, tenant_id, role, status, created_at, last_login_at FROM users WHERE id = $1',
+          [userId]))
+        return result.rows[0] || null
+      }
       const result = await pool.query(
         'SELECT id, email, tenant_id, role, status, created_at, last_login_at FROM users WHERE id = $1',
         [userId]
@@ -234,12 +241,14 @@ function createAuthService(opts) {
 
     /**
      * List active sessions for a user.
+     *
+     * WO-WC-SEC-01: tenantId MANDATORY, helper-scoped; the bare fallback is removed.
      */
-    async listSessions(userId) {
-      const result = await pool.query(
+    async listSessions(userId, tenantId) {
+      if (!tenantId) throw Object.assign(new Error('tenantId is required'), { status: 400 })
+      const result = await _withTenantShared(pool, tenantId, (client) => client.query(
         'SELECT id, created_at, expires_at, ip_address, user_agent FROM sessions WHERE user_id = $1 ORDER BY created_at DESC',
-        [userId]
-      )
+        [userId]))
       return result.rows
     },
   }

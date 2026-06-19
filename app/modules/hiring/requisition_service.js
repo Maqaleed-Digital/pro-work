@@ -1,6 +1,7 @@
 'use strict'
 
 const crypto = require('crypto')
+const { withTenant: _withTenantShared } = require('../../lib/persistence/with_tenant')
 const validationConfig = require('../../config/hiring/requisition_validation.json')
 
 const VALID_STATUSES      = new Set(validationConfig.validStatuses)
@@ -23,15 +24,7 @@ function createRequisitionService(opts) {
   const pool          = opts.pool
   const nitaqatEngine = opts.nitaqatEngine || null
 
-  async function withTenant(tenantId, fn) {
-    const client = await pool.connect()
-    try {
-      await client.query("SELECT set_config('app.current_tenant_id', $1, false)", [tenantId])
-      return await fn(client)
-    } finally {
-      client.release()
-    }
-  }
+  async function withTenant(tenantId, fn) { return _withTenantShared(pool, tenantId, fn) }
 
   return {
     /**
