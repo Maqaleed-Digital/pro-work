@@ -63,10 +63,18 @@ function createInvitationService(opts) {
       // WO-WC-SEC-01: routed through the bounded SECURITY DEFINER fn wc_invitation_lookup($1) (mirrors
       // wc_login_lookup) so it returns the row under FORCE RLS on `invitations` without a bare,
       // owner-bypass cross-tenant table read. Returns ONLY the six accept-invite columns for one token.
-      const invResult = await pool.query(
-        `SELECT id, tenant_id, email, role, status, expires_at FROM wc_invitation_lookup($1)`,
-        [token]
-      )
+      let invResult
+      try {
+        invResult = await pool.query(
+          `SELECT id, tenant_id, email, role, status, expires_at FROM wc_invitation_lookup($1)`,
+          [token]
+        )
+      } catch (e) {
+        // WO-WC-SEC-01 (GO-4): a DB fault on the pre-auth lookup degrades to a 500-status error
+        // (caught by the router) — never an unhandled rejection that crashes the process.
+        console.error('[invitation/accept] pre-auth lookup failed:', e && e.message)
+        throw Object.assign(new Error('invitation lookup failed'), { status: 500 })
+      }
       if (invResult.rows.length === 0) {
         throw Object.assign(new Error('invalid invitation token'), { status: 404 })
       }
