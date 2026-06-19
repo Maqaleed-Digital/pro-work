@@ -112,10 +112,19 @@ function createAuthRouter(opts) {
       // owner-bypass and would return zero rows once `users` is FORCE RLS).
       let resolvedTenantId = tenantId
       if (!resolvedTenantId) {
-        const lookup = await pool.query(
-          'SELECT id, tenant_id, password_hash, role, status FROM wc_login_lookup($1)',
-          [email.toLowerCase().trim()]
-        )
+        let lookup
+        try {
+          lookup = await pool.query(
+            'SELECT id, tenant_id, password_hash, role, status FROM wc_login_lookup($1)',
+            [email.toLowerCase().trim()]
+          )
+        } catch (e) {
+          // WO-WC-SEC-01 (GO-4): a DB fault on the pre-auth lookup must NEVER crash the process.
+          // The GO-4 outage was an uncaught 42501 here that unhandled-rejected and took the app
+          // down. Degrade to 500; the process stays alive.
+          console.error('[auth/login] pre-auth lookup failed:', e && e.message)
+          return fail(res, 'INTERNAL_ERROR', 'login temporarily unavailable', 500)
+        }
         if (lookup.rows.length === 0) {
           return fail(res, 'UNAUTHORIZED', 'invalid credentials', 401)
         }

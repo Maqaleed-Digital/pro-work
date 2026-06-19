@@ -2950,6 +2950,17 @@ Scheduler.init({
 })
 Scheduler.start()
 
+// WO-WC-SEC-01 (GO-4 hardening): a single query fault must NEVER crash the process. The GO-4
+// outage was an unhandled promise rejection (a 42501 from a pre-auth lookup) that took the app
+// down and crash-looped. These guards log and keep serving; the offending request still fails via
+// its own handler. This is the defense-in-depth net behind the per-call try/catch fixes.
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection]', reason && (reason.stack || reason.message || reason))
+})
+process.on('uncaughtException', (err) => {
+  console.error('[uncaughtException]', err && (err.stack || err.message || err))
+})
+
 server.listen(PORT, HOST, () => {
   console.log(`server running: http://${HOST}:${PORT}`)
 })
