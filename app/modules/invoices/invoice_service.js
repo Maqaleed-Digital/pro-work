@@ -2,6 +2,7 @@
 
 const crypto = require('crypto')
 const { DEFAULT_VAT_RATE, DEFAULT_CURRENCY } = require('./invoice_config')
+const { withTenant: _withTenantShared } = require('../../lib/persistence/with_tenant')
 
 /**
  * WC-06: Invoice create/issue service.
@@ -20,6 +21,14 @@ const { DEFAULT_VAT_RATE, DEFAULT_CURRENCY } = require('./invoice_config')
 function createInvoiceService(opts) {
   if (!opts || !opts.pool) throw new Error('pool is required')
   const pool = opts.pool
+
+  // WO-WC-SEC-02A: route every invoices / invoice_line_items DB access through the
+  // consolidated tenant-context helper, so both tenant GUCs (app.current_tenant_id +
+  // app.tenant_id) are set TRANSACTION-LOCAL (is_local=true, fail-closed) before any
+  // query runs and auto-clear at COMMIT/ROLLBACK. Mirrors the WC-SEC-01 service pattern.
+  // The explicit `WHERE tenant_id = $` predicates below are retained as defense-in-depth
+  // (RLS is not yet FORCEd on these tables — GUC necessary, not yet sufficient; GO-1).
+  async function withTenant(tenantId, fn) { return _withTenantShared(pool, tenantId, fn) }
 
   function err(message, status) {
     return Object.assign(new Error(message), { status })
@@ -86,9 +95,7 @@ function createInvoiceService(opts) {
 
     const invoiceId = crypto.randomUUID()
 
-    const client = await pool.connect()
-    try {
-      await client.query('BEGIN')
+    return withTenant(tenantId, async (client) => {
       const inv = await client.query(
         `INSERT INTO invoices
            (id, tenant_id, currency, subtotal, vat_rate, vat_amount, total, status, created_by, created_at)
@@ -104,14 +111,8 @@ function createInvoiceService(opts) {
         )
       }
       const lineItemsRows = await loadLineItems(client, invoiceId)
-      await client.query('COMMIT')
       return { ...inv.rows[0], line_items: lineItemsRows }
-    } catch (e) {
-      await client.query('ROLLBACK').catch(() => {})
-      throw e
-    } finally {
-      client.release()
-    }
+    })
   }
 
   /**
@@ -122,53 +123,37 @@ function createInvoiceService(opts) {
     if (!invoiceId) throw err('invoiceId is required', 422)
     if (!tenantId)  throw err('tenantId is required', 422)
 
-    const attempt = async () => {
-      const client = await pool.connect()
-      try {
-        await client.query('BEGIN')
-        const sel = await client.query(
-          `SELECT * FROM invoices WHERE id = $1 AND tenant_id = $2 FOR UPDATE`,
-          [invoiceId, tenantId]
-        )
-        if (sel.rows.length === 0) {
-          await client.query('ROLLBACK').catch(() => {})
-          throw err('invoice not found', 404)
-        }
-        const invoice = sel.rows[0]
-        if (invoice.status !== 'draft') {
-          await client.query('ROLLBACK').catch(() => {})
-          throw err('invoice is not in draft', 409)
-        }
+    const attempt = () => withTenant(tenantId, async (client) => {
+      const sel = await client.query(
+        `SELECT * FROM invoices WHERE id = $1 AND tenant_id = $2 FOR UPDATE`,
+        [invoiceId, tenantId]
+      )
+      if (sel.rows.length === 0) throw err('invoice not found', 404)
+      const invoice = sel.rows[0]
+      if (invoice.status !== 'draft') throw err('invoice is not in draft', 409)
 
-        // Per-tenant sequential number: count of invoices that have already been
-        // assigned a number (i.e. were issued at some point) + 1. We count by
-        // invoice_number IS NOT NULL rather than status = 'issued' so that an
-        // invoice voided *after* issuance still consumes its number — otherwise
-        // the next issuance would re-derive a taken number and collide.
-        const cnt = await client.query(
-          `SELECT COUNT(*)::int AS cnt FROM invoices WHERE tenant_id = $1 AND invoice_number IS NOT NULL`,
-          [tenantId]
-        )
-        const seq = Number(cnt.rows[0].cnt) + 1
-        const invoiceNumber = `INV-${tenantShort(tenantId)}-${pad4(seq)}`
+      // Per-tenant sequential number: count of invoices that have already been
+      // assigned a number (i.e. were issued at some point) + 1. We count by
+      // invoice_number IS NOT NULL rather than status = 'issued' so that an
+      // invoice voided *after* issuance still consumes its number — otherwise
+      // the next issuance would re-derive a taken number and collide.
+      const cnt = await client.query(
+        `SELECT COUNT(*)::int AS cnt FROM invoices WHERE tenant_id = $1 AND invoice_number IS NOT NULL`,
+        [tenantId]
+      )
+      const seq = Number(cnt.rows[0].cnt) + 1
+      const invoiceNumber = `INV-${tenantShort(tenantId)}-${pad4(seq)}`
 
-        const upd = await client.query(
-          `UPDATE invoices
-              SET status = 'issued', issued_at = now(), issued_by = $1, invoice_number = $2
-            WHERE id = $3 AND tenant_id = $4
-          RETURNING *`,
-          [issuedBy || null, invoiceNumber, invoiceId, tenantId]
-        )
-        const lineItemsRows = await loadLineItems(client, invoiceId)
-        await client.query('COMMIT')
-        return { ...upd.rows[0], line_items: lineItemsRows }
-      } catch (e) {
-        await client.query('ROLLBACK').catch(() => {})
-        throw e
-      } finally {
-        client.release()
-      }
-    }
+      const upd = await client.query(
+        `UPDATE invoices
+            SET status = 'issued', issued_at = now(), issued_by = $1, invoice_number = $2
+          WHERE id = $3 AND tenant_id = $4
+        RETURNING *`,
+        [issuedBy || null, invoiceNumber, invoiceId, tenantId]
+      )
+      const lineItemsRows = await loadLineItems(client, invoiceId)
+      return { ...upd.rows[0], line_items: lineItemsRows }
+    })
 
     try {
       return await attempt()
@@ -187,35 +172,21 @@ function createInvoiceService(opts) {
     if (!invoiceId) throw err('invoiceId is required', 422)
     if (!tenantId)  throw err('tenantId is required', 422)
 
-    const client = await pool.connect()
-    try {
-      await client.query('BEGIN')
+    return withTenant(tenantId, async (client) => {
       const sel = await client.query(
         `SELECT * FROM invoices WHERE id = $1 AND tenant_id = $2 FOR UPDATE`,
         [invoiceId, tenantId]
       )
-      if (sel.rows.length === 0) {
-        await client.query('ROLLBACK').catch(() => {})
-        throw err('invoice not found', 404)
-      }
+      if (sel.rows.length === 0) throw err('invoice not found', 404)
       const invoice = sel.rows[0]
-      if (invoice.status === 'void') {
-        await client.query('ROLLBACK').catch(() => {})
-        throw err('invoice is already void', 409)
-      }
+      if (invoice.status === 'void') throw err('invoice is already void', 409)
       const upd = await client.query(
         `UPDATE invoices SET status = 'void' WHERE id = $1 AND tenant_id = $2 RETURNING *`,
         [invoiceId, tenantId]
       )
       const lineItemsRows = await loadLineItems(client, invoiceId)
-      await client.query('COMMIT')
       return { ...upd.rows[0], line_items: lineItemsRows }
-    } catch (e) {
-      await client.query('ROLLBACK').catch(() => {})
-      throw e
-    } finally {
-      client.release()
-    }
+    })
   }
 
   /**
@@ -225,17 +196,15 @@ function createInvoiceService(opts) {
     if (!invoiceId) throw err('invoiceId is required', 422)
     if (!tenantId)  throw err('tenantId is required', 422)
 
-    const sel = await pool.query(
-      `SELECT * FROM invoices WHERE id = $1 AND tenant_id = $2`,
-      [invoiceId, tenantId]
-    )
-    if (sel.rows.length === 0) throw err('invoice not found', 404)
-    const items = await pool.query(
-      `SELECT id, invoice_id, description, qty, unit_amount, line_total
-         FROM invoice_line_items WHERE invoice_id = $1 ORDER BY id`,
-      [invoiceId]
-    )
-    return { ...sel.rows[0], line_items: items.rows }
+    return withTenant(tenantId, async (client) => {
+      const sel = await client.query(
+        `SELECT * FROM invoices WHERE id = $1 AND tenant_id = $2`,
+        [invoiceId, tenantId]
+      )
+      if (sel.rows.length === 0) throw err('invoice not found', 404)
+      const items = await loadLineItems(client, invoiceId)
+      return { ...sel.rows[0], line_items: items }
+    })
   }
 
   return { createInvoice, issueInvoice, voidInvoice, getInvoice }
