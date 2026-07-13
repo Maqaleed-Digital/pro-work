@@ -63,6 +63,8 @@ const { createAuthService }                 = require("./modules/auth/auth_servi
 const { createAuthRouter }                  = require("./api/auth_router")
 const { requireAuth, requireRole, requirePermission } = require("./modules/auth/auth_middleware")
 const { PERMISSIONS }                       = require("./modules/auth/rbac_policy")
+// SEC-FIX-WC-01: route-auth invariant helpers (public allowlist + server-derived tenant)
+const { isPublicApiRoute, isSensitiveApiPath, tenantForPrincipal } = require("./modules/auth/route_guard")
 // S40-G5: Employer onboarding
 const { createEmployerOnboardingRouter }    = require("./api/employer_onboarding_router")
 // S40-G6: Team invitations
@@ -1519,6 +1521,11 @@ const server = http.createServer(async (req, res) => {
 
     // S36-G2: AI governance routes — delegated to aiRouter before inline dispatch
     if (pathname.startsWith("/api/admin/ai/")) {
+      // SEC-FIX-WC-01: mandatory auth BEFORE body read / dispatch. Admin.authenticate
+      // accepts either a JWT principal or an admin-DB/bootstrap token, so both auth
+      // modes are preserved; anonymous requests are rejected here (fail closed).
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
       if (req._jwtPrincipal) {
         const perm = (req.method === "PATCH" || req.method === "POST") ? PERMISSIONS.APPROVE_AI : PERMISSIONS.VIEW_AI
         if (!requirePermission(res, { role: req._jwtPrincipal._rbacRole }, perm)) return
@@ -1532,6 +1539,9 @@ const server = http.createServer(async (req, res) => {
 
     // S36-G3: Nitaqat compliance routes — delegated before inline dispatch
     if (pathname.startsWith("/api/admin/compliance/nitaqat/")) {
+      // SEC-FIX-WC-01: mandatory auth before dispatch (JWT or admin-token); anon → 401.
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
       if (req._jwtPrincipal) {
         const perm = req.method === "POST" ? PERMISSIONS.MANAGE_COMPLIANCE : PERMISSIONS.VIEW_COMPLIANCE
         if (!requirePermission(res, { role: req._jwtPrincipal._rbacRole }, perm)) return
@@ -1545,6 +1555,9 @@ const server = http.createServer(async (req, res) => {
 
     // S36-G4: Occupation code compliance routes — delegated before inline dispatch
     if (pathname.startsWith("/api/admin/compliance/occupation-code/")) {
+      // SEC-FIX-WC-01: mandatory auth before dispatch (JWT or admin-token); anon → 401.
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
       if (req._jwtPrincipal) {
         if (!requirePermission(res, { role: req._jwtPrincipal._rbacRole }, PERMISSIONS.VIEW_COMPLIANCE)) return
       }
@@ -1557,6 +1570,9 @@ const server = http.createServer(async (req, res) => {
 
     // S36-G6: Command Center KPI route — delegated before inline dispatch
     if (pathname.startsWith("/api/admin/dashboard/")) {
+      // SEC-FIX-WC-01: mandatory auth before dispatch (JWT or admin-token); anon → 401.
+      const ap = Admin.authenticate(req)
+      if (!ap.ok) return failFromAdmin(res, ap)
       if (req._jwtPrincipal) {
         if (!requirePermission(res, { role: req._jwtPrincipal._rbacRole }, PERMISSIONS.VIEW_DASHBOARD)) return
       }
@@ -1681,7 +1697,10 @@ const server = http.createServer(async (req, res) => {
 
     // S37-G1: WPS Readiness Pack — early-exit before matchRoute
     if (pathname.startsWith("/api/onboarding/wps/")) {
-      if (req._jwtPrincipal && !requirePermission(res, { role: req._jwtPrincipal._rbacRole }, PERMISSIONS.MANAGE_PROBATION)) return
+      // SEC-FIX-WC-01: mandatory auth. Was conditional (perm only when a principal
+      // happened to be present) — anonymous callers reached the handler. Now anon → 401.
+      if (!req._jwtPrincipal) return fail(res, "UNAUTHORIZED", "authentication required", 401)
+      if (!requirePermission(res, { role: req._jwtPrincipal._rbacRole }, PERMISSIONS.MANAGE_PROBATION)) return
       const body = ["POST", "PATCH", "PUT"].includes(req.method)
         ? await readJson(req, res)
         : {}
@@ -1694,6 +1713,10 @@ const server = http.createServer(async (req, res) => {
 
     // S37-G6: Compliance Risk Screen — early-exit before matchRoute
     if (pathname.startsWith("/api/compliance/risk/")) {
+      // SEC-FIX-WC-01: this family previously had NO auth gate at all — anonymous
+      // callers could read compliance risk screens. Now mandatory auth → 401 anon.
+      if (!req._jwtPrincipal) return fail(res, "UNAUTHORIZED", "authentication required", 401)
+      if (!requirePermission(res, { role: req._jwtPrincipal._rbacRole }, PERMISSIONS.VIEW_COMPLIANCE)) return
       const url    = new URL(req.url, "http://localhost")
       const query  = Object.fromEntries(url.searchParams.entries())
       try {
@@ -1707,13 +1730,19 @@ const server = http.createServer(async (req, res) => {
     }
 
     // S38-G3: evidence pack routes — early exit
-    if (pathname.startsWith("/api/evidence/") && req._jwtPrincipal) {
+    // SEC-FIX-WC-01: mandatory auth for the WHOLE family (anon previously skipped the
+    // permission gate and reached the pack listing/export/router with a spoofable tenant).
+    if (pathname.startsWith("/api/evidence/")) {
+      if (!req._jwtPrincipal) return fail(res, "UNAUTHORIZED", "authentication required", 401)
       const perm = req.method === "POST" ? PERMISSIONS.MANAGE_EVIDENCE : PERMISSIONS.VIEW_EVIDENCE
       if (!requirePermission(res, { role: req._jwtPrincipal._rbacRole }, perm)) return
     }
     // S44-G7: PG-backed evidence pack listing and export
     if (_pgPool && pathname === "/api/evidence/packs" && req.method === "GET") {
-      const tenantId = resolveTenantId(req)
+      // SEC-FIX-WC-01: server-derived tenant only (auth is mandatory above). The
+      // x-tenant-id header and ?tenant_id query are NOT authoritative for this
+      // sensitive read; effective tenant comes from the JWT principal.
+      const tenantId = tenantForPrincipal(req)
       // WO-WC-SEC-01: route through the shared tenant helper. It sets app.tenant_id =
       // tenantUuid(tenantId) (the same md5-derived UUID this handler computed inline), so the
       // evidence_packs read is correctly scoped under FORCE RLS instead of relying on owner-bypass.
@@ -1727,7 +1756,8 @@ const server = http.createServer(async (req, res) => {
     const epExportMatch = pathname.match(/^\/api\/evidence\/packs\/([^/]+)\/export$/)
     if (_pgPool && epExportMatch && req.method === "POST") {
       const packId = epExportMatch[1]
-      const tenantId = resolveTenantId(req)
+      // SEC-FIX-WC-01: server-derived tenant only (auth mandatory above); selectors ignored.
+      const tenantId = tenantForPrincipal(req)
       // WO-WC-SEC-01: route the evidence_packs read through the shared tenant helper (sets
       // app.tenant_id = tenantUuid(tenantId), the same md5 UUID computed inline before) so it is
       // FORCE-RLS-scoped, not owner-bypassed.
@@ -1749,7 +1779,8 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (pathname.startsWith("/api/evidence/")) {
-      const tenantId = resolveTenantId(req)
+      // SEC-FIX-WC-01: server-derived tenant only (auth mandatory above); selectors ignored.
+      const tenantId = tenantForPrincipal(req)
       let body = null
       if (req.method === "POST") {
         body = await readJson(req, res)
@@ -1764,11 +1795,12 @@ const server = http.createServer(async (req, res) => {
     }
 
     // S38-G6 / S39-G6 wiring 4: PDPL DSR routes — real event bus
-    if (pathname.startsWith("/api/compliance/pdpl/") && req._jwtPrincipal) {
-      if (!requirePermission(res, { role: req._jwtPrincipal._rbacRole }, PERMISSIONS.VIEW_COMPLIANCE)) return
-    }
+    // SEC-FIX-WC-01: mandatory auth + server-derived tenant (anon previously skipped the
+    // permission gate and reached the DSR handler with a spoofable tenant).
     if (pathname.startsWith("/api/compliance/pdpl/")) {
-      const tenantId = resolveTenantId(req)
+      if (!req._jwtPrincipal) return fail(res, "UNAUTHORIZED", "authentication required", 401)
+      if (!requirePermission(res, { role: req._jwtPrincipal._rbacRole }, PERMISSIONS.VIEW_COMPLIANCE)) return
+      const tenantId = tenantForPrincipal(req)
       let body = null
       if (req.method === "POST") {
         body = await readJson(req, res)
@@ -1778,10 +1810,10 @@ const server = http.createServer(async (req, res) => {
     }
 
     // S39-G6 wiring 2: compliance dashboard (Nitaqat) endpoints
-    if (pathname.startsWith("/api/compliance/dashboard/") && req._jwtPrincipal) {
-      if (!requirePermission(res, { role: req._jwtPrincipal._rbacRole }, PERMISSIONS.VIEW_COMPLIANCE)) return
-    }
+    // SEC-FIX-WC-01: mandatory auth (anon previously skipped the permission gate).
     if (pathname.startsWith("/api/compliance/dashboard/")) {
+      if (!req._jwtPrincipal) return fail(res, "UNAUTHORIZED", "authentication required", 401)
+      if (!requirePermission(res, { role: req._jwtPrincipal._rbacRole }, PERMISSIONS.VIEW_COMPLIANCE)) return
       if (req.method === "GET") {
         if (pathname === "/api/compliance/dashboard/summary") {
           return ok(res, _complianceDashboard.getDashboardSummary())
@@ -1810,11 +1842,12 @@ const server = http.createServer(async (req, res) => {
       return fail(res, "NOT_FOUND", "Compliance dashboard route not found", 404)
     }
 
-    // S39-G4: fee transparency — public read + calculate endpoints
-    if (pathname.startsWith("/api/payments/fee-transparency/") && req._jwtPrincipal) {
-      if (!requirePermission(res, { role: req._jwtPrincipal._rbacRole }, PERMISSIONS.VIEW_PAYMENTS)) return
-    }
+    // S39-G4: fee transparency endpoints
+    // SEC-FIX-WC-01: mandatory auth (the "public read" comment was inaccurate — anon
+    // previously skipped the permission gate and reached the fee handler). Now anon → 401.
     if (pathname.startsWith("/api/payments/fee-transparency/")) {
+      if (!req._jwtPrincipal) return fail(res, "UNAUTHORIZED", "authentication required", 401)
+      if (!requirePermission(res, { role: req._jwtPrincipal._rbacRole }, PERMISSIONS.VIEW_PAYMENTS)) return
       let body = null
       if (req.method === "POST") {
         body = await readJson(req, res)
@@ -1824,10 +1857,10 @@ const server = http.createServer(async (req, res) => {
     }
 
     // S39-G6 Part 2: beta admin routes
-    if (pathname.startsWith("/admin/beta") && req._jwtPrincipal) {
-      if (!requirePermission(res, { role: req._jwtPrincipal._rbacRole }, PERMISSIONS.MANAGE_BETA)) return
-    }
+    // SEC-FIX-WC-01: mandatory auth (anon previously skipped the MANAGE_BETA gate).
     if (pathname.startsWith("/admin/beta")) {
+      if (!req._jwtPrincipal) return fail(res, "UNAUTHORIZED", "authentication required", 401)
+      if (!requirePermission(res, { role: req._jwtPrincipal._rbacRole }, PERMISSIONS.MANAGE_BETA)) return
       let body = null
       if (req.method === "POST" || req.method === "PUT" || req.method === "PATCH") {
         body = await readJson(req, res)
@@ -1836,6 +1869,17 @@ const server = http.createServer(async (req, res) => {
       return _betaRouter.handle(req, res, pathname, req.method, body)
     }
 
+    // ── SEC-FIX-WC-01 · default-deny net for sensitive /api families ─────────
+    // Defense in depth. Every governed-sensitive family has an explicit
+    // authenticated early-exit above and never reaches this point. This net
+    // guarantees that if any such early-exit is ever removed or reordered, a
+    // request under a sensitive prefix that is NOT on the explicit public
+    // allowlist still fails closed (401) instead of falling through to the
+    // general dispatch. isPublicApiRoute() is the single source of truth for
+    // what is public; anything sensitive-and-not-public requires a principal.
+    if (isSensitiveApiPath(pathname) && !isPublicApiRoute(pathname, req.method) && !req._jwtPrincipal) {
+      return fail(res, "UNAUTHORIZED", "authentication required", 401)
+    }
 
     const route = matchRoute(req.method || "GET", pathname)
     if (!route) return fail(res, "NOT_FOUND", "Route not found", 404)
