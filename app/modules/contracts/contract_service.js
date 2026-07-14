@@ -3,6 +3,14 @@
 const crypto = require('crypto')
 const { withTenant: _withTenantShared } = require('../../lib/persistence/with_tenant')
 const lifecycle = require('../../config/contracts/lifecycle_v1.json')
+// DL-VER-BPS-001: converge the two SIGNED paths. This service's SIGNED
+// completion is subordinated to the SINGLE governed both_party_signatures
+// guard owned by contract_state_machine (the mutually-executed completion is
+// the one authority-class emitter — no alternate unguarded authority path).
+// A guard violation fires the VERITAS governance-exception (event 6) — noop
+// transport by default, fire-and-forget — before the governed throw.
+const { assertBothPartySignatures } = require('../onboarding/contract_state_machine')
+const { emitGovernanceException } = require('../event_bus/veritas/guards')
 
 const TRANSITIONS     = lifecycle.transitions
 const TERMINAL        = new Set(lifecycle.terminal)
@@ -157,6 +165,30 @@ function createContractService(opts) {
 
     async transitionStatus(tenantId, contractId, newStatus, actorUserId, reasonOrPayload) {
       if (!newStatus) throw Object.assign(new Error('newStatus is required'), { status: 400 })
+
+      // ── DL-VER-BPS-001 completion-authority gate ─────────────────────────────
+      // SIGNED is only reachable from REVIEW (lifecycle_v1.json). Subordinate the
+      // SIGNED completion to the governed both_party_signatures guard so this
+      // path can no longer emit an off-ledger SIGNED without bilateral execution.
+      // Checked BEFORE the DB transaction so the governed throw never enters the
+      // withTenant rollback path. Individual signatures remain workflow/audit.
+      if (newStatus === 'SIGNED') {
+        const sigPayload = (reasonOrPayload && typeof reasonOrPayload === 'object') ? reasonOrPayload : {}
+        if (!sigPayload.both_party_signatures) {
+          // event 6 — policy violation (incomplete bilateral execution).
+          emitGovernanceException({
+            kind:       'policy',
+            guard:      'both_party_signatures',
+            fromState:  'REVIEW',
+            toState:    'SIGNED',
+            contractId,
+            tenantId,
+            actor:      { actor_type: 'HUMAN', actor_id: actorUserId || null },
+          })
+          // Governed single-source throw (contract_state_machine authority).
+          assertBothPartySignatures(sigPayload, 'REVIEW', 'SIGNED')
+        }
+      }
 
       return withTenant(tenantId, async (client) => {
         const c = await client.query('SELECT * FROM contracts WHERE id = $1', [contractId])

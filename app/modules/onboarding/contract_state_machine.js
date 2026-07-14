@@ -4,6 +4,11 @@ const crypto = require('crypto');
 const path   = require('path');
 const fs     = require('fs');
 
+// DL-VER-BPS-001 / DL-068 event 6: fire-and-forget VERITAS governance-exception
+// emit at guard-violation sites. Default transport is noop (zero behaviour
+// change); emit errors are swallowed and the original throw path is untouched.
+const { emitGovernanceException } = require('../event_bus/veritas/guards');
+
 const MAPPING = JSON.parse(
   fs.readFileSync(
     path.join(__dirname, '../../config/contracts/qiwa_field_mapping_v1.json'),
@@ -130,10 +135,26 @@ class InMemoryContractEventStore {
 
 // ── Guard validators ──────────────────────────────────────────────────────────
 
+/**
+ * assertBothPartySignatures — DL-VER-BPS-001 governed completion authority.
+ * This is the SINGLE source of the bilateral-signature completion gate.
+ * app/modules/contracts/contract_service.js imports this so its SIGNED
+ * transition is subordinated to the same guard (no alternate authority path).
+ */
+function assertBothPartySignatures(input, fromState, toState) {
+  if (!input || !input.both_party_signatures) {
+    throw transitionError(
+      `${fromState}→${toState} requires both_party_signatures: true`
+    );
+  }
+}
+
 function runGuards(guardNames, fromState, toState, contract, input) {
   for (const guard of (guardNames || [])) {
     switch (guard) {
       case 'qiwa_completeness': {
+        // Ordinary completeness validation — NOT a governance-exception (event 6)
+        // emit site per the guards.js scoping rule (business-rule rejection).
         const result = validateQiwaCompleteness(contract);
         if (!result.complete) {
           throw transitionError(
@@ -145,6 +166,17 @@ function runGuards(guardNames, fromState, toState, contract, input) {
       }
       case 'human_actor': {
         if (!input.actor || input.actor.actor_type !== 'HUMAN') {
+          // event 6 — execution-boundary violation (agent/non-human actor).
+          emitGovernanceException({
+            kind:          'execution_boundary',
+            guard:         'human_actor',
+            fromState, toState,
+            contractId:    contract.contract_id,
+            tenantId:      contract.tenant_id,
+            actor:         input.actor,
+            correlationId: input.correlation_id,
+            causationId:   input.causation_id,
+          });
           throw transitionError(
             `${fromState}→${toState} requires HUMAN actor — auto-transitions are not permitted`
           );
@@ -153,10 +185,19 @@ function runGuards(guardNames, fromState, toState, contract, input) {
       }
       case 'both_party_signatures': {
         if (!input.both_party_signatures) {
-          throw transitionError(
-            `${fromState}→${toState} requires both_party_signatures: true`
-          );
+          // event 6 — policy violation (incomplete bilateral execution).
+          emitGovernanceException({
+            kind:          'policy',
+            guard:         'both_party_signatures',
+            fromState, toState,
+            contractId:    contract.contract_id,
+            tenantId:      contract.tenant_id,
+            actor:         input.actor,
+            correlationId: input.correlation_id,
+            causationId:   input.causation_id,
+          });
         }
+        assertBothPartySignatures(input, fromState, toState);
         break;
       }
       case 'activation_date': {
@@ -297,6 +338,17 @@ function createContractStateMachine({ contractStore, eventStore, hooks }) {
 
     // ── 1. Terminal state check ──────────────────────────────────────────────
     if (TERMINAL_STATES.has(fromState)) {
+      // event 6 — policy violation (transition out of a terminal state).
+      emitGovernanceException({
+        kind:          'policy',
+        guard:         'terminal_state',
+        fromState, toState,
+        contractId:    contract.contract_id,
+        tenantId:      contract.tenant_id,
+        actor:         input.actor,
+        correlationId: input.correlation_id,
+        causationId:   input.causation_id,
+      });
       throw transitionError(
         `${fromState} is a terminal state — no further transitions are permitted`
       );
@@ -305,6 +357,17 @@ function createContractStateMachine({ contractStore, eventStore, hooks }) {
     // ── 2. Valid transition check ────────────────────────────────────────────
     const allowed = TRANSITIONS[fromState] || [];
     if (!allowed.includes(toState)) {
+      // event 6 — policy violation (illegal state-machine edge).
+      emitGovernanceException({
+        kind:          'policy',
+        guard:         'invalid_transition',
+        fromState, toState,
+        contractId:    contract.contract_id,
+        tenantId:      contract.tenant_id,
+        actor:         input.actor,
+        correlationId: input.correlation_id,
+        causationId:   input.causation_id,
+      });
       throw transitionError(
         `Invalid transition: ${fromState} → ${toState}. ` +
         `Allowed from ${fromState}: [${allowed.join(', ') || 'none'}]`
@@ -410,5 +473,6 @@ module.exports = {
   InMemoryContractEventStore,
   generateQiwaPayload,
   validateQiwaCompleteness,
+  assertBothPartySignatures,
   MAPPING,
 };

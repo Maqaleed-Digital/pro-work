@@ -1,0 +1,41 @@
+name: veritas-forwarder-gate
+
+# Authority: WORKCAPTAIN_INTEGRATION_BRIEF Sponsor Ruling (31 May 2026).
+# Gates the WorkCaptain→VERITAS forwarder on every PR / push to main.
+# Two assertions:
+#   1. Forwarder behaviour tests pass (eight-attribute contract, Mode-D,
+#      non-whitelisted events not forwarded, behaviour-preserving).
+#   2. The whitelist is EXACTLY the approved set (1/3/4). Silent additions
+#      are a leak risk per the Ruling; removals break gate coverage.
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: veritas-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  forwarder-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Whitelist exactness check
+        run: node scripts/veritas_whitelist_check.js
+
+      - name: Forwarder unit tests
+        run: node --test tests/event_bus.veritas_forwarder.test.js
+
+      - name: Governance-exception (event 6) unit tests
+        run: node --test tests/event_bus.veritas_guards.test.js

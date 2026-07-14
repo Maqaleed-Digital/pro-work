@@ -171,10 +171,27 @@ test('REVIEW→SIGNED: emits SIGNED event with HUMAN actor', async () => {
   const c = await svc.createContract('T1', 'OFF-1')
   pool._contracts.get(c.id).qiwa_field_completeness_pct = 100
   await svc.transitionStatus('T1', c.id, 'REVIEW', 'U1')
-  await svc.transitionStatus('T1', c.id, 'SIGNED', 'U1')
+  // DL-VER-BPS-001: SIGNED completion requires bilateral execution evidence.
+  await svc.transitionStatus('T1', c.id, 'SIGNED', 'U1', { both_party_signatures: true })
   const ev = Array.from(pool._events.values()).find(e => e.event_type === 'SIGNED')
   assert.ok(ev)
   assert.strictEqual(ev.actor_type, 'HUMAN')
+})
+
+test('REVIEW→SIGNED: DL-VER-BPS-001 blocks completion without both_party_signatures', async () => {
+  const pool = createMockPool()
+  const svc = createContractService({ pool })
+  const c = await svc.createContract('T1', 'OFF-1')
+  pool._contracts.get(c.id).qiwa_field_completeness_pct = 100
+  await svc.transitionStatus('T1', c.id, 'REVIEW', 'U1')
+  // No bilateral-signature evidence → governed guard rejects (single authority).
+  await assert.rejects(
+    () => svc.transitionStatus('T1', c.id, 'SIGNED', 'U1'),
+    /both_party_signatures/,
+  )
+  // No off-ledger SIGNED event was emitted by the alternate path.
+  const ev = Array.from(pool._events.values()).find(e => e.event_type === 'SIGNED')
+  assert.strictEqual(ev, undefined)
 })
 
 test('SIGNED→ACTIVATED: emits ACTIVATED event', async () => {
@@ -183,7 +200,8 @@ test('SIGNED→ACTIVATED: emits ACTIVATED event', async () => {
   const c = await svc.createContract('T1', 'OFF-1')
   pool._contracts.get(c.id).qiwa_field_completeness_pct = 100
   await svc.transitionStatus('T1', c.id, 'REVIEW', 'U1')
-  await svc.transitionStatus('T1', c.id, 'SIGNED', 'U1')
+  // DL-VER-BPS-001: SIGNED completion requires bilateral execution evidence.
+  await svc.transitionStatus('T1', c.id, 'SIGNED', 'U1', { both_party_signatures: true })
   await svc.transitionStatus('T1', c.id, 'ACTIVATED', 'U1')
   const ev = Array.from(pool._events.values()).find(e => e.event_type === 'ACTIVATED')
   assert.ok(ev)
