@@ -20,6 +20,11 @@
 
 const crypto = require('crypto')
 const { createEventPublisher, InMemoryEventStore } = require('../modules/event_bus/index')
+// DL-068 VERITAS forwarder — single composition-root wrap. The forwarding
+// publisher delegates to createEventPublisher (identical base behaviour) and
+// additionally ships whitelisted events to VERITAS via a noop transport
+// (zero behaviour change; DSR_* events are not whitelisted so nothing forwards).
+const { createVeritasForwardingPublisher } = require('../modules/event_bus/veritas_forwarder')
 
 // ── Shared event store (one per router instance) ──────────────────────────────
 
@@ -70,7 +75,7 @@ function createPdplRouter(opts) {
   opts = opts || {}
 
   const _store     = opts.store     || createPdplStore()
-  const _publisher = opts.publisher || createEventPublisher({ eventStore: _store.events })
+  const _publisher = opts.publisher || createVeritasForwardingPublisher({ eventStore: _store.events })
 
   // Helper: publish PDPL event with standard envelope
   async function emit(eventType, aggregateId, tenantId, payload) {

@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://maqaleed.ai/schemas/veritas/divergence-event/v1.json",
+  "title": "VERITAS Divergence Event",
+  "description": "Eight-attribute event contract per V1.1.1.1 §3.2.3. Vendored verbatim from VERITAS MVP. Sponsor Ruling 31 May 2026: do NOT hand-reimplement; this file is the single contract source for the WorkCaptain adapter. Switch to a published VERITAS package dependency when available; remove this vendored copy then.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_id",
+    "event_timestamp",
+    "source_platform",
+    "classification",
+    "consent_state",
+    "outcome",
+    "event_class",
+    "mode"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "description": "Idempotency key (UUIDv4 recommended). Dedup on at-least-once delivery.",
+      "minLength": 8
+    },
+    "event_timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC. Immutable."
+    },
+    "source_platform": {
+      "type": "string",
+      "description": "Originating platform backend identifier.",
+      "enum": ["prowork", "credito", "societa", "s2ppro", "myveticare", "veritas", "aispm"]
+    },
+    "destination_platform": {
+      "type": ["string", "null"],
+      "description": "Destination backend id for cross-platform flows; null otherwise.",
+      "enum": ["prowork", "credito", "societa", "s2ppro", "myveticare", "veritas", "aispm", null]
+    },
+    "counterparty_ref": {
+      "type": ["string", "null"],
+      "description": "Counterparty-of-reference identity where applicable; null where N/A."
+    },
+    "classification": {
+      "type": "string",
+      "enum": ["Public", "Internal", "Restricted", "Confidential"]
+    },
+    "consent_state": {
+      "type": "string",
+      "enum": ["granted", "not_applicable", "fail_closed"]
+    },
+    "field_set": {
+      "type": ["object", "null"],
+      "description": "Schema reference + list of fields transmitted.",
+      "properties": {
+        "schema_ref": { "type": "string" },
+        "fields": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "outcome": {
+      "type": "string",
+      "enum": ["delivered", "blocked", "sla_fail_closed", "classification_breach_prevented"]
+    },
+    "event_class": {
+      "type": "string",
+      "enum": [
+        "workflow_execution",
+        "agent_decision",
+        "cross_platform_signal",
+        "divergence_detection",
+        "configuration",
+        "consent_state_transition"
+      ]
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["A", "D"],
+      "description": "Mode-D events emit to VERITAS only; Mode-A regulated-provenance events additionally write to the CERTUS Trust Ledger. Mode-D MUST NOT write to Trust Ledger."
+    },
+    "severity": {
+      "type": ["string", "null"],
+      "enum": ["Critical", "High", "Medium", "Low", null],
+      "description": "Set by the severity classifier at the classify step; null before classification."
+    },
+    "provenance": {
+      "type": ["object", "null"],
+      "description": "Mode-D-tagged provenance metadata; agent identity + version where relevant.",
+      "properties": {
+        "mode_d_tagged": { "type": "boolean" },
+        "agent_identity": { "type": ["string", "null"] },
+        "agent_version": { "type": ["string", "null"] }
+      }
+    },
+    "payload": {
+      "type": ["object", "null"],
+      "description": "Event-class-specific body."
+    }
+  }
+}
