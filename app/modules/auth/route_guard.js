@@ -77,6 +77,17 @@ const SENSITIVE_API_PREFIXES = [
   '/api/compliance/pdpl/',
   '/api/compliance/dashboard/',
   '/api/payments/fee-transparency/',
+  // SEC-WC-02 — confirmed-exposure families added to the default-deny net.
+  // No trailing slash: the family root (e.g. GET/POST /api/wos, /api/jobs,
+  // /api/contracts/intent) has no sub-path, so the prefix must match the root
+  // AND its children. This is defense-in-depth ONLY — it makes an anonymous
+  // request under these families fail closed (401) even if a per-handler gate is
+  // ever removed. It is NOT a substitute for the per-handler tenant authorization
+  // in server.js (WOS membership derivation, contracts/intent auth gate, jobs
+  // production-disable).
+  '/api/jobs',
+  '/api/wos',
+  '/api/contracts',
 ]
 
 /**
@@ -106,10 +117,41 @@ function tenantForPrincipal(req) {
   return null
 }
 
+/**
+ * SEC-WC-02 — authorize a tenant-gated request (e.g. every /api/wos/* route).
+ *
+ * The ONLY authoritative tenant is the authenticated principal's membership
+ * (tenantForPrincipal). A caller-supplied selector — x-tenant-id header,
+ * ?tenant_id query, or any request-body tenant field — is NEVER authoritative;
+ * it is at most a REQUESTED scope that must equal the member tenant.
+ *
+ *   no principal                      → { ok:false, status:401, code:'UNAUTHORIZED' }
+ *   principal + no selector           → { ok:true,  tenant:<member> }
+ *   principal + selector === member   → { ok:true,  tenant:<member> }  (requested scope allowed)
+ *   principal + selector !== member   → { ok:false, status:403, code:'FORBIDDEN' }  (non-member / spoof)
+ *
+ * The returned tenant is what the handler MUST scope to; a cross-tenant read is
+ * therefore impossible because the handler never receives a foreign tenant id.
+ *
+ * @param {object} req  — carries req._jwtPrincipal
+ * @param {string|null|undefined} requestedSelector — raw client-supplied selector (header/query)
+ * @returns {{ok:true, tenant:string} | {ok:false, status:number, code:string}}
+ */
+function authorizeTenantScope(req, requestedSelector) {
+  const member = tenantForPrincipal(req)
+  if (!member) return { ok: false, status: 401, code: 'UNAUTHORIZED' }
+  const requested = requestedSelector != null ? String(requestedSelector).trim() : ''
+  if (requested && requested !== member) {
+    return { ok: false, status: 403, code: 'FORBIDDEN' }
+  }
+  return { ok: true, tenant: member }
+}
+
 module.exports = {
   isPublicApiRoute,
   isSensitiveApiPath,
   tenantForPrincipal,
+  authorizeTenantScope,
   SENSITIVE_API_PREFIXES,
   PUBLIC_EXACT,
 }

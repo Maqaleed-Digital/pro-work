@@ -64,7 +64,7 @@ const { createAuthRouter }                  = require("./api/auth_router")
 const { requireAuth, requireRole, requirePermission } = require("./modules/auth/auth_middleware")
 const { PERMISSIONS }                       = require("./modules/auth/rbac_policy")
 // SEC-FIX-WC-01: route-auth invariant helpers (public allowlist + server-derived tenant)
-const { isPublicApiRoute, isSensitiveApiPath, tenantForPrincipal } = require("./modules/auth/route_guard")
+const { isPublicApiRoute, isSensitiveApiPath, tenantForPrincipal, authorizeTenantScope } = require("./modules/auth/route_guard")
 // S40-G5: Employer onboarding
 const { createEmployerOnboardingRouter }    = require("./api/employer_onboarding_router")
 // S40-G6: Team invitations
@@ -199,8 +199,13 @@ const UI_DIST = path.join(__dirname, "frontend", "dist")
 
 const HOST = process.env.APP_HOST || "127.0.0.1"
 const PORT = Number(process.env.APP_PORT || "3010")
-// S30: when false (default), WOS write endpoints (POST/PATCH) require Bearer auth
-const WOS_PUBLIC_WRITE = process.env.WOS_PUBLIC_WRITE === "true"
+// S30: when false (default), WOS write endpoints (POST/PATCH) require Bearer auth.
+// SEC-WC-02 (R5): WOS_PUBLIC_WRITE can NEVER take effect in production. Even in
+// non-production it is now moot for anonymous callers because every /api/wos/*
+// route requires an authenticated principal before this flag is consulted (see the
+// WOS dispatch block); this line makes the production impossibility explicit and
+// testable so the flag can never re-open an anonymous audit-ledger write path.
+const WOS_PUBLIC_WRITE = process.env.WOS_PUBLIC_WRITE === "true" && process.env.NODE_ENV !== "production"
 
 // S35: security middleware
 const TRUSTED_PROXY = process.env.TRUSTED_PROXY === "1" || process.env.TRUSTED_PROXY === "true"
@@ -1592,6 +1597,16 @@ const server = http.createServer(async (req, res) => {
       return serveStatic(res, assetPath, types[ext] || "application/octet-stream")
     }
 
+    // SEC-WC-02 (R2) — /api/contracts/intent* is a GATE family. Require an
+    // authenticated principal on EVERY implementation path BEFORE any router
+    // selection, so protection does NOT depend on DATABASE_URL presence, router
+    // ordering, or the db-backed router shadowing the anonymous inline handlers.
+    // This runs whether _contractRouter is mounted (DATABASE_URL present) or the
+    // request falls through to the inline contracts.intent handlers (absent).
+    if (pathname === "/api/contracts/intent" || pathname.startsWith("/api/contracts/intent/")) {
+      if (!req._jwtPrincipal) return fail(res, "UNAUTHORIZED", "authentication required", 401)
+    }
+
     // S44: Contract routes — /api/contracts/*
     if (_contractRouter && pathname.startsWith("/api/contracts")) {
       let body = null
@@ -1869,6 +1884,20 @@ const server = http.createServer(async (req, res) => {
       return _betaRouter.handle(req, res, pathname, req.method, body)
     }
 
+    // ── SEC-WC-02 (R3) · /api/jobs is DEMO-ONLY → fail closed in production ───
+    // Jobs is an anonymous, in-memory demo surface (no tenant/auth seam). It must
+    // not exist in production: every method under /api/jobs returns the standard
+    // fail-closed 404 (as if the routes were never mounted), regardless of auth.
+    // In non-production the family remains available (enabled by the explicit
+    // non-production environment) but is still auth-gated by the default-deny net
+    // below — so the demo can never be anonymous either. A future db-backed
+    // implementation therefore cannot inherit the old anonymous behaviour.
+    if (pathname === "/api/jobs" || pathname.startsWith("/api/jobs/")) {
+      if (process.env.NODE_ENV === "production") {
+        return fail(res, "NOT_FOUND", "Route not found", 404)
+      }
+    }
+
     // ── SEC-FIX-WC-01 · default-deny net for sensitive /api families ─────────
     // Defense in depth. Every governed-sensitive family has an explicit
     // authenticated early-exit above and never reaches this point. This net
@@ -1893,7 +1922,10 @@ const server = http.createServer(async (req, res) => {
 
     // (JWT pre-auth block moved earlier — before all early-exit routes)
 
-    const tenantId = resolveTenantId(req)
+    // NOTE: `let` (not const) — the WOS dispatch block below overrides this with the
+    // authenticated principal's membership tenant (SEC-WC-02); every WOS handler
+    // returns, so the override never leaks to non-WOS dispatch.
+    let tenantId = resolveTenantId(req)
     const tenant = getTenantStore(tenantId)
 
     if (route.name === "health") return ok(res, { service: "pro-work", health: "ok", time: nowIso(), ...bootMeta() }, 200)
@@ -2091,10 +2123,37 @@ const server = http.createServer(async (req, res) => {
       return ok(res, updateContractIntent(ci, { status: "accepted" }), 200)
     }
 
-    // S30: enforce tenant registry on all WOS routes
+    // SEC-WC-02 (R1/R4/R5) — WOS is a GATE family on EVERY route, including all
+    // GET/read handlers and the non-/api /wos/evidence-events viewer UI (which the
+    // /api/wos default-deny net does not cover). This block is the authoritative
+    // per-handler control; the central net is only defense-in-depth.
     if (route.name.startsWith("wos.")) {
+      // (1) mandatory authenticated principal — anonymous reads/writes/UI → 401.
+      if (!req._jwtPrincipal) return fail(res, "UNAUTHORIZED", "authentication required", 401)
+
+      // (2)+(3)+(4) tenant derived SOLELY from authenticated membership. A caller-
+      // supplied selector (x-tenant-id header / ?tenant_id query) is only a REQUESTED
+      // scope, checked against membership; a mismatch (non-member / spoof) → 403.
+      // Request-body tenant fields are never consulted for authorization at all.
+      const requestedSelector = (req.headers && req.headers["x-tenant-id"]) || url.searchParams.get("tenant_id")
+      const scope = authorizeTenantScope(req, requestedSelector)
+      if (!scope.ok) {
+        return fail(
+          res,
+          scope.code,
+          scope.code === "FORBIDDEN" ? "tenant not permitted for authenticated principal" : "authentication required",
+          scope.status
+        )
+      }
+      // (5) override the request tenant with the authenticated membership tenant, so
+      // every WOS handler below scopes strictly to it — cross-tenant reads of worker
+      // PII / evidence / audit data are impossible (the handler never sees a foreign id).
+      tenantId = scope.tenant
+
       if (!(await requireTenantActive(res, tenantId))) return
-      // S30: auth gate for WOS writes when WOS_PUBLIC_WRITE=false (default)
+      // Retained write gate (now behind mandatory auth). WOS_PUBLIC_WRITE is forced
+      // false in production and, even in non-production, cannot enable anonymous
+      // writes because the principal check above already ran.
       if (!WOS_PUBLIC_WRITE && (req.method === "POST" || req.method === "PATCH")) {
         const ap = Admin.authenticate(req)
         if (!ap.ok) return failFromAdmin(res, ap)

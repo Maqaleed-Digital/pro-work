@@ -86,7 +86,11 @@ async function run() {
     }
     assert.strictEqual(isSensitiveApiPath('/api/identity/workers'), false)
     assert.strictEqual(isSensitiveApiPath('/api/health'), false)
-    assert.strictEqual(isSensitiveApiPath('/api/jobs'), false)
+    // SEC-WC-02: /api/jobs, /api/wos and /api/contracts are now governed-sensitive
+    // (added to the default-deny net). Was previously (vulnerably) unclassified.
+    assert.strictEqual(isSensitiveApiPath('/api/jobs'), true)
+    assert.strictEqual(isSensitiveApiPath('/api/wos/workers'), true)
+    assert.strictEqual(isSensitiveApiPath('/api/contracts/intent'), true)
   })
 
   // ── Test B: server-derived tenant — spoofed selectors are ignored ─────────
