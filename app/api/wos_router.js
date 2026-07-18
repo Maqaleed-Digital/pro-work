@@ -1,6 +1,22 @@
 'use strict';
 
 /**
+ * ⚠️ SEC-WC-02 — DO NOT MOUNT THIS ROUTER.
+ *
+ * app/api/wos_router.js is intentionally UNMOUNTED. It predates the SEC-WC-02
+ * WOS remediation and does NOT itself enforce the mandatory-auth /
+ * server-derived-membership tenant-isolation controls that app/server.js now
+ * applies to the /api/wos/* dispatch. Mounting it (or a `dispatch()` of it) would
+ * bypass those controls and re-open anonymous cross-tenant reads of worker PII,
+ * evidence and audit data (R1/R4).
+ *
+ * Before this file may be wired into server.js it MUST independently satisfy the
+ * same controls: authenticated principal on every route incl. reads; tenant from
+ * authenticated membership only (never x-tenant-id / ?tenant_id / body); non-member
+ * → 403; anonymous → 401. An architectural test (tests/security/sec_wc_02_dead_router.test.js)
+ * asserts server.js does not require/mount this module. Deletion is deferred to a
+ * later cleanup package (see SEC-WC-02-IMPLEMENTATION-REPORT.md §dead-router).
+ *
  * WOS Core API Router — Sprint A
  *
  * Pure route-dispatch module. No HTTP server dependency.
