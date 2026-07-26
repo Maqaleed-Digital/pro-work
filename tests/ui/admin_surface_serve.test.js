@@ -5,18 +5,19 @@
  *
  * Boots the actual app/server.js in a child process (NODE_ENV=test, no
  * DATABASE_URL, no JWT_SECRET) and drives it over HTTP, asserting the
- * two-surface contract the fix establishes:
+ * operational-surface contract the fix establishes:
  *
- *   /        → the LANDING entry (index.html, #landing-root)
  *   /admin   → the operational SPA entry (app.html, #app) — NOT the landing entry
- *   /assets/*→ the shared, content-hashed Vite build assets (both entries)
+ *   /assets/*→ the shared, content-hashed Vite build assets app.html needs
+ *   /        → UNCHANGED from origin/main (404 API NOT_FOUND envelope). The public
+ *              apex landing is deferred to a separate governed launch item; this PR
+ *              must NOT expose it.
  *
  * Root cause it locks against (regression): before the fix /admin served the
  * landing entry whose absolute /assets/* references were unmounted (only
- * /admin/assets/* existed) → JS 404 → empty skip-link shell; and / was unrouted.
- * This proves every asset referenced by BOTH surfaces resolves (non-404), the
- * correct entry is served on each surface, and the landing never reaches for
- * /admin/assets/*.
+ * /admin/assets/* existed) → JS 404 → empty skip-link shell. This proves the
+ * correct entry is served at /admin, every asset it references resolves (non-404),
+ * and / continues to return the exact origin/main NOT_FOUND behavior.
  *
  * Requires the UI to be built (app/frontend/dist). If dist is absent (a checkout
  * where `npm run build:ui` has not run) the suite SKIPs loudly rather than
@@ -92,13 +93,16 @@ async function run() {
   try {
     await waitForHealth()
 
-    // ── / serves the LANDING entry ───────────────────────────────────────────
+    // ── / retains origin/main behavior (apex NOT exposed by this PR) ─────────
+    // origin/main (348327f) baseline: 404, application/json, exact NOT_FOUND envelope.
+    const APEX_BODY = '{"ok":false,"error":{"code":"NOT_FOUND","message":"Route not found"}}'
     const root = await request('GET', '/')
-    assert.strictEqual(root.status, 200, `GET / expected 200, got ${root.status}`)
-    assert.match(root.headers['content-type'] || '', /text\/html/, 'GET / is HTML')
-    assert.match(root.body, /id="landing-root"/, 'GET / serves the landing entry (#landing-root)')
-    assert.doesNotMatch(root.body, /id="app"[ >]/, 'GET / must NOT be the app entry')
-    passed++; console.log('  ✓ GET /        → landing entry (#landing-root)')
+    assert.strictEqual(root.status, 404, `GET / expected 404 (origin/main baseline), got ${root.status}`)
+    assert.match(root.headers['content-type'] || '', /application\/json/, 'GET / is the JSON API envelope, not HTML')
+    assert.strictEqual(root.body.trim(), APEX_BODY, 'GET / body matches the origin/main NOT_FOUND envelope')
+    assert.doesNotMatch(root.body, /id="landing-root"/, 'GET / must NOT serve the landing entry')
+    assert.doesNotMatch(root.body, /<html/i, 'GET / must NOT serve any HTML document')
+    passed++; console.log('  ✓ GET /        → 404 NOT_FOUND (unchanged from origin/main; no landing)')
 
     // ── /admin serves the APP entry (NOT the landing) ────────────────────────
     const admin = await request('GET', '/admin')
@@ -114,17 +118,7 @@ async function run() {
     assert.match(adminSlash.body, /id="app"[ >]/, 'GET /admin/ serves the app entry')
     passed++; console.log('  ✓ GET /admin/  → app entry (consistent)')
 
-    // ── every asset referenced by the LANDING resolves; none under /admin/assets ─
-    const landingAssets = referencedAssets(root.body)
-    assert.ok(landingAssets.length >= 2, `landing references assets (found ${landingAssets.length})`)
-    for (const u of landingAssets) {
-      assert.ok(!u.startsWith('/admin/assets/'), `landing must not request ${u} (no /admin/assets/*)`)
-      const a = await request('GET', u)
-      assert.strictEqual(a.status, 200, `landing asset ${u} expected 200, got ${a.status}`)
-      passed++; console.log(`  ✓ landing asset resolves · ${u} → 200`)
-    }
-
-    // ── every asset referenced by the APP resolves ───────────────────────────
+    // ── every asset referenced by the APP resolves (shared /assets/* mount) ──
     const appAssets = referencedAssets(admin.body)
     assert.ok(appAssets.length >= 2, `app references assets (found ${appAssets.length})`)
     for (const u of appAssets) {
