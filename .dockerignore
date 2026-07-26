@@ -1,0 +1,8 @@
+# EC-001-3-IMG: keep the build context equal to a clean CI checkout so a local
+# `docker build .` reproduces exactly what CI builds. Excluding host node_modules
+# forces the deterministic in-image installs; excluding dist guarantees the served
+# frontend can ONLY come from the frontend-build stage (never a stale host build).
+**/node_modules
+**/dist
+.git
+.github
