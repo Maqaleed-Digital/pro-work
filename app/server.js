@@ -1604,20 +1604,19 @@ const server = http.createServer(async (req, res) => {
       return _dashboardRouter.handle(req, res, url, {})
     }
 
-    // S28 / EC-001-3: WorkCaptain surface serving. The multi-entry Vite build
-    // (frontend/vite.config.js, base:'/') emits two entries:
-    //   • landing (index.html, #landing-root) — public marketing surface → served at /
+    // S28 / EC-001-3: WorkCaptain operational-surface serving. The multi-entry
+    // Vite build (frontend/vite.config.js, base:'/') emits two entries:
     //   • app     (app.html,  #app)          — authenticated operational SPA → served at /admin
-    // Both reference /assets/* and share content-hashed chunks (e.g. one common
-    // mode_status_chip chunk serves both). Before this fix /admin served the
-    // LANDING entry whose /assets/* were unmounted (only /admin/assets/* existed)
-    // → JS 404 → empty skip-link shell; and / was unrouted (API NOT_FOUND). This
-    // wires each surface to its correct entry and mounts the shared /assets/*
-    // namespace. The app uses hash routing, so the document path stays /admin and
-    // absolute /assets/* references remain stable across nested navigation.
-    if (req.method === "GET" && pathname === "/") {
-      return serveStatic(res, path.join(UI_DIST, "index.html"), "text/html")
-    }
+    //   • landing (index.html, #landing-root) — public marketing surface, built but
+    //     intentionally NOT served here: the public apex is deferred to a separate
+    //     governed public-launch item, so GET / retains origin/main routing
+    //     (falls through to the general catch-all).
+    // Both entries reference /assets/* and share content-hashed chunks (one common
+    // mode_status_chip chunk). Before this fix /admin served the LANDING entry whose
+    // absolute /assets/* were unmounted (only /admin/assets/* existed) → JS 404 →
+    // empty skip-link shell. This serves the correct entry at /admin and mounts the
+    // shared /assets/* namespace app.html needs. The app uses hash routing, so the
+    // document path stays /admin and absolute /assets/* refs remain stable.
     if (req.method === "GET" && (pathname === "/admin" || pathname === "/admin/")) {
       return serveStatic(res, path.join(UI_DIST, "app.html"), "text/html")
     }
