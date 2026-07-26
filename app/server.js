@@ -1469,6 +1469,26 @@ function serveStatic(res, filePath, contentType) {
   }
 }
 
+// EC-001-3 — content-type map + traversal-contained asset serve for the Vite
+// build under UI_DIST. reqPath is a URL path rooted at the build (e.g.
+// "/assets/app-abc.js"); anything resolving outside UI_DIST is refused.
+const ASSET_TYPES = {
+  ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css",
+  ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg", ".gif": "image/gif", ".webp": "image/webp",
+  ".ico": "image/x-icon", ".woff": "font/woff", ".woff2": "font/woff2",
+  ".ttf": "font/ttf", ".json": "application/json", ".map": "application/json",
+}
+function serveAssetFromDist(res, reqPath) {
+  const root = path.resolve(UI_DIST)
+  const resolved = path.resolve(root, "." + reqPath)
+  if (resolved !== root && !resolved.startsWith(root + path.sep)) {
+    res.writeHead(404)
+    return res.end("Not found")
+  }
+  return serveStatic(res, resolved, ASSET_TYPES[path.extname(resolved)] || "application/octet-stream")
+}
+
 function wosSchedulerCtlSnapshot() {
   const tenants = {}
   for (const [tid, stats] of Object.entries(wosSchedulerCtl.tenantStats)) {
@@ -1584,17 +1604,30 @@ const server = http.createServer(async (req, res) => {
       return _dashboardRouter.handle(req, res, url, {})
     }
 
-    // S28: Admin UI static serve
-    if (req.method === "GET" &&
-        (pathname === "/admin" || pathname === "/admin/")) {
+    // S28 / EC-001-3: WorkCaptain surface serving. The multi-entry Vite build
+    // (frontend/vite.config.js, base:'/') emits two entries:
+    //   • landing (index.html, #landing-root) — public marketing surface → served at /
+    //   • app     (app.html,  #app)          — authenticated operational SPA → served at /admin
+    // Both reference /assets/* and share content-hashed chunks (e.g. one common
+    // mode_status_chip chunk serves both). Before this fix /admin served the
+    // LANDING entry whose /assets/* were unmounted (only /admin/assets/* existed)
+    // → JS 404 → empty skip-link shell; and / was unrouted (API NOT_FOUND). This
+    // wires each surface to its correct entry and mounts the shared /assets/*
+    // namespace. The app uses hash routing, so the document path stays /admin and
+    // absolute /assets/* references remain stable across nested navigation.
+    if (req.method === "GET" && pathname === "/") {
       return serveStatic(res, path.join(UI_DIST, "index.html"), "text/html")
     }
-
+    if (req.method === "GET" && (pathname === "/admin" || pathname === "/admin/")) {
+      return serveStatic(res, path.join(UI_DIST, "app.html"), "text/html")
+    }
+    if (req.method === "GET" && pathname.startsWith("/assets/")) {
+      return serveAssetFromDist(res, pathname)
+    }
+    // Back-compat: legacy /admin/assets/* mount, now redundant with /assets/*
+    // (kept so any pre-existing absolute /admin/assets/* reference still resolves).
     if (req.method === "GET" && pathname.startsWith("/admin/assets/")) {
-      const assetPath = path.join(UI_DIST, pathname.replace("/admin/", ""))
-      const ext = path.extname(assetPath)
-      const types = { ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png" }
-      return serveStatic(res, assetPath, types[ext] || "application/octet-stream")
+      return serveAssetFromDist(res, pathname.replace("/admin", ""))
     }
 
     // SEC-WC-02 (R2) — /api/contracts/intent* is a GATE family. Require an
