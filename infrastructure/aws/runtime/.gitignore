@@ -1,0 +1,8 @@
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfplan.*
+plan.out
+crash.log
+# .terraform.lock.hcl IS committed (pins provider versions for reproducible plan)
