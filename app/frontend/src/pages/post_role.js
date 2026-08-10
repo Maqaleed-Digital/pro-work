@@ -1,6 +1,8 @@
 // S43-G2: Post a Role — 4-step hiring requisition form
 import { apiPost, apiPatch, apiGet } from "../api.js"
 import { t } from "../locale.js"
+import { renderModeStatusChip } from "../components/mode_status_chip.js"
+import { renderAgentAttributionMarker } from "../components/agent_attribution_marker.js"
 
 const CONTRACT_TYPES = [
   { value: "FTE",           labelKey: "postRole.step1.fte" },
@@ -59,6 +61,8 @@ function renderStep1(el) {
   hText.appendChild(h1)
   hText.appendChild(sub)
   header.appendChild(hText)
+  // UX-001 (Addendum B Rule 2): hiring is Mode-D — advisory only. WC-REC per taxonomy.
+  header.appendChild(renderModeStatusChip({ mode: "D", capabilityName: "WC-REC" }))
   content.appendChild(header)
 
   const card = document.createElement("div")
@@ -154,6 +158,8 @@ function renderStep2(el) {
   h1.textContent = t("postRole.step2.title")
   hText.appendChild(h1)
   header.appendChild(hText)
+  // UX-001 (Addendum B Rule 2): hiring is Mode-D — advisory only. WC-REC per taxonomy.
+  header.appendChild(renderModeStatusChip({ mode: "D", capabilityName: "WC-REC" }))
   content.appendChild(header)
 
   const card = document.createElement("div")
@@ -227,6 +233,13 @@ function renderStep2(el) {
         sCard.style.cssText = "margin-top:var(--maq-space-2);padding:var(--maq-space-4)"
         sCard.innerHTML = `<div style="font-size:var(--maq-text-sm)"><strong>${t("postRole.step2.suggested")}:</strong> ${suggestion.code || suggestion.occupationCode || "—"}</div>
           <div style="font-size:var(--maq-text-xs);color:var(--maq-neutral-400)">${t("postRole.step2.confidence")}: ${suggestion.confidence || suggestion.confidenceScore || "—"}%</div>`
+
+        // UX-002 (UX-G2 §6): the occupation-code suggestion is AI-PRODUCED and must carry
+        // attribution. HITL pending — the customer has not yet accepted it via "use this".
+        sCard.appendChild(renderAgentAttributionMarker({
+          agent: { name: "WorkCaptain Occupation-Code Advisor", class: "platform-scoped", version: "v1.0.0", hitlStatus: "pending" },
+          variant: "badge",
+        }))
 
         const useBtn = document.createElement("button")
         useBtn.className = "btn btn-accent btn-sm"
@@ -307,6 +320,8 @@ function renderStep3(el) {
   h1.textContent = t("postRole.step3.title")
   hText.appendChild(h1)
   header.appendChild(hText)
+  // UX-001 (Addendum B Rule 2): hiring is Mode-D — advisory only. WC-REC per taxonomy.
+  header.appendChild(renderModeStatusChip({ mode: "D", capabilityName: "WC-REC" }))
   content.appendChild(header)
 
   const card = document.createElement("div")
@@ -413,6 +428,8 @@ function renderStep4(el) {
   h1.textContent = t("postRole.step4.title")
   hText.appendChild(h1)
   header.appendChild(hText)
+  // UX-001 (Addendum B Rule 2): hiring is Mode-D — advisory only. WC-REC per taxonomy.
+  header.appendChild(renderModeStatusChip({ mode: "D", capabilityName: "WC-REC" }))
   content.appendChild(header)
 
   const card = document.createElement("div")

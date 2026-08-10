@@ -1,6 +1,8 @@
 // S43-G5: Candidate Pipeline — Kanban board with AI ranking drawer
 import { apiGet, apiPost, apiPatch } from "../api.js"
 import { t } from "../locale.js"
+import { renderModeStatusChip } from "../components/mode_status_chip.js"
+import { renderAgentAttributionMarker } from "../components/agent_attribution_marker.js"
 
 const COLUMNS = [
   { key: "APPLIED",      labelKey: "candidates.col.applied",      color: "var(--maq-semantic-info)" },
@@ -54,6 +56,9 @@ async function render(el) {
   hText.appendChild(h1)
   hText.appendChild(sub)
   header.appendChild(hText)
+  // UX-001 (Addendum B Rule 2, mode per SURFACE): hiring is a Mode-D capability —
+  // advisory only. Same chip + capability code as compliance/employees (WC-REC).
+  header.appendChild(renderModeStatusChip({ mode: "D", capabilityName: "WC-REC" }))
 
   // Actions: requisition selector + rank button
   const actions = document.createElement("div")
@@ -246,6 +251,12 @@ function renderCard(app, content) {
     matchBadge.className = "badge badge-info"
     matchBadge.textContent = t("candidates.matchScore") + " " + Math.round(app.match_score) + "%"
     badges.appendChild(matchBadge)
+    // UX-002 (UX-G2 §6): match_score is AI-PRODUCED — it must never render unattributed.
+    // HITL pending: no human has confirmed this score at render time.
+    badges.appendChild(renderAgentAttributionMarker({
+      agent: { name: "WorkCaptain Candidate Match", class: "platform-scoped", version: "v1.0.0", hitlStatus: "pending" },
+      variant: "badge",
+    }))
   }
 
   if (app.eri_score != null) {
