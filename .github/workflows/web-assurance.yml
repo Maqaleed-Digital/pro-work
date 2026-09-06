@@ -1,0 +1,123 @@
+# Web Assurance — product CI adapter (v0.1.1 · OBSERVE/WARN · never blocking · Authority NONE)
+# Copy into a product repo as .github/workflows/web-assurance.yml. Product-specific values are the
+# three env lines below and the two files under assurance/ (surface.yaml, baseline.lock).
+#
+# What it does: on a Vercel-style deployment_status, a completed deploy workflow, or manual dispatch:
+#   controls (29 fixtures, no network) → validate manifest → check out the SEALED BASELINE from the
+#   central evidence branch and prove it is the pinned one (seal + run_id + SHA256SUMS digest) →
+#   read-only observation → seal the new run → verify → delta against the baseline → job summary.
+# What it never does: fail on findings (block_enabled=false), commit evidence into the product repo,
+# write any register, create issues, deploy, touch DNS, or carry credentials. Same-origin GETs only.
+# Delta semantics: KNOWN_FAIL = baseline debt (quiet) · NEW_FAIL/REGRESSION/CODES_CHANGED = attention ·
+#                  FIXED = improvement · NOT_EVALUABLE/VACUOUS = preserved, never coerced.
+
+name: web-assurance
+on:
+  workflow_dispatch:
+    inputs:
+      url_override: { description: "Observe this URL instead of the manifest URL (e.g. a preview)", required: false }
+  deployment_status: {}
+  workflow_run:
+    workflows: ["Production Deployment"]      # WorkCaptain-style deploy workflow; harmless where absent
+    types: [completed]
+
+env:
+  MWA_REPO: Waheebow/maqaleed-web-assurance   # central runner (source of truth)
+  MWA_TAG: v0.1.1                             # pinned immutable release of the runner
+  MWA_EVIDENCE_BRANCH: evidence/baselines-v1  # sealed baselines; the lock's digest is what pins, not the branch tip
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-assurance-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  assure:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success') ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout product (manifest + lock only are read)
+        uses: actions/checkout@v4
+
+      - name: Checkout central runner @ pinned tag
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.MWA_REPO }}
+          ref: ${{ env.MWA_TAG }}
+          path: .mwa
+
+      - name: Checkout sealed baselines (evidence branch)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.MWA_REPO }}
+          ref: ${{ env.MWA_EVIDENCE_BRANCH }}
+          path: .mwa-evidence
+
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+
+      - name: Install runner + browser
+        working-directory: .mwa
+        run: |
+          npm ci --ignore-scripts
+          npx playwright install --with-deps chromium
+
+      - name: Controls (no network) — hard stop if detectors do not fire as declared
+        working-directory: .mwa
+        run: node bin/mwa.js controls
+
+      - name: Resolve target + trigger
+        id: t
+        run: |
+          URL="${{ github.event.inputs.url_override }}"
+          TRIG="${{ github.event_name }}"
+          if [ "$TRIG" = "deployment_status" ]; then
+            [ -z "$URL" ] && URL="${{ github.event.deployment_status.environment_url }}"
+            case "${{ github.event.deployment.environment }}" in Production|production) TRIG=production-deploy;; *) TRIG=pr-preview;; esac
+          elif [ "$TRIG" = "workflow_run" ]; then TRIG=production-deploy; else TRIG=manual; fi
+          echo "url=$URL" >> "$GITHUB_OUTPUT"; echo "trigger=$TRIG" >> "$GITHUB_OUTPUT"
+
+      - name: Materialise manifest (URL override only for previews/dispatch)
+        run: |
+          cp assurance/surface.yaml /tmp/surface.yaml
+          if [ -n "${{ steps.t.outputs.url }}" ]; then
+            node -e "const y=require('./.mwa/node_modules/js-yaml');const fs=require('fs');const m=y.load(fs.readFileSync('/tmp/surface.yaml','utf8'));m.surface.url='${{ steps.t.outputs.url }}';fs.writeFileSync('/tmp/surface.yaml',y.dump(m))"
+          fi
+          node .mwa/bin/mwa.js validate /tmp/surface.yaml
+
+      - name: Prove the pinned baseline (seal + run_id + SHA256SUMS digest vs assurance/baseline.lock)
+        id: base
+        run: |
+          RUN_ID=$(node -e "console.log(JSON.parse(require('fs').readFileSync('assurance/baseline.lock','utf8')).run_id)")
+          DIR=".mwa-evidence/baselines/$RUN_ID"
+          test -d "$DIR" || { echo "::error::baseline $RUN_ID not present on $MWA_EVIDENCE_BRANCH"; exit 7; }
+          node .mwa/bin/mwa.js baseline-check --lock assurance/baseline.lock --dir "$DIR"
+          echo "dir=$DIR" >> "$GITHUB_OUTPUT"
+
+      - name: Observe (read-only) · seal · delta against the pinned baseline
+        run: |
+          node .mwa/bin/mwa.js run --manifest /tmp/surface.yaml --out assurance-runs \
+            --trigger "${{ steps.t.outputs.trigger }}" --commit-sha "${{ github.sha }}" \
+            --deployment-id "${{ github.event.deployment.id || github.event.workflow_run.id || github.run_id }}" \
+            --previous "${{ steps.base.outputs.dir }}"
+
+      - name: Verify the new seal (EVIDENCE-SEAL-GATE)
+        run: node .mwa/bin/mwa.js verify "$(ls -d assurance-runs/*/ | tail -1)"
+
+      - name: Surface the delta (annotations only — never fails the job while block_enabled=false)
+        run: |
+          D="$(ls -d assurance-runs/*/ | tail -1)delta.json"
+          node -e "const d=require('./$D');for(const r of d.attention)console.log('::warning title=web-assurance '+r.state+'::'+r.gate_id+' '+JSON.stringify(r.codes||''));for(const r of d.fixed)console.log('::notice title=web-assurance FIXED::'+r.gate_id);console.log('attention='+d.attention.length+' fixed='+d.fixed.length+' known_fail='+(d.summary.KNOWN_FAIL||0))"
+
+      - name: Upload sealed run (never committed to the product repo)
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-assurance-${{ steps.t.outputs.trigger }}-${{ github.run_id }}
+          path: assurance-runs/
+          retention-days: 90

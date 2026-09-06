@@ -1,0 +1,8 @@
+# surface #9 — workcaptain.ai (root JSON 404 since 30 Jun; /admin serves the controlled-beta intake form)
+surface: { id: workcaptain-admin, url: "https://workcaptain.ai/admin", class: product, site_class: null, owner: "WorkCaptain lane", register_ref: "#9", auth: public }
+capabilities: { bilingual: null, sends_mail: null, analytics_required: true, spa: true }
+locales: { default: en, roots: { en: "/admin" } }
+deep_route: null
+mail_domain: workcaptain.ai
+budgets: null
+assurance: { profile: web-product, triggers: [pr-preview, production-deploy, manual], known_findings: [SW-04, SW-05, SW-06] }

@@ -1,0 +1,10 @@
+{
+  "surface_id": "workcaptain-admin",
+  "run_id": "workcaptain-admin-20260905T153144Z",
+  "sha256sums_sha256": "d61101f81d9236ece447fe4732deb21a655251f420976d8cfb740fe228614fe4",
+  "evidence_repo": "Waheebow/maqaleed-web-assurance",
+  "evidence_branch": "evidence/baselines-v1",
+  "evidence_ref": null,
+  "pinned_by": "H-2 live baseline, 5 Sep 2026 15:31:44Z, MAQ-WAAP-001 V0.1",
+  "rule": "Re-pinning requires a new sealed baseline run, a Sponsor/lane decision, and a commit that changes this file — never a CI side effect."
+}
