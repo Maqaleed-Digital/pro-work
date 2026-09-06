@@ -33,3 +33,6 @@ app/data/analytics_snapshots.json
 *.tfplan
 infrastructure/gcp/env/dev/dev.tfvars
 infrastructure/gcp/local_backend_override.tf
+
+# web-assurance: CI run output is uploaded as an artifact, never committed
+assurance-runs/
