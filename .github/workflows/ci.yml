@@ -65,6 +65,26 @@ jobs:
         working-directory: .
         run: node scripts/workflow_injection_guard.js
 
+      # actionlint runs alongside the bespoke guard, not instead of it. PR #70's
+      # description claimed both already ran here; only the guard did. Corrected.
+      - name: Install actionlint
+        working-directory: .
+        run: |
+          VER=1.7.7
+          curl -sSL "https://github.com/rhysd/actionlint/releases/download/v${VER}/actionlint_${VER}_linux_amd64.tar.gz" \
+            | tar -xz -C /usr/local/bin actionlint
+          actionlint --version
+
+      - name: actionlint
+        working-directory: .
+        run: actionlint
+
+      # Proves actionlint's injection check is switched on, and re-measures the
+      # documented coverage gap that justifies keeping the bespoke guard.
+      - name: Scanner positive controls — actionlint
+        working-directory: .
+        run: node scripts/scanner_positive_controls.js actionlint
+
       - name: Gate assertion suites — fails on zero tests run
         working-directory: .
         run: node scripts/ci_gate_tests.js

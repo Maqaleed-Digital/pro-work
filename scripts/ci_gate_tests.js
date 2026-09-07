@@ -39,11 +39,12 @@ const GATE_TESTS = [
   'tests/security/workflow_injection.test.js',
   'tests/security/invoices_rls_migration.test.js',
   'tests/security/csp_origin_parity.test.js',
+  'tests/security/scanner_positive_controls.test.js',
 ];
 
 // A run reporting fewer than this many assertions is treated as broken wiring
 // rather than a pass, regardless of what the exit code says.
-const MIN_EXPECTED_TESTS = 170;
+const MIN_EXPECTED_TESTS = 185;
 
 function fail(msg) {
   console.error(`\nERROR: ${msg}`);
