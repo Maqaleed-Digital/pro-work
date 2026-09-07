@@ -37,6 +37,7 @@ const GATE_TESTS = [
   'tests/security/route_guard.test.js',
   'tests/security/route_auth_dispatch.test.js',
   'tests/security/workflow_injection.test.js',
+  'tests/security/workflow_trust_boundary.test.js',
   'tests/security/invoices_rls_migration.test.js',
   'tests/security/csp_origin_parity.test.js',
   'tests/security/scanner_positive_controls.test.js',
@@ -44,7 +45,11 @@ const GATE_TESTS = [
 
 // A run reporting fewer than this many assertions is treated as broken wiring
 // rather than a pass, regardless of what the exit code says.
-const MIN_EXPECTED_TESTS = 185;
+// Raised 185 -> 211 when tests/security/workflow_trust_boundary.test.js (26 assertions) joined
+// the manifest. The floor moves with the manifest, preserving the same 7-assertion slack the
+// previous value carried; leaving it at 185 would have let the new suite disappear from a run
+// without the floor noticing.
+const MIN_EXPECTED_TESTS = 211;
 
 function fail(msg) {
   console.error(`\nERROR: ${msg}`);

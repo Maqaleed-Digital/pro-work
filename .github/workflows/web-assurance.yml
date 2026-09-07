@@ -2,23 +2,43 @@
 # Copy into a product repo as .github/workflows/web-assurance.yml. Product-specific values are the
 # three env lines below and the two files under assurance/ (surface.yaml, baseline.lock).
 #
-# What it does: on a Vercel-style deployment_status, a completed deploy workflow, or manual dispatch:
+# What it does: on a completed trusted "Production Deployment" run, or on manual dispatch:
 #   controls (29 fixtures, no network) → validate manifest → check out the SEALED BASELINE from the
 #   central evidence branch and prove it is the pinned one (seal + run_id + SHA256SUMS digest) →
 #   read-only observation → seal the new run → verify → delta against the baseline → job summary.
+#
+# CREDENTIALS — read this before editing the trigger surface.
+# This workflow carries NO product or runtime credential: it cannot deploy, cannot touch DNS, and
+# holds no cloud, database or application secret. It carries exactly ONE credential, MWA_READ_TOKEN:
+# a read-only (Contents: Read), single-repository token whose only purpose is checking out the
+# PRIVATE central assurance repository Waheebow/maqaleed-web-assurance. The product repository is
+# PUBLIC and the central repository is PRIVATE under a different owner, so the repository-scoped
+# GITHUB_TOKEN cannot read it — that is the whole reason this credential exists. It is referenced by
+# the two central checkouts and by nothing else, is never written into the git config
+# (persist-credentials: false), and grants no write authority anywhere.
+#
+# Whether that token is REACHABLE is a property of the TRIGGER SURFACE, not of job boundaries. A job
+# is not a secret sandbox; the only durable guarantee is that an untrusted event cannot cause the job
+# to run at all. deployment_status is therefore absent from `on:` below — it had produced zero Web
+# Assurance runs in this repository, so removing it costs nothing and makes it structurally incapable
+# of reaching this token. The remaining automatic path, workflow_run, is constrained in the job `if:`
+# to a success-concluded "Production Deployment" whose head repository is this repository and whose
+# head branch is main; a fork run or a non-main run never starts the job.
+#
 # What it never does: fail on findings (block_enabled=false), commit evidence into the product repo,
-# write any register, create issues, deploy, touch DNS, or carry credentials. Same-origin GETs only.
+# write any register, create issues, deploy, touch DNS, or carry a product credential. Same-origin
+# GETs only.
 # Delta semantics: KNOWN_FAIL = baseline debt (quiet) · NEW_FAIL/REGRESSION/CODES_CHANGED = attention ·
 #                  FIXED = improvement · NOT_EVALUABLE/VACUOUS = preserved, never coerced.
-
 name: web-assurance
 on:
   workflow_dispatch:
     inputs:
       url_override: { description: "Observe this URL instead of the manifest URL (e.g. a preview)", required: false }
-  deployment_status: {}
   workflow_run:
-    workflows: ["Production Deployment"]      # WorkCaptain-style deploy workflow; harmless where absent
+    # Exact live upstream workflow name (.github/workflows/production.yml). This trigger-level
+    # filter already existed: a workflow named anything else cannot start this workflow at all.
+    workflows: ["Production Deployment"]
     types: [completed]
 
 env:
@@ -35,31 +55,65 @@ concurrency:
 
 jobs:
   assure:
+    # Reachability of MWA_READ_TOKEN is decided HERE and in `on:` above — nowhere else.
+    #   workflow_dispatch — a human holding write access to this repository. Diagnostic path only:
+    #     it can prove the central checkout works, but it is not an automatic witness.
+    #   workflow_run     — must be a SUCCESS-concluded "Production Deployment" whose head repository
+    #     is this repository and whose head branch is main. head_repository.full_name is what
+    #     excludes a fork: on a fork-originated run that field names the fork while
+    #     github.repository still names this repository, so the equality fails. Field names verified
+    #     against the live run payload, not assumed.
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success') ||
-      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_repository.full_name == github.repository &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.name == 'Production Deployment')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - name: Checkout product (manifest + lock only are read)
-        uses: actions/checkout@v4
+      # Boolean only. `secrets.X != ''` yields the string "true"/"false" — the secret itself is
+      # never expanded, never printed, never written to disk, never placed in a diagnostic.
+      - name: Central read credential present (boolean only — the value is never expanded)
+        env:
+          MWA_TOKEN_PRESENT: ${{ secrets.MWA_READ_TOKEN != '' }}
+        run: |
+          set -eu
+          if [ "${MWA_TOKEN_PRESENT:-false}" != "true" ]; then
+            echo "::error::MWA_READ_TOKEN is not configured on this repository."
+            echo "::error::${MWA_REPO} is PRIVATE and under a different owner, so the"
+            echo "::error::repository-scoped GITHUB_TOKEN cannot read it. Configure a fine-grained,"
+            echo "::error::single-repository, Contents:Read token as the secret MWA_READ_TOKEN."
+            exit 6
+          fi
+          echo "MWA_READ_TOKEN: present"
 
+      - name: Checkout product (manifest + lock only are read)
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # actions/checkout@v4
+
+      # PRIVATE cross-repository read. This step and the next are the ONLY places MWA_READ_TOKEN is
+      # referenced. persist-credentials: false keeps it out of the checkout's git config, so no
+      # later step inherits it.
       - name: Checkout central runner @ pinned tag
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # actions/checkout@v4
         with:
           repository: ${{ env.MWA_REPO }}
           ref: ${{ env.MWA_TAG }}
           path: .mwa
+          token: ${{ secrets.MWA_READ_TOKEN }}
+          persist-credentials: false
 
       - name: Checkout sealed baselines (evidence branch)
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # actions/checkout@v4
         with:
           repository: ${{ env.MWA_REPO }}
           ref: ${{ env.MWA_EVIDENCE_BRANCH }}
           path: .mwa-evidence
+          token: ${{ secrets.MWA_READ_TOKEN }}
+          persist-credentials: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # actions/setup-node@v4
         with: { node-version: 20 }
 
       - name: Install runner + browser
@@ -187,7 +241,7 @@ jobs:
           DELTA_PATH="$D" node -e "const d=require(require('path').resolve(process.env.DELTA_PATH));for(const r of d.attention)console.log('::warning title=web-assurance '+r.state+'::'+r.gate_id+' '+JSON.stringify(r.codes||''));for(const r of d.fixed)console.log('::notice title=web-assurance FIXED::'+r.gate_id);console.log('attention='+d.attention.length+' fixed='+d.fixed.length+' known_fail='+(d.summary.KNOWN_FAIL||0))"
 
       - name: Upload sealed run (never committed to the product repo)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # actions/upload-artifact@v4
         with:
           name: web-assurance-${{ steps.t.outputs.trigger }}-${{ github.run_id }}
           path: assurance-runs/
