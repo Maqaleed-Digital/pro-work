@@ -110,3 +110,37 @@ describe('Suite 3: the standard is wired into CI, not just described', () => {
     assert.ok(y.includes('actionlint'));
   });
 });
+
+describe('Suite 4: the commit allowlist stays small and justified', () => {
+  const conf = () => fs.readFileSync(path.join(ROOT, '.gitleaks.toml'), 'utf8');
+
+  it('at most one commit is allowlisted', () => {
+    const block = (conf().match(/commits\s*=\s*\[([\s\S]*?)\]/) || [])[1] || '';
+    const entries = block.split(',').map(x => x.trim()).filter(x => /^"[0-9a-f]{40}"$/.test(x));
+    assert.ok(entries.length <= 1,
+      `commit allowlist has grown to ${entries.length} entries — each one waives review of a whole commit`);
+  });
+
+  it('every allowlisted commit is justified in a comment naming why nothing narrower worked', () => {
+    const c = conf();
+    const block = (c.match(/commits\s*=\s*\[([\s\S]*?)\]/) || [])[1] || '';
+    const shas = (block.match(/[0-9a-f]{40}/g) || []);
+    for (const sha of shas) {
+      assert.ok(c.includes(sha.slice(0, 7)),
+        `allowlisted commit ${sha.slice(0, 7)} must be explained by short-sha in a comment`);
+    }
+    if (shas.length > 0) {
+      assert.match(c, /narrowest option/i,
+        'a commit allowlist entry must state why no narrower entry was possible');
+      assert.match(c, /SYNTHETIC/i,
+        'a commit allowlist entry must state what was reviewed');
+    }
+  });
+
+  it('no path or regex allowlist blinds the harness file on live branches', () => {
+    const c = conf();
+    assert.ok(!/scanner_positive_controls/.test(
+      (c.match(/paths\s*=\s*\[([\s\S]*?)\]/) || [])[1] || ''),
+      'the harness file must never be path-allowlisted — it is the file that proves the scanner works');
+  });
+});
