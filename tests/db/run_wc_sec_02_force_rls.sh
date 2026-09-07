@@ -29,10 +29,25 @@ step "bootstrap fixture"                     "$DIR/wc_sec_02_force_rls_invoices.
 step "migration: force_rls_invoices"         "$MIG/20260625_wc_sec_02_force_rls_invoices.sql"   || exit 1
 # idempotency: applying the migration a second time must be a clean no-op
 step "migration re-apply (idempotency)"      "$MIG/20260625_wc_sec_02_force_rls_invoices.sql"   || exit 1
+# WC002-04 T3: the privilege half of the same boundary, applied twice for idempotency.
+step "migration: invoices grant boundary"    "$MIG/20260907_wc002_04_invoices_grant_boundary.sql" || exit 1
+step "grant boundary re-apply (idempotency)" "$MIG/20260907_wc002_04_invoices_grant_boundary.sql" || exit 1
+# SUFFICIENCY: strip the fixture's wc_app grants, then let the migration be the only
+# thing that can restore them. Without this, the grant assertions could be satisfied
+# by the bootstrap fixture rather than by the migration under test.
+step "strip fixture grants (sufficiency)"    "$DIR/wc002_04_grant_sufficiency.setup.sql"        || exit 1
+step "grant boundary restores the grants"    "$MIG/20260907_wc002_04_invoices_grant_boundary.sql" || exit 1
 # assertions: capture output so the PASS line shows
 if psql_f < "$DIR/wc_sec_02_force_rls_invoices.assertions.sql" >/tmp/wcsec02_assert.out 2>&1; then
-  grep -q ALL_ASSERTIONS_PASS /tmp/wcsec02_assert.out && { echo "assertions ... OK"; grep ALL_ASSERTIONS_PASS /tmp/wcsec02_assert.out; exit 0; }
-  echo "assertions ... UNCLEAR"; cat /tmp/wcsec02_assert.out; exit 1
+  grep -q ALL_ASSERTIONS_PASS /tmp/wcsec02_assert.out || { echo "assertions ... UNCLEAR"; cat /tmp/wcsec02_assert.out; exit 1; }
+  echo "assertions (RLS) ... OK"; grep ALL_ASSERTIONS_PASS /tmp/wcsec02_assert.out
 else
-  echo "assertions ... FAIL"; cat /tmp/wcsec02_assert.out; exit 1
+  echo "assertions (RLS) ... FAIL"; cat /tmp/wcsec02_assert.out; exit 1
+fi
+
+if psql_f < "$DIR/wc002_04_invoices_grant_boundary.assertions.sql" >/tmp/wc00204_assert.out 2>&1; then
+  grep -q ALL_ASSERTIONS_PASS /tmp/wc00204_assert.out || { echo "assertions ... UNCLEAR"; cat /tmp/wc00204_assert.out; exit 1; }
+  echo "assertions (grants) ... OK"; grep ALL_ASSERTIONS_PASS /tmp/wc00204_assert.out; exit 0
+else
+  echo "assertions (grants) ... FAIL"; cat /tmp/wc00204_assert.out; exit 1
 fi
