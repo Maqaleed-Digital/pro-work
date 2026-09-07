@@ -108,13 +108,44 @@ function renderAccessDenied(el, key, front) {
   el.appendChild(box)
 }
 
+// WC-UX-NAV-001 — replace, do not push.
+//
+// Assigning location.hash PUSHES a history entry. For a REDIRECT that is wrong: it
+// leaves the redirecting route sitting behind the user, so Back re-enters it, the
+// redirect fires again, and the user bounces. Mashing Back to escape the bounce is
+// how a visitor ends up past /admin on the governed JSON-404 apex.
+//
+// replaceState swaps the current entry instead of stacking one, so a redirect costs
+// no history. It does not fire hashchange, so the caller re-renders explicitly.
+// The intentionally non-public apex policy is untouched by this — nothing here
+// changes what GET / returns.
+export function replaceRoute(key) {
+  if (typeof window === "undefined") return
+  const target = "#" + key
+  if (window.history && typeof window.history.replaceState === "function") {
+    window.history.replaceState(null, "", target)
+    navigate(key, false)
+  } else {
+    // No replaceState (very old browsers): fall back to a push rather than break
+    // navigation entirely.
+    window.location.hash = key
+  }
+}
+
 function navigate(name, pushState = true) {
   const front = getFront()
   const requested = ROUTES[name] ? name : DEFAULT
   // SURFACE-ACCESS GUARD (routing-level): a front that cannot reach a route hits a wall here,
   // even on a direct URL (#governance) — not merely a hidden nav link.
   if (!canAccessRoute(front, requested)) {
-    if (pushState) location.hash = DEFAULT
+    // A denied route is a redirect, not a destination — replace so Back does not
+    // return the user to the wall they just hit.
+    if (pushState && typeof window !== "undefined"
+        && window.history && typeof window.history.replaceState === "function") {
+      window.history.replaceState(null, "", "#" + DEFAULT)
+    } else if (pushState) {
+      location.hash = DEFAULT
+    }
     renderNav(DEFAULT)
     if (_pageEl) { _pageEl.innerHTML = ""; renderAccessDenied(_pageEl, requested, front) }
     return

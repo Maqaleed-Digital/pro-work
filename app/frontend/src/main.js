@@ -78,7 +78,13 @@ function boot() {
   // Public routes — no auth required
   if (PUBLIC_ROUTES.includes(hash)) {
     initRouter(app, () => {
-      window.location.hash = 'register'
+      // WC-UX-NAV-001: sign-out replaces rather than pushes, so the signed-in
+      // route is not left behind the reload for Back to return to.
+      if (window.history && typeof window.history.replaceState === 'function') {
+        window.history.replaceState(null, '', '#register')
+      } else {
+        window.location.hash = 'register'
+      }
       window.location.reload()
     })
     return
@@ -88,16 +94,36 @@ function boot() {
   const token = getToken()
   if (token) {
     initRouter(app, () => {
-      window.location.hash = 'register'
+      // WC-UX-NAV-001: sign-out replaces rather than pushes, so the signed-in
+      // route is not left behind the reload for Back to return to.
+      if (window.history && typeof window.history.replaceState === 'function') {
+        window.history.replaceState(null, '', '#register')
+      } else {
+        window.location.hash = 'register'
+      }
       window.location.reload()
     })
     return
   }
 
-  // No token, no public route — send to register
-  window.location.hash = 'register'
-  initRouter(app, () => {
+  // No token, no public route — send to the intake route.
+  //
+  // WC-UX-NAV-001: REPLACE rather than push. Pushing here put /admin#register on
+  // the stack behind the visitor; register.js then pushed #request-access on top,
+  // so Back re-entered the redirect stub and bounced. The escape from that bounce
+  // is what carried people past /admin onto the governed JSON-404 apex. With both
+  // hops replacing, entering /admin without a token costs zero history entries.
+  if (window.history && typeof window.history.replaceState === 'function') {
+    window.history.replaceState(null, '', '#register')
+  } else {
     window.location.hash = 'register'
+  }
+  initRouter(app, () => {
+    if (window.history && typeof window.history.replaceState === 'function') {
+      window.history.replaceState(null, '', '#register')
+    } else {
+      window.location.hash = 'register'
+    }
     window.location.reload()
   })
 }

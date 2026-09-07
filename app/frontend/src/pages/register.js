@@ -21,8 +21,20 @@
 
 function render(el) {
   // Immediate redirect — no flash of disabled UI.
+  //
+  // WC-UX-NAV-001: this REPLACES the history entry rather than pushing one.
+  // Assigning location.hash left #register sitting behind the user, so Back
+  // re-entered this stub, which redirected again — a bounce the visitor escapes by
+  // mashing Back, landing past /admin on the governed JSON-404 apex. Replacing
+  // costs no history entry, so Back from #request-access goes to whatever preceded
+  // /admin. The apex policy itself is unchanged.
   if (typeof window !== "undefined") {
-    window.location.hash = "request-access"
+    if (window.history && typeof window.history.replaceState === "function") {
+      window.history.replaceState(null, "", "#request-access")
+      if (typeof window.__pwNavigate === "function") window.__pwNavigate("request-access", false)
+    } else {
+      window.location.hash = "request-access"
+    }
   }
   // Render a minimal note in case the redirect is observable (Safari
   // sometimes paints the previous route's contents briefly).
