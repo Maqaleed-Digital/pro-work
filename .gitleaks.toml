@@ -67,6 +67,29 @@ regexes = [
   '''test-secret''',
 ]
 
-# No historical commit exceptions. Allowlisting a COMMIT would waive review of
-# everything in it; the path/regex entries above are deliberately narrower.
-commits = []
+# Commit allowlist. Allowlisting a COMMIT waives review of everything in it, so
+# this list stays tiny and every entry names what was reviewed and why no narrower
+# option existed.
+#
+# 209fc62 — the superseded first commit of the scanner positive-control harness
+#   (PR #74, closed; branch sec/wc-scanner-positive-controls-001 deleted). It carried
+#   two SYNTHETIC fixture literals that were not yet split into fragments: an
+#   RSA-private-key HEADER followed by `MIIEow...xxxx` filler, and a
+#   VERCEL_AUTOMATION_BYPASS secret whose value is the literal `aaaabbbbcccc...`.
+#   Neither is a real credential; both are structured filler written to make the
+#   detector fire. The whole commit is five files — the harness, its test, and the
+#   CI wiring — and was authored and reviewed in this lane.
+#
+#   Why a commit entry rather than something narrower: the branch is deleted, but
+#   GitHub's `refs/pull/74/head` is immutable and permanent, and secret-scan runs
+#   with fetch-depth 0, so the commit is reachable from every future scan forever.
+#   A path entry would blind the scanner to `scripts/scanner_positive_controls.js`
+#   on live branches, which is the one file whose job is to prove the scanner works.
+#   A regex entry would blind it to the fixture shapes everywhere. Pinning the single
+#   dead commit is the narrowest option that exists.
+#
+#   The current harness (0a599bf onward) assembles every literal from split
+#   fragments, so no live branch depends on this entry.
+commits = [
+  "209fc6249afd2fff9c1d9862cc894c9e8cade313",
+]
