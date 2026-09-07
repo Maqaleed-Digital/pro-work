@@ -296,15 +296,45 @@ function clientIp(req) {
 // HSTS and CSP were previously declared only in app/lib/security/security_middleware.js,
 // which nothing requires. The live surface therefore shipped without either, while a
 // test asserted them against the unreferenced module. Both now live on the real path.
+// Every directive below was measured against the built frontend, not assumed.
+// The origins are the ones app/frontend/{index,app}.html actually reference; the
+// parity between this list and that markup is asserted by
+// tests/security/csp_origin_parity.test.js, so adding a third-party origin to the
+// HTML without adding it here fails CI rather than failing silently in a browser.
+const CSP_FONT_ORIGIN  = "https://fonts.gstatic.com"     // the font FILES
+const CSP_STYLE_ORIGIN = "https://fonts.googleapis.com"  // the @font-face stylesheet
+
 const CSP_POLICY = [
   "default-src 'self'",
-  // The SPA ships inline bootstrap script and inline styles. Tightening this to a
-  // nonce is a frontend change, not a header change — tracked, not silently dropped.
-  "script-src 'self' 'unsafe-inline'",
-  "style-src 'self' 'unsafe-inline'",
+
+  // No 'unsafe-inline'. The built entrypoints carry zero inline <script>, there is
+  // no eval() and no new Function() anywhere in app/frontend/src — verified, not
+  // assumed. An earlier revision of this policy claimed "the SPA ships inline
+  // bootstrap script"; that was wrong, and it was buying a real weakening for
+  // nothing.
+  "script-src 'self'",
+
+  // 'unsafe-inline' IS required here and is not gratuitous: several components
+  // build markup with innerHTML containing style="..." attributes
+  // (offer_builder, contract_lifecycle_tracker, esb_calculator,
+  // workforce_command, ...). CSP governs those through style-src-attr, which
+  // falls back to style-src. Removing it would silently strip that styling.
+  // Retiring it is a frontend refactor, not a header edit.
+  `style-src 'self' 'unsafe-inline' ${CSP_STYLE_ORIGIN}`,
+
   "img-src 'self' data:",
-  "font-src 'self' data:",
+
+  // IBM Plex Sans + IBM Plex Sans Arabic are loaded from Google Fonts by both
+  // HTML entrypoints. Without these two origins the Arabic face fails to load and
+  // the RTL surface silently falls back to a system font.
+  `font-src 'self' data: ${CSP_FONT_ORIGIN}`,
+
+  // Kept at 'self'. The HyperPay/OPPWA base URL exists in this repo only as a
+  // documented constant and in test assertions — no browser-side fetch, no widget
+  // script, no iframe. When the payment surface is actually wired, connect-src
+  // (and possibly frame-src) must be revisited in the same change.
   "connect-src 'self'",
+
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
