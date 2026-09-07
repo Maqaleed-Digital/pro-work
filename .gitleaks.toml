@@ -1,0 +1,72 @@
+# Secret scanning configuration — content boundary enforcement.
+#
+# Adopted 25 Aug 2026 alongside the .gitignore change that REPLACED a blanket
+# `.env*` ignore. The principle: filename shape does not decide whether a file
+# is a secret; content does. Files are allowed into version control on review,
+# and this scanner is what makes that review enforceable rather than trusted.
+
+title = "Maqaleed secret scan — pro-work (WorkCaptain)"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "supabase-service-role-jwt"
+description = "Supabase service_role JWT (bypasses RLS)"
+regex = '''eyJhbGciOi[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]*c2VydmljZV9yb2xl[A-Za-z0-9_-]*\.[A-Za-z0-9_-]{20,}'''
+keywords = ["eyJhbGciOi"]
+
+[[rules]]
+id = "vercel-protection-bypass"
+description = "Vercel deployment protection bypass secret"
+regex = '''(?i)(x-vercel-protection-bypass|VERCEL_AUTOMATION_BYPASS_SECRET)\s*[:=]\s*['\"]?[A-Za-z0-9]{24,}'''
+keywords = ["vercel-protection-bypass", "VERCEL_AUTOMATION_BYPASS_SECRET"]
+
+[allowlist]
+description = "Reviewed non-secret material. Every entry is a review act — adding one asserts the file carries no live credential."
+
+# ── Reviewed findings — full-history scan of 488 commits, 7 Sep 2026 ─────────
+# The first full-history run of this config returned 16 findings. Each was read
+# and classified before being allowlisted here. NONE is a live credential:
+#
+#   8x curl-auth-header  — local evidence scripts curling http://localhost or
+#                          $BASE_URL. The matched value is the header value on
+#                          -H "x-actor-role: ..." / -H "x-api-key: ...", and
+#                          those values are role labels like 'phase70-evidence'.
+#   2x stripe-access-token — decoy "sk_live_..." literals appearing INSIDE test
+#                          assertions that check a component detects embedded
+#                          credentials. The literal is the test's input, not a key.
+#   1x generic-api-key   — const SECRET = 'test-s…' in a deleted auth test fixture.
+#   1x generic-api-key   — OPS_A_TOKEN="sk-pha…" (a synthetic 'sk-phase15-' token)
+#                          in a deleted governance phase script.
+#
+# Two of these paths no longer exist in the tree; they are matched in history.
+#
+# Scope note: this triage covers only what this scanner matched. It makes NO
+# statement about the separate production-credential exposure lane recorded at
+# DL-MBRD-V5-FREEZE-001, and does not close it.
+
+paths = [
+  '''\.gitleaks\.toml$''',
+  '''\.env\.example$''',
+  '''\.env\..*\.example$''',
+  '''\.env\.production\.example$''',
+  # Local evidence scripts — localhost/$BASE_URL calls, role-label headers.
+  '''^scripts/run_phase(58|59|65)\.sh$''',
+  '''^scripts/workcaptain_phase(66|67|68|69|70)_.*\.sh$''',
+  # Deleted fixtures, matched in history only.
+  '''^scripts/prowork_phase15_tenant_bound_governance\.sh$''',
+  '''^tests/auth/user_service_persona\.test\.js$''',
+  # Frontend tests whose ASSERTIONS embed decoy credential literals.
+  '''^app/frontend/src/components/__tests__/(nav-model|paytest_sandbox)\.test\.mjs$''',
+]
+
+# Values that are self-evidently synthetic wherever they appear.
+regexes = [
+  '''sk-phase[0-9]+-''',
+  '''test-secret''',
+]
+
+# No historical commit exceptions. Allowlisting a COMMIT would waive review of
+# everything in it; the path/regex entries above are deliberately narrower.
+commits = []

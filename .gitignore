@@ -36,3 +36,29 @@ infrastructure/gcp/local_backend_override.tf
 
 # web-assurance: CI run output is uploaded as an artifact, never committed
 assurance-runs/
+
+# --- Environment files: content boundary, not filename shape -------------------
+# Added 25 Aug 2026. This repository previously had NO env ignore rule at all.
+# Principle: filename shape does not decide whether a file is a secret; content
+# does. Templates and governed non-secret files are explicitly retained, and
+# secret SCANNING (.gitleaks.toml + .github/workflows/secret-scan.yml) enforces
+# the content boundary.
+
+# Local and secret env files — never committed
+.env
+.env.*
+!.env.example
+!.env.*.example
+!.env.*.template
+*.local.env
+*.secret.env
+*secrets.env
+
+# Credential material — never committed, any location
+*.pem
+*.p12
+*.pfx
+*.keystore
+**/service-account*.json
+**/gha-creds-*.json
+.docker/config.json
