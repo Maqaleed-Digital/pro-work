@@ -56,6 +56,15 @@ jobs:
       # scripts/ci_gate_tests.js runs a declared manifest of those suites and
       # refuses to exit 0 unless it can show a non-zero assertion set actually ran
       # (a missing gate file fails the build rather than silently skipping).
+      # Static rule: no ${{ }} expression may sit inside a run: block. A GitHub
+      # expression is substituted before bash parses the script, so event text
+      # placed there is shell SOURCE, not data. actionlint does not catch this
+      # for deployment_status/deployment/dispatch-input paths — verified 7 Sep
+      # 2026 with actionlint 1.7.7 — so this guard runs in addition to it.
+      - name: Workflow shell-injection guard
+        working-directory: .
+        run: node scripts/workflow_injection_guard.js
+
       - name: Gate assertion suites — fails on zero tests run
         working-directory: .
         run: node scripts/ci_gate_tests.js

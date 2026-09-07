@@ -47,8 +47,17 @@ jobs:
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_PATH }}:${{ github.event.inputs.tag }}-${{ github.run_id }}
 
       - name: Report publish identity (no human PAT in this path)
+        # SECURITY BOUNDARY: `tag` is a workflow_dispatch input — event-supplied
+        # text. Spliced into the script by the expression evaluator it was shell
+        # source; carried in env: it is data bash never re-parses. The image
+        # digest and the env values follow the same route so the rule is uniform.
+        env:
+          PUB_REGISTRY:   ${{ env.REGISTRY }}
+          PUB_IMAGE_PATH: ${{ env.IMAGE_PATH }}
+          PUB_TAG:        ${{ github.event.inputs.tag }}
+          PUB_DIGEST:     ${{ steps.push.outputs.digest }}
         run: |
-          echo "Published to ${{ env.REGISTRY }}/${{ env.IMAGE_PATH }}:${{ github.event.inputs.tag }}-${{ github.run_id }}"
+          echo "Published to ${PUB_REGISTRY}/${PUB_IMAGE_PATH}:${PUB_TAG}-${{ github.run_id }}"
           echo "Authenticated as Actions identity: ${{ github.actor }} via github.token"
-          echo "Image digest: ${{ steps.push.outputs.digest }}"
+          echo "Image digest: ${PUB_DIGEST}"
           echo "DISPOSABLE — delete this tag after the proof. NOT a v* tag; not in the deploy path."
