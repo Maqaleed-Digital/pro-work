@@ -12,7 +12,7 @@ not read from, not written to.
 | #69 | CWV gate evaluates something, and the gate suites actually run | `2451b4f` |
 | #70 | stop event data becoming shell source in workflow `run:` blocks | `10c67dd` |
 | #71 | close the invoices privilege-boundary drift, repo↔live | `e2c4cd3` |
-| #72 | make the CSP match what the frontend actually loads, and tighten it | see PR |
+| #72 | make the CSP match what the frontend actually loads, and tighten it | `a69c635` |
 
 ## 2. PR #69 — pre-merge delta review: PASS
 
