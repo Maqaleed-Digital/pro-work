@@ -115,8 +115,19 @@ the expiry lived only inside the *body* of a register row marked CLOSED, where n
 sweep would surface it.
 
 - [ ] record the **new expiry date** and the **owning identity** on a tracked item whose
-      **Status** carries the deadline, not merely its prose
-- [ ] set a reminder at **expiry minus 30 days**
+      **Status** carries the deadline, not merely its prose — open **WC-004** using the
+      template in the appendix below, filled from the ACTUAL minted expiry
+- [ ] set the renewal trigger at **expiry minus lead-time**, with the lead-time **set by the
+      owner for this item**
+
+      > No portfolio-wide numeric lead-time rule for credentials was located. The
+      > established pattern is the one in *03 — Product Registration Playbook V1.0*:
+      > *"renewal opens as a new G1 cycle at expiry minus lead time"*, with the lead time
+      > **set per item** rather than fixed globally. An earlier draft of this runbook said
+      > "expiry minus 30 days"; that number was invented, not sourced, and has been removed.
+      > Pick a lead-time that leaves room for a G3 mint, a G2 write and a G1 witness — WC-003
+      > reached the lane with **six days**, which was not enough room to be comfortable.
+
 - [ ] cross-reference this runbook from that item
 
 ## Runtime authority note — read before any reconciliation
@@ -141,3 +152,47 @@ Measured 2026-09-07 and recorded at `DL-WC-RUNTIME-AUTH-001` (Proposed, Programm
 The CSP/HSTS and WCAG changes now on `main` are **prepared, not deployed**. Deploying them
 is a separate **G1** act and is sequenced **after** this rotation has a clean pull witness —
 so that a deploy is never the thing that first discovers an expired pull credential.
+
+
+---
+
+## Appendix — WC-004 tracking item template
+
+**Do not create this row with a guessed date.** It is opened only after Step A, populated from
+the **actual expiry of the credential that was minted**. A tracking row carrying a guessed date
+is worse than no row: it looks tracked and is not.
+
+**The rotation is NOT closed until this row exists.** Step D's witness proves the new credential
+pulls; this row is what stops the next expiry from being discovered the same way WC-003 was —
+buried in the body of a record marked CLOSED.
+
+| Field | Value |
+|---|---|
+| **ID** | `WC-004` |
+| **Title** | WorkCaptain GHCR pull credential next-expiry tracking |
+| **Status** | `Ready` |
+| **Critical Path** | `YES` |
+| **Owner** | the established WorkCaptain infrastructure owner (same owner as WC-003) |
+| **Capability** | WorkCaptain |
+| **Track** | 8-WorkCaptain |
+| **Stream** | A — Engineering Completion |
+| **Phase** | Phase 1 |
+| **Gate** | F-Infrastructure |
+| **Surface Repo** | `Maqaleed-Digital/pro-work` |
+| **Expiry Date** | `TO_BE_FILLED_FROM_NEW_PAT` — the actual expiry recorded in Step A |
+| **Trigger Date** | `expiry minus lead-time`; **lead-time TO_BE_SET by the owner** (see note in Step E — no portfolio-wide numeric rule exists, and none is invented here) |
+| **Authority** | the WC-003 rotation witness (Step D), plus this runbook |
+| **Dependencies** | none to open the row. Acting on it is again G3 (mint) + G2 (secret write) + G1 (task placement). |
+| **Evidence Required** | new PAT minted with `read:packages` only and its expiry recorded; `workcaptain/runtime/GHCR_PULL` updated; one forced task placement observed pulling the expected immutable digest successfully **before** the expiry. Reported-rotated ≠ witnessed-pulling. |
+| **Closure** | next rotation completed **and** one-task pull witness observed **and** the following expiry tracked on its own row |
+
+### Body text to carry over
+
+> Created from the WC-003 rotation witness on `<date>`. The previous credential expired
+> `2026-09-13`; this row tracks the replacement minted in that rotation.
+>
+> **Banked lesson, carried forward:** WC-003 existed only inside the body of a ratified record
+> marked CLOSED, with no owner, no date field and no execution item — a dated production hazard
+> that a Status-only sweep could not see. This row exists so that never recurs. Reading a
+> register row's Status alone would have missed a six-day production tripwire: **Status AND
+> body AND reality — never one alone.**
