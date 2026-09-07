@@ -290,12 +290,48 @@ function clientIp(req) {
   return (req.socket && req.socket.remoteAddress) || "unknown"
 }
 
-function setSecureHeaders(res) {
+// The response security header set. Emitted on EVERY response from the live
+// request path — see the setSecureHeaders() call in http.createServer below.
+//
+// HSTS and CSP were previously declared only in app/lib/security/security_middleware.js,
+// which nothing requires. The live surface therefore shipped without either, while a
+// test asserted them against the unreferenced module. Both now live on the real path.
+const CSP_POLICY = [
+  "default-src 'self'",
+  // The SPA ships inline bootstrap script and inline styles. Tightening this to a
+  // nonce is a frontend change, not a header change — tracked, not silently dropped.
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data:",
+  "font-src 'self' data:",
+  "connect-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+].join("; ")
+
+const HSTS_POLICY = "max-age=31536000; includeSubDomains"
+
+// HSTS is only meaningful over TLS, and asserting it on a plaintext origin is a
+// no-op the browser ignores. Live traffic is TLS-terminated at the ALB, which
+// forwards x-forwarded-proto: https.
+function isHttps(req) {
+  if (req && req.socket && req.socket.encrypted) return true
+  if (!TRUSTED_PROXY || !req || !req.headers) return false
+  const proto = req.headers["x-forwarded-proto"]
+  if (!proto) return false
+  return String(proto).split(",")[0].trim().toLowerCase() === "https"
+}
+
+function setSecureHeaders(res, req) {
   res.setHeader("X-Content-Type-Options", "nosniff")
   res.setHeader("X-Frame-Options", "DENY")
   res.setHeader("X-XSS-Protection", "0")
   res.setHeader("Referrer-Policy", "no-referrer")
   res.setHeader("Permissions-Policy", "interest-cohort=()")
+  res.setHeader("Content-Security-Policy", CSP_POLICY)
+  if (isHttps(req)) res.setHeader("Strict-Transport-Security", HSTS_POLICY)
 }
 
 function applyCors(req, res) {
@@ -1510,7 +1546,7 @@ const server = http.createServer(async (req, res) => {
     const pathname = url.pathname
 
     // S35: security headers + CORS on every response
-    setSecureHeaders(res)
+    setSecureHeaders(res, req)
     if (!applyCors(req, res)) return
     if (req.method === "OPTIONS") { res.writeHead(204); return res.end() }
 

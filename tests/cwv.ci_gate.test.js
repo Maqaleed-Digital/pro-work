@@ -12,6 +12,8 @@
  * Suite 5: estimateFromBundle — static analysis (source files fallback)
  * Suite 6: CI config — cwv job after wcag, exit-1 language, budget file ref
  * Suite 7: Report path and output configuration
+ * Suite 8: Anti-vacuous-pass — the gate must never report PASS having
+ *          evaluated nothing (regression cover for the S39-G3 CI defect)
  */
 
 const { describe, it } = require('node:test');
@@ -24,6 +26,7 @@ const {
   CRITICAL_ROUTES,
   THRESHOLDS,
   BUNDLE_BUDGETS,
+  REQUIRED_METRICS,
   evaluateMetrics,
   estimateFromBundle,
   REPORT_DIR,
@@ -336,5 +339,97 @@ describe('Suite 7: report output configuration', () => {
   it('report filenames include timestamp', () => {
     const src = fs.readFileSync(path.join(ROOT, 'scripts/cwv_audit.js'), 'utf8');
     assert.ok(src.includes('nowTs') || src.includes('timestamp'), 'report filenames must use timestamps');
+  });
+});
+
+// ── Suite 8: Anti-vacuous-pass ────────────────────────────────────────────────
+//
+// The defect this suite exists to prevent: a harness that exits 0 having
+// evaluated nothing. Before the fix, evaluateMetrics({}) returned
+// { pass: true, violations: [] } — a green gate that certified zero metrics.
+// Every test here must FAIL if that behaviour is ever reintroduced.
+
+describe('Suite 8: gate must never pass having evaluated nothing', () => {
+  it('empty metrics object → pass:false, zero assertions, UNMEASURED violations', () => {
+    const r = evaluateMetrics({});
+    assert.equal(r.pass, false, 'a run that measured nothing must NOT pass');
+    assert.equal(r.assertionsRun, 0, 'no metric may be counted as asserted');
+    assert.equal(r.violations.length, REQUIRED_METRICS.length,
+      'every required metric must raise an UNMEASURED violation');
+    assert.ok(r.violations.every(v => v.reason === 'UNMEASURED'));
+  });
+
+  it('undefined / null / NaN metrics all fail as UNMEASURED', () => {
+    for (const bad of [undefined, null, NaN]) {
+      const r = evaluateMetrics({ lcp: bad, inp: bad, cls: bad });
+      assert.equal(r.pass, false, `metrics of ${String(bad)} must not pass`);
+      assert.equal(r.assertionsRun, 0);
+    }
+  });
+
+  it('a partially-measured run fails — one missing metric is enough', () => {
+    const r = evaluateMetrics({ lcp: 1500, inp: 150 });   // cls absent
+    assert.equal(r.pass, false, 'a missing CLS must block the gate');
+    assert.equal(r.assertionsRun, 2, 'only the two measured metrics count as asserted');
+    const cls = r.violations.find(v => v.metric === 'CLS');
+    assert.ok(cls, 'CLS must be reported as a violation');
+    assert.equal(cls.reason, 'UNMEASURED');
+  });
+
+  it('a metric with no threshold in the budget fails rather than passes', () => {
+    const r = evaluateMetrics({ lcp: 1500, inp: 150, cls: 0.05 }, { lcp: THRESHOLDS.lcp });
+    assert.equal(r.pass, false, 'missing thresholds must not silently certify');
+    assert.ok(r.violations.some(v => v.reason === 'NO_THRESHOLD'));
+  });
+
+  it('a genuinely good run reports the full assertion set it ran', () => {
+    const r = evaluateMetrics({ lcp: 1500, inp: 150, cls: 0.05 });
+    assert.equal(r.pass, true);
+    assert.equal(r.assertionsRun, REQUIRED_METRICS.length,
+      'a passing run must show one assertion per required metric');
+    assert.deepEqual(r.evaluated.slice().sort(), REQUIRED_METRICS.slice().sort());
+  });
+
+  it('an over-budget run still runs the full assertion set (fails on budget, not on silence)', () => {
+    const r = evaluateMetrics({ lcp: 5000, inp: 600, cls: 0.30 });
+    assert.equal(r.pass, false);
+    assert.equal(r.assertionsRun, REQUIRED_METRICS.length);
+    assert.ok(r.violations.every(v => v.reason === 'OVER_BUDGET'));
+  });
+
+  it('estimateFromBundle reports how many files it actually analysed', () => {
+    const r = estimateFromBundle();
+    assert.equal(typeof r.filesAnalyzed, 'number', 'filesAnalyzed must be reported');
+    assert.ok(r.filesAnalyzed > 0,
+      `static analysis must find files to analyse (found ${r.filesAnalyzed} in ${r.analysisDir})`);
+  });
+
+  it('an empty analysis directory yields zero files — the runner must refuse it', () => {
+    const empty = fs.mkdtempSync(path.join(require('os').tmpdir(), 'cwv-empty-'));
+    try {
+      const r = estimateFromBundle(empty);
+      assert.equal(r.filesAnalyzed, 0, 'an empty dir must analyse zero files');
+    } finally {
+      fs.rmSync(empty, { recursive: true, force: true });
+    }
+  });
+
+  it('the runner refuses to exit 0 on a vacuous run (source-level guard present)', () => {
+    const src = fs.readFileSync(path.join(ROOT, 'scripts/cwv_audit.js'), 'utf8');
+    assert.ok(src.includes('assertionsRun'), 'runner must count assertions actually run');
+    assert.ok(src.includes('routesEvaluated'), 'runner must count routes actually evaluated');
+    assert.ok(/vacuous/.test(src), 'runner must have an explicit vacuous-run guard');
+  });
+
+  it('runLighthouse does not coerce a missing audit to a perfect score', () => {
+    const src = fs.readFileSync(path.join(ROOT, 'scripts/cwv_audit.js'), 'utf8');
+    assert.ok(!src.includes("numericValue  || 0"),
+      'a missing Lighthouse audit must not become 0 (a perfect score)');
+    assert.ok(src.includes('Lighthouse returned no audits'),
+      'runLighthouse must raise when Lighthouse produced no audits');
+  });
+
+  it('REQUIRED_METRICS covers all three Core Web Vitals', () => {
+    assert.deepEqual(REQUIRED_METRICS.slice().sort(), ['cls', 'inp', 'lcp']);
   });
 });

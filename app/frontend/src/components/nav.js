@@ -60,8 +60,12 @@ function renderTabs(nav, front, activeKey) {
       return
     }
     const a = document.createElement("a")
-    a.className = "tab" + (key === activeKey ? " active" : "") + (sandbox ? " tab-sandbox" : "")
+    const isActive = key === activeKey
+    a.className = "tab" + (isActive ? " active" : "") + (sandbox ? " tab-sandbox" : "")
     a.href = "#" + key
+    // WCAG 1.3.1 — the active tab must be programmatically determinable, not just
+    // styled. `.active` is a visual affordance only; aria-current carries it to AT.
+    if (isActive) a.setAttribute("aria-current", "page")
     a.setAttribute("data-mode", mode)
     if (sandbox) a.setAttribute("data-state", "disclosed-not-live")
     a.textContent = label
@@ -97,6 +101,12 @@ export function renderNav(activeKey, onSignOut, onTenantChange, front) {
   if (!nav) return
   nav.innerHTML = ""
 
+  // WCAG 4.1.2 — the nav landmark needs an accessible name. The name states which
+  // front is mounted, so AT users get the same front boundary the chrome shows.
+  if (nav.tagName !== "NAV") nav.setAttribute("role", "navigation")
+  nav.setAttribute("aria-label", (FRONTS[_front] && FRONTS[_front].brand.name
+    ? FRONTS[_front].brand.name + " " : "") + "primary navigation")
+
   renderBrand(nav, _front)
   renderModeChrome(nav, _front)
   renderTabs(nav, _front, activeKey)
@@ -111,6 +121,7 @@ export function renderNav(activeKey, onSignOut, onTenantChange, front) {
   const tenantLabel = document.createElement("span")
   tenantLabel.textContent = "Tenant:"
   const tenantSel = document.createElement("select")
+  tenantSel.setAttribute("aria-label", "Tenant")
   tenantSel.style.cssText = "font-size:12px;padding:2px 4px;border-radius:4px;border:1px solid #ccc;cursor:pointer"
   const currentTenant = getTenant()
   const base = _tenantOptions || ["default", "t1", "t2", "t3"]

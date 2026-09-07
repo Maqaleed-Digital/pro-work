@@ -45,6 +45,21 @@ jobs:
       - name: Test
         run: npm test
 
+      # ── Gate assertion suites ──────────────────────────────────────────────
+      # `npm test` above resolves to app/package.json's
+      # "node --test frontend/src/components/__tests__/" — three component files.
+      # The repository's GATE assertions live in the root tests/ directory and no
+      # CI job ran them: tests/cwv.ci_gate.test.js, tests/wcag.ci_gate.test.js and
+      # the security-header suites all passed locally while proving nothing about
+      # any pushed commit.
+      #
+      # scripts/ci_gate_tests.js runs a declared manifest of those suites and
+      # refuses to exit 0 unless it can show a non-zero assertion set actually ran
+      # (a missing gate file fails the build rather than silently skipping).
+      - name: Gate assertion suites — fails on zero tests run
+        working-directory: .
+        run: node scripts/ci_gate_tests.js
+
       - name: Config validate smoke
         run: |
           result=0
@@ -192,8 +207,12 @@ jobs:
 
       - name: Run CWV budget audit — EXIT 1 if LCP > 4s / INP > 500ms / CLS > 0.25
         # BRD A6 + Maqaleed Eval required
-        # --lighthouse: real Lighthouse measurement using pre-installed Chrome
+        # --lighthouse: real Lighthouse measurement using pre-installed Chrome.
+        # `lighthouse` and `chrome-launcher` are declared devDependencies — they
+        # were not, so every run of this job since it was added failed with
+        # "Cannot find module 'lighthouse'" reported as 12 budget violations.
         # Audits 4 critical routes: / /ai /workforce /compliance
+        # The runner exits 1 if it cannot show a full 12-assertion set was run.
         run: node scripts/cwv_audit.js --lighthouse
         env:
           AUDIT_URL: "http://localhost:4173"

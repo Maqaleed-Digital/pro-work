@@ -11,8 +11,10 @@
     "wcag:audit:preview": "cd app/frontend && npx vite preview --port 4173 & sleep 3 && node ../scripts/wcag_audit.js; kill %1"
   },
   "devDependencies": {
+    "@axe-core/puppeteer": "^4.10.1",
+    "chrome-launcher": "^1.1.2",
     "concurrently": "^9.2.1",
-    "puppeteer": "^22.15.0",
-    "@axe-core/puppeteer": "^4.10.1"
+    "lighthouse": "^12.2.1",
+    "puppeteer": "^22.15.0"
   }
 }
