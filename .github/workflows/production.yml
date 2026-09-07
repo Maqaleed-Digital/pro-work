@@ -142,5 +142,9 @@ jobs:
             --force-new-deployment
       
       - name: Notify deployment
+        # SECURITY BOUNDARY: ref_name is attacker-influenceable — a branch or tag
+        # may legally contain shell metacharacters. Carried in env: it stays data.
+        env:
+          DEPLOY_REF_NAME: ${{ github.ref_name }}
         run: |
-          echo "Production deployment complete: ${{ github.ref_name }}"
+          echo "Production deployment complete: ${DEPLOY_REF_NAME}"

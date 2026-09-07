@@ -74,38 +74,100 @@ jobs:
 
       - name: Resolve target + trigger
         id: t
+        # SECURITY BOUNDARY (WorkCaptain repo-carried repair, semantics unchanged).
+        # Event-supplied text used to be spliced into this shell program by the
+        # expression evaluator BEFORE bash saw it, so a value containing $(...),
+        # a backtick or a quote became shell syntax rather than data. It now
+        # crosses into the step as environment values, which bash never re-parses.
+        # Trusted GitHub-controlled values are routed the same way so a later edit
+        # cannot quietly reintroduce the split.
+        env:
+          EV_EVENT_NAME:         ${{ github.event_name }}
+          EV_URL_OVERRIDE:       ${{ github.event.inputs.url_override }}
+          EV_ENVIRONMENT_URL:    ${{ github.event.deployment_status.environment_url }}
+          EV_DEPLOY_ENVIRONMENT: ${{ github.event.deployment.environment }}
         run: |
-          URL="${{ github.event.inputs.url_override }}"
-          TRIG="${{ github.event_name }}"
+          set -eu
+          URL="${EV_URL_OVERRIDE:-}"
+          TRIG="${EV_EVENT_NAME:-}"
           if [ "$TRIG" = "deployment_status" ]; then
-            [ -z "$URL" ] && URL="${{ github.event.deployment_status.environment_url }}"
-            case "${{ github.event.deployment.environment }}" in Production|production) TRIG=production-deploy;; *) TRIG=pr-preview;; esac
-          elif [ "$TRIG" = "workflow_run" ]; then TRIG=production-deploy; else TRIG=manual; fi
-          echo "url=$URL" >> "$GITHUB_OUTPUT"; echo "trigger=$TRIG" >> "$GITHUB_OUTPUT"
+            if [ -z "$URL" ]; then URL="${EV_ENVIRONMENT_URL:-}"; fi
+            case "${EV_DEPLOY_ENVIRONMENT:-}" in
+              Production|production) TRIG=production-deploy ;;
+              *)                     TRIG=pr-preview ;;
+            esac
+          elif [ "$TRIG" = "workflow_run" ]; then
+            TRIG=production-deploy
+          else
+            TRIG=manual
+          fi
+
+          # A newline inside an untrusted value would forge extra step outputs
+          # through GITHUB_OUTPUT even though it can no longer reach the shell.
+          # Command substitution strips trailing newlines and tr removes embedded
+          # control bytes, so any difference means the value was not a clean
+          # single line. Empty stays empty — the manifest URL is then used.
+          if [ -n "$URL" ]; then
+            URL_CLEAN="$(printf '%s' "$URL" | tr -d '\000-\037')"
+            if [ "$URL_CLEAN" != "$URL" ]; then
+              echo "::error::override URL contains control characters; refusing to use it"
+              exit 8
+            fi
+            case "$URL" in
+              http://*|https://*) : ;;
+              *) echo "::error::override URL is not an http(s) URL; refusing to use it"; exit 8 ;;
+            esac
+          fi
+
+          printf 'url=%s\n'     "$URL"  >> "$GITHUB_OUTPUT"
+          printf 'trigger=%s\n' "$TRIG" >> "$GITHUB_OUTPUT"
 
       - name: Materialise manifest (URL override only for previews/dispatch)
+        # The URL was previously spliced into a JS string literal inside `node -e`,
+        # inside a double-quoted shell word: a single quote escaped into JS code and
+        # $(...) still ran in the shell. It now reaches node through the environment,
+        # and the program is single-quoted so the shell expands nothing either.
+        env:
+          SURFACE_URL: ${{ steps.t.outputs.url }}
         run: |
           cp assurance/surface.yaml /tmp/surface.yaml
-          if [ -n "${{ steps.t.outputs.url }}" ]; then
-            node -e "const y=require('./.mwa/node_modules/js-yaml');const fs=require('fs');const m=y.load(fs.readFileSync('/tmp/surface.yaml','utf8'));m.surface.url='${{ steps.t.outputs.url }}';fs.writeFileSync('/tmp/surface.yaml',y.dump(m))"
+          if [ -n "${SURFACE_URL:-}" ]; then
+            node -e 'const y=require("./.mwa/node_modules/js-yaml");const fs=require("fs");const m=y.load(fs.readFileSync("/tmp/surface.yaml","utf8"));m.surface.url=process.env.SURFACE_URL;fs.writeFileSync("/tmp/surface.yaml",y.dump(m))'
           fi
           node .mwa/bin/mwa.js validate /tmp/surface.yaml
 
       - name: Prove the pinned baseline (seal + run_id + SHA256SUMS digest vs assurance/baseline.lock)
         id: base
         run: |
-          RUN_ID=$(node -e "console.log(JSON.parse(require('fs').readFileSync('assurance/baseline.lock','utf8')).run_id)")
+          set -eu
+          RUN_ID=$(node -e 'console.log(JSON.parse(require("fs").readFileSync("assurance/baseline.lock","utf8")).run_id)')
+          # baseline.lock is repo content rather than event data, but it still must
+          # not be able to forge step outputs or path-traverse. run_id names a
+          # directory, so constrain it to a plain identifier.
+          case "$RUN_ID" in
+            ""|*[!A-Za-z0-9._-]*)
+              echo "::error::baseline.lock run_id is not a plain identifier; refusing"
+              exit 9 ;;
+          esac
           DIR=".mwa-evidence/baselines/$RUN_ID"
           test -d "$DIR" || { echo "::error::baseline $RUN_ID not present on $MWA_EVIDENCE_BRANCH"; exit 7; }
           node .mwa/bin/mwa.js baseline-check --lock assurance/baseline.lock --dir "$DIR"
-          echo "dir=$DIR" >> "$GITHUB_OUTPUT"
+          printf 'dir=%s\n' "$DIR" >> "$GITHUB_OUTPUT"
 
       - name: Observe (read-only) · seal · delta against the pinned baseline
+        # deployment.id comes straight off the event payload. Passed as an argument
+        # via the environment it is one argv element whatever it contains; spliced
+        # into the command line it was shell syntax.
+        env:
+          MWA_TRIGGER:   ${{ steps.t.outputs.trigger }}
+          MWA_COMMIT:    ${{ github.sha }}
+          MWA_DEPLOY_ID: ${{ github.event.deployment.id || github.event.workflow_run.id || github.run_id }}
+          MWA_PREVIOUS:  ${{ steps.base.outputs.dir }}
         run: |
           node .mwa/bin/mwa.js run --manifest /tmp/surface.yaml --out assurance-runs \
-            --trigger "${{ steps.t.outputs.trigger }}" --commit-sha "${{ github.sha }}" \
-            --deployment-id "${{ github.event.deployment.id || github.event.workflow_run.id || github.run_id }}" \
-            --previous "${{ steps.base.outputs.dir }}"
+            --trigger "$MWA_TRIGGER" --commit-sha "$MWA_COMMIT" \
+            --deployment-id "$MWA_DEPLOY_ID" \
+            --previous "$MWA_PREVIOUS"
 
       - name: Verify the new seal (EVIDENCE-SEAL-GATE)
         run: node .mwa/bin/mwa.js verify "$(ls -d assurance-runs/*/ | tail -1)"
@@ -113,7 +175,9 @@ jobs:
       - name: Surface the delta (annotations only — never fails the job while block_enabled=false)
         run: |
           D="$(ls -d assurance-runs/*/ | tail -1)delta.json"
-          node -e "const d=require('./$D');for(const r of d.attention)console.log('::warning title=web-assurance '+r.state+'::'+r.gate_id+' '+JSON.stringify(r.codes||''));for(const r of d.fixed)console.log('::notice title=web-assurance FIXED::'+r.gate_id);console.log('attention='+d.attention.length+' fixed='+d.fixed.length+' known_fail='+(d.summary.KNOWN_FAIL||0))"
+          # Same boundary for a shell-derived path: through the environment, not
+          # concatenated into the JS program text.
+          DELTA_PATH="$D" node -e "const d=require(require('path').resolve(process.env.DELTA_PATH));for(const r of d.attention)console.log('::warning title=web-assurance '+r.state+'::'+r.gate_id+' '+JSON.stringify(r.codes||''));for(const r of d.fixed)console.log('::notice title=web-assurance FIXED::'+r.gate_id);console.log('attention='+d.attention.length+' fixed='+d.fixed.length+' known_fail='+(d.summary.KNOWN_FAIL||0))"
 
       - name: Upload sealed run (never committed to the product repo)
         uses: actions/upload-artifact@v4
