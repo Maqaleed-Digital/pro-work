@@ -170,10 +170,17 @@ jobs:
             --previous "$MWA_PREVIOUS"
 
       - name: Verify the new seal (EVIDENCE-SEAL-GATE)
-        run: node .mwa/bin/mwa.js verify "$(ls -d assurance-runs/*/ | tail -1)"
+        run: |
+          # shellcheck disable=SC2012  # run directories are timestamped, ASCII and
+          # runner-generated; `ls | tail -1` selects the newest by name, which is the
+          # existing assurance semantics. Swapping to `find` would change the ordering
+          # guarantee, so the finding is accepted explicitly rather than papered over.
+          node .mwa/bin/mwa.js verify "$(ls -d assurance-runs/*/ | tail -1)"
 
       - name: Surface the delta (annotations only — never fails the job while block_enabled=false)
         run: |
+          # shellcheck disable=SC2012  # same runner-generated, timestamped names as
+          # the verify step above; newest-by-name is the intended selection.
           D="$(ls -d assurance-runs/*/ | tail -1)delta.json"
           # Same boundary for a shell-derived path: through the environment, not
           # concatenated into the JS program text.

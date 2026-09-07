@@ -65,6 +65,26 @@ jobs:
         working-directory: .
         run: node scripts/workflow_injection_guard.js
 
+      # actionlint runs alongside the bespoke guard, not instead of it. PR #70's
+      # description claimed both already ran here; only the guard did. Corrected.
+      - name: Install actionlint
+        working-directory: .
+        run: |
+          VER=1.7.7
+          curl -sSL "https://github.com/rhysd/actionlint/releases/download/v${VER}/actionlint_${VER}_linux_amd64.tar.gz" \
+            | tar -xz -C /usr/local/bin actionlint
+          actionlint --version
+
+      - name: actionlint
+        working-directory: .
+        run: actionlint
+
+      # Proves actionlint's injection check is switched on, and re-measures the
+      # documented coverage gap that justifies keeping the bespoke guard.
+      - name: Scanner positive controls — actionlint
+        working-directory: .
+        run: node scripts/scanner_positive_controls.js actionlint
+
       - name: Gate assertion suites — fails on zero tests run
         working-directory: .
         run: node scripts/ci_gate_tests.js
@@ -93,7 +113,7 @@ jobs:
         run: |
           node server.js &
           SERVER_PID=$!
-          for i in $(seq 1 15); do
+          for _ in $(seq 1 15); do
             sleep 1
             curl -sf http://127.0.0.1:3010/api/health >/dev/null 2>&1 && break
           done
@@ -141,9 +161,9 @@ jobs:
         run: |
           cd app/frontend
           npx vite preview --port 4173 &
-          echo "PREVIEW_PID=$!" >> $GITHUB_ENV
+          echo "PREVIEW_PID=$!" >> "$GITHUB_ENV"
           # Wait for preview server to be ready
-          for i in $(seq 1 15); do
+          for _ in $(seq 1 15); do
             sleep 1
             curl -sf http://localhost:4173 >/dev/null 2>&1 && break
           done
@@ -169,7 +189,7 @@ jobs:
 
       - name: Stop preview server
         if: always()
-        run: kill $PREVIEW_PID 2>/dev/null || true
+        run: kill "$PREVIEW_PID" 2>/dev/null || true
 
   # ── Core Web Vitals Budget Gate ───────────────────────────────────────────
   # BRD A6 + Maqaleed Eval required
@@ -207,8 +227,8 @@ jobs:
         run: |
           cd app/frontend
           npx vite preview --port 4173 &
-          echo "CWV_PREVIEW_PID=$!" >> $GITHUB_ENV
-          for i in $(seq 1 15); do
+          echo "CWV_PREVIEW_PID=$!" >> "$GITHUB_ENV"
+          for _ in $(seq 1 15); do
             sleep 1
             curl -sf http://localhost:4173 >/dev/null 2>&1 && break
           done
@@ -236,4 +256,4 @@ jobs:
 
       - name: Stop preview server
         if: always()
-        run: kill $CWV_PREVIEW_PID 2>/dev/null || true
+        run: kill "$CWV_PREVIEW_PID" 2>/dev/null || true
