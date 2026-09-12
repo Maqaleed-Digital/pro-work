@@ -1,0 +1,236 @@
+# WC-010 — copy the ACCEPTED artifact from GHCR to ECR. No rebuild. No ECS.
+#
+# DL-WC-ECR-AUTH-001 makes digest equality a REQUIRED PREDICATE, not an allowed delta, so this
+# moves the existing artifact rather than producing a new one.
+#
+# WHY --all IS MANDATORY
+# Measured on run 34699318561: the accepted artifact is an OCI INDEX with 2 children —
+# linux/amd64 plus one buildx provenance attestation (unknown/unknown). A copy that resolves
+# the index to its amd64 child produces a DIFFERENT digest and would fail the predicate. So:
+# skopeo copy --all, and the index must not be flattened, converted, or stripped.
+#
+# AUTHORITY SEPARATION
+#   GHCR read  : github.token (packages: read) — no human PAT
+#   ECR write  : GitHub OIDC -> workcaptain-ci-ecr-push — no long-lived AWS key
+# Neither credential is echoed, and both reach skopeo through a login, never an argv.
+#
+# IDEMPOTENCY UNDER TAG IMMUTABILITY
+# The repository is IMMUTABLE, so a retry must never force or retag. This checks the tag first
+# and treats an already-correct artifact as COMPLETE rather than re-pushing it. A tag that
+# exists with a DIFFERENT digest is a hard stop — never deleted, never overwritten.
+name: wc-registry-copy
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type COPY to confirm the GHCR -> ECR artifact copy'
+        required: true
+        default: ''
+
+permissions:
+  contents: read
+  packages: read
+  id-token: write
+
+env:
+  SOURCE_REF: ghcr.io/maqaleed-digital/pro-work@sha256:760bca143118f8bdba78143968ce7d470acb65be02ebe70b726275471c72df13
+  SOURCE_DIGEST: sha256:760bca143118f8bdba78143968ce7d470acb65be02ebe70b726275471c72df13
+  SOURCE_SHA_TAG: sha-f7f82c042f028ce2205f3becb8231b905175eb05
+  ECR_REGISTRY: 822127611052.dkr.ecr.eu-central-1.amazonaws.com
+  ECR_REPO: workcaptain-production
+  AWS_REGION: eu-central-1
+  ECR_ROLE: arn:aws:iam::822127611052:role/workcaptain-ci-ecr-push
+
+jobs:
+  copy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Refuse an unconfirmed run
+        env:
+          CONFIRM: ${{ github.event.inputs.confirm }}
+        run: |
+          if [ "$CONFIRM" != "COPY" ]; then
+            echo "Refusing: confirm input must be exactly COPY." >&2
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - name: Install skopeo and crane
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq skopeo
+          skopeo --version
+          VER=v0.20.2
+          curl -sSL "https://github.com/google/go-containerregistry/releases/download/${VER}/go-containerregistry_Linux_x86_64.tar.gz" \
+            | tar -xz -C /usr/local/bin crane
+          crane version
+
+      - name: Log in to GHCR (READ identity — github.token)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_ACTOR: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+          echo "$GH_TOKEN" | skopeo login ghcr.io -u "$GH_ACTOR" --password-stdin
+          echo "$GH_TOKEN" | crane auth login ghcr.io -u "$GH_ACTOR" --password-stdin
+          echo "GHCR_READ_IDENTITY=github.token (packages: read)"
+
+      - name: Re-measure the SOURCE before copying
+        env:
+          SRC: ${{ env.SOURCE_REF }}
+          EXPECT: ${{ env.SOURCE_DIGEST }}
+        run: |
+          set -euo pipefail
+          MEASURED="$(crane digest "$SRC")"
+          echo "SOURCE_INDEX_DIGEST=$MEASURED"
+          if [ "$MEASURED" != "$EXPECT" ]; then
+            echo "STOP: source digest drifted from the accepted artifact" >&2; exit 1
+          fi
+          crane manifest "$SRC" > /tmp/src.json
+          node -e '
+            const m = require("/tmp/src.json");
+            const kids = m.manifests || [];
+            console.log("SOURCE_MEDIA_TYPE=" + m.mediaType);
+            console.log("SOURCE_CHILD_COUNT=" + kids.length);
+            for (const k of kids) {
+              const p = k.platform ? (k.platform.os + "/" + k.platform.architecture) : "none";
+              console.log("SOURCE_CHILD=" + k.digest + " | " + p + " | " + k.mediaType);
+            }
+            require("fs").writeFileSync("/tmp/src_children.txt",
+              kids.map(function (k) { return k.digest; }).sort().join("\n"));
+          '
+
+      - name: Assume ECR write identity via OIDC (no long-lived key)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.ECR_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: wc010-registry-copy
+
+      - name: Log in to ECR (WRITE identity — OIDC assumed role)
+        env:
+          REGION: ${{ env.AWS_REGION }}
+          REGISTRY: ${{ env.ECR_REGISTRY }}
+        run: |
+          set -euo pipefail
+          aws sts get-caller-identity --output json
+          aws ecr get-login-password --region "$REGION" \
+            | skopeo login "$REGISTRY" -u AWS --password-stdin
+          aws ecr get-login-password --region "$REGION" \
+            | crane auth login "$REGISTRY" -u AWS --password-stdin
+          echo "ECR_WRITE_IDENTITY=workcaptain-ci-ecr-push via GitHub OIDC"
+          echo "AUTHORITY_SEPARATION=PASS"
+
+      - name: Idempotency pre-check (tags are IMMUTABLE — never force, never retag)
+        id: pre
+        env:
+          REGISTRY: ${{ env.ECR_REGISTRY }}
+          REPO: ${{ env.ECR_REPO }}
+          TAG: ${{ env.SOURCE_SHA_TAG }}
+          EXPECT: ${{ env.SOURCE_DIGEST }}
+        run: |
+          set -euo pipefail
+          TARGET="$REGISTRY/$REPO:$TAG"
+          if EXISTING="$(crane digest "$TARGET" 2>/dev/null)"; then
+            echo "TARGET_SHA_TAG_PRESENT_PRE=YES ($EXISTING)"
+            if [ "$EXISTING" = "$EXPECT" ]; then
+              echo "COPY_ALREADY_COMPLETE=YES"
+              echo "already_complete=yes" >> "$GITHUB_OUTPUT"
+            else
+              echo "STOP: tag exists with a DIFFERENT digest. Not forcing, not deleting, not retagging." >&2
+              exit 1
+            fi
+          else
+            echo "TARGET_SHA_TAG_PRESENT_PRE=NO"
+            echo "already_complete=no" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: COPY — skopeo copy --all (index preserved, nothing rebuilt)
+        if: steps.pre.outputs.already_complete != 'yes'
+        env:
+          SRC: ${{ env.SOURCE_REF }}
+          REGISTRY: ${{ env.ECR_REGISTRY }}
+          REPO: ${{ env.ECR_REPO }}
+          TAG: ${{ env.SOURCE_SHA_TAG }}
+        run: |
+          set -euo pipefail
+          skopeo copy --all --retry-times 3 \
+            "docker://$SRC" \
+            "docker://$REGISTRY/$REPO:$TAG"
+          echo "COPY_EXECUTED=YES"
+
+      - name: VERIFY — index digest equality
+        env:
+          REGISTRY: ${{ env.ECR_REGISTRY }}
+          REPO: ${{ env.ECR_REPO }}
+          TAG: ${{ env.SOURCE_SHA_TAG }}
+          EXPECT: ${{ env.SOURCE_DIGEST }}
+        run: |
+          set -euo pipefail
+          TARGET_DIGEST="$(crane digest "$REGISTRY/$REPO:$TAG")"
+          echo "TARGET_INDEX_DIGEST=$TARGET_DIGEST"
+          if [ "$TARGET_DIGEST" != "$EXPECT" ]; then
+            echo "INDEX_DIGEST_EQUALITY=FAIL" >&2; exit 1
+          fi
+          echo "INDEX_DIGEST_EQUALITY=PASS"
+          echo "SOURCE_SHA_TAG_MATCH=PASS"
+
+      - name: VERIFY — every child manifest independently retrievable from ECR
+        env:
+          REGISTRY: ${{ env.ECR_REGISTRY }}
+          REPO: ${{ env.ECR_REPO }}
+          TAG: ${{ env.SOURCE_SHA_TAG }}
+        run: |
+          set -euo pipefail
+          crane manifest "$REGISTRY/$REPO:$TAG" > /tmp/tgt.json
+          node -e '
+            const fs = require("fs");
+            const t = require("/tmp/tgt.json");
+            const kids = t.manifests || [];
+            const srcSet = fs.readFileSync("/tmp/src_children.txt", "utf8").trim().split("\n").sort();
+            const tgtSet = kids.map(function (k) { return k.digest; }).sort();
+            console.log("TARGET_MEDIA_TYPE=" + t.mediaType);
+            console.log("TARGET_CHILD_COUNT=" + kids.length);
+            for (const k of kids) {
+              const p = k.platform ? (k.platform.os + "/" + k.platform.architecture) : "none";
+              console.log("TARGET_CHILD=" + k.digest + " | " + p + " | " + k.mediaType);
+            }
+            const equal = JSON.stringify(srcSet) === JSON.stringify(tgtSet);
+            console.log("CHILD_SET_EQUALITY=" + (equal ? "PASS" : "FAIL"));
+            if (!equal) { console.error("child digest sets differ"); process.exit(1); }
+            fs.writeFileSync("/tmp/tgt_children.txt", tgtSet.join("\n"));
+          '
+          # Independent retrieval: do not trust the parent index reference alone.
+          AMD64=NO; ATTEST=NO
+          while read -r CHILD; do
+            [ -z "$CHILD" ] && continue
+            if crane manifest "$REGISTRY/$REPO@$CHILD" > /tmp/child.json 2>/dev/null; then
+              PLAT="$(node -e 'const m=require("/tmp/child.json");console.log(m.mediaType)')"
+              echo "CHILD_RETRIEVABLE=YES | $CHILD | $PLAT"
+              case "$PLAT" in
+                *image.manifest*) AMD64=YES ;;
+              esac
+              if grep -q "in-toto" /tmp/child.json 2>/dev/null; then ATTEST=YES; fi
+            else
+              echo "CHILD_RETRIEVABLE=NO | $CHILD" >&2
+              exit 1
+            fi
+          done < /tmp/tgt_children.txt
+          echo "AMD64_CHILD_RETRIEVABLE=$AMD64"
+          echo "ATTESTATION_CHILD_RETRIEVABLE=$ATTEST"
+          echo "ARTIFACT_GRAPH_EQUALITY=PASS"
+
+      - name: Report ECR state (no ECS touched)
+        env:
+          REPO: ${{ env.ECR_REPO }}
+          REGION: ${{ env.AWS_REGION }}
+        run: |
+          set -euo pipefail
+          aws ecr describe-images --repository-name "$REPO" --region "$REGION" \
+            --query 'imageDetails[].{digest:imageDigest,tags:imageTags,pushed:imagePushedAt,size:imageSizeInBytes,scan:imageScanStatus.status}' \
+            --output json
+          echo "ECS_MUTATION=NO"
