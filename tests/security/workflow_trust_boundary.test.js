@@ -5,8 +5,9 @@
  *
  * The product repository is PUBLIC; the central assurance repository
  * (Waheebow/maqaleed-web-assurance) is PRIVATE and under a different owner, so the
- * repository-scoped GITHUB_TOKEN cannot read it. web-assurance.yml therefore carries one
- * narrowly scoped read-only credential, MWA_READ_TOKEN. This suite proves WHO CAN REACH IT.
+ * repository-scoped GITHUB_TOKEN cannot read it. web-assurance.yml therefore acquires one
+ * narrowly scoped read-only credential: since D2, a SHORT-LIVED GitHub App installation token
+ * minted after the trust predicate has admitted the run. This suite proves WHO CAN REACH IT.
  *
  * Two different kinds of proof are used, and they are not interchangeable:
  *
@@ -225,7 +226,7 @@ describe('Suite A: trigger surface topology (CONTROL F)', () => {
 
 // ── Suite B: predicate controls ──────────────────────────────────────────────
 
-describe('Suite B: job predicate — who can reach MWA_READ_TOKEN', () => {
+describe('Suite B: job predicate — who can reach the credential fabric', () => {
   it('CONTROL E — trusted main Production Deployment success is ACCEPTED', () => {
     assert.equal(evaluate(PREDICATE, runCtx()), true);
   });
@@ -312,20 +313,72 @@ describe('Suite C: positive control on the evaluator itself', () => {
 
 // ── Suite D: credential handling ─────────────────────────────────────────────
 
-describe('Suite D: MWA_READ_TOKEN handling', () => {
-  it('the token is referenced, and only by reference — no literal is committed', () => {
-    assert.match(SRC, /secrets\.MWA_READ_TOKEN/, 'the token must be referenced');
-    assert.ok(!/ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}/.test(SRC),
-      'no token literal may appear in the workflow');
+/**
+ * D2 (MAQ-WAAP-001). The credential model changed and this suite changed with it, in the
+ * strengthening direction only. The workflow no longer holds a stored repository PAT at all: it
+ * mints a SHORT-LIVED GitHub App installation token, scoped to the central assurance repository
+ * with Contents: Read, and only AFTER the job predicate (Suites A–C) has already admitted the run.
+ *
+ * Two properties the PAT model could not express are now asserted here:
+ *   MINT_AFTER_TRUST        — nothing can acquire a credential before the trust boundary; the mint
+ *                             step must precede every credential-consuming step.
+ *   NO_REPOSITORY_PAT       — MWA_READ_TOKEN must not appear on this path at all. It stays
+ *                             CONFIGURED on the repository as the rollback, but the active path
+ *                             must not reference it; a reintroduction fails here.
+ */
+describe('Suite D: GitHub App credential handling', () => {
+  /** Index of a step within stepBodies(), by a substring of its `- name:` line. */
+  const stepIndex = (prefix) => stepBodies().findIndex(b => b.includes(`- name: ${prefix}`));
+
+  it('no repository PAT is referenced on the active path — the PAT is rollback, not credential', () => {
+    assert.ok(!/MWA_READ_TOKEN/.test(SRC),
+      'the migrated path must not reference MWA_READ_TOKEN; it remains configured only as the rollback');
   });
 
-  it('exactly the two central checkouts consume the token', () => {
-    const consumers = SRC.split('\n').filter(l => /token:\s*\$\{\{\s*secrets\.MWA_READ_TOKEN\s*\}\}/.test(l));
+  it('key material is referenced only by name — no literal is committed', () => {
+    assert.match(SRC, /secrets\.MWA_APP_PRIVATE_KEY/, 'the App private key must be referenced');
+    assert.match(SRC, /vars\.MWA_APP_ID/, 'the App id must be read from an Actions variable');
+    assert.ok(!/ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}/.test(SRC),
+      'no token literal may appear in the workflow');
+    assert.ok(!/-----BEGIN[^\n]*KEY-----/.test(SRC),
+      'no private key material may appear in the workflow');
+  });
+
+  it('exactly one mint step exists, scoped to the central repository with Contents: Read', () => {
+    const mints = stepBodies().filter(b => /uses:\s*actions\/create-github-app-token@[0-9a-f]{40}/.test(b));
+    assert.equal(mints.length, 1, 'exactly one credential may ever be minted');
+    const m = mints[0];
+    assert.match(m, /owner:\s*Waheebow/, 'the mint must name the central owner');
+    assert.match(m, /repositories:\s*maqaleed-web-assurance\s*$/m,
+      'the minted token must cover the central assurance repository and nothing else');
+    assert.match(m, /permission-contents:\s*read/, 'the minted token must grant Contents: Read');
+    assert.ok(!/permission-(?!contents)/.test(m), 'no permission beyond contents may be requested');
+  });
+
+  it('MINT_AFTER_TRUST — the mint precedes every credential-consuming step', () => {
+    const mintAt = stepIndex('Mint central read token');
+    assert.ok(mintAt >= 0, 'mint step not found');
+    const consumers = stepBodies()
+      .map((b, i) => ({ b, i }))
+      .filter(({ b }) => /token:\s*\$\{\{\s*steps\.mwa_token\.outputs\.token\s*\}\}/.test(b));
+    assert.equal(consumers.length, 2, 'only the runner and evidence checkouts may take the token');
+    for (const { i } of consumers) {
+      assert.ok(mintAt < i, `credential consumed at step ${i} before the mint at ${mintAt}`);
+    }
+    // The trust boundary itself is the job predicate proven in Suites A–C: a rejected event never
+    // starts the job, so the mint step is unreachable and REJECTED_EVENT_MINT_COUNT is 0.
+    assert.ok(PREDICATE.includes("github.event_name == 'workflow_run'"),
+      'the job predicate must still gate the automatic path');
+  });
+
+  it('exactly the two central checkouts consume the minted token', () => {
+    const consumers = SRC.split('\n')
+      .filter(l => /token:\s*\$\{\{\s*steps\.mwa_token\.outputs\.token\s*\}\}/.test(l));
     assert.equal(consumers.length, 2, 'only the runner and evidence checkouts may take the token');
   });
 
   it('both central checkouts set persist-credentials: false', () => {
-    const blocks = stepBodies().filter(b => /token:\s*\$\{\{\s*secrets\.MWA_READ_TOKEN/.test(b));
+    const blocks = stepBodies().filter(b => /token:\s*\$\{\{\s*steps\.mwa_token\.outputs\.token/.test(b));
     assert.equal(blocks.length, 2, 'expected exactly the two central checkouts to bear the token');
     for (const b of blocks) {
       assert.match(b, /persist-credentials:\s*false/,
@@ -333,22 +386,23 @@ describe('Suite D: MWA_READ_TOKEN handling', () => {
     }
   });
 
-  it('the product checkout does NOT take the token', () => {
+  it('the product checkout takes no credential at all', () => {
     const block = stepNamed('Checkout product');
     assert.ok(block, 'product checkout step not found');
-    assert.ok(!/MWA_READ_TOKEN/.test(block), 'the product checkout must use the default GITHUB_TOKEN');
+    assert.ok(!/token:/.test(block), 'the product checkout must use the default GITHUB_TOKEN');
+    assert.match(block, /persist-credentials:\s*false/);
   });
 
   it('the step extractor is sound — it isolates a step from the next step\'s comment', () => {
     // Guards the false positive that the naive "- name: " split produced: the product checkout
-    // step must not absorb the credential comment that introduces the central checkout.
+    // step must not absorb the comment that introduces the following presence-check step.
     const block = stepNamed('Checkout product');
-    assert.ok(!block.includes('PRIVATE cross-repository read'),
+    assert.ok(!block.includes('Boolean presence only'),
       'step boundary leaked the following step\'s comment');
     assert.match(block, /uses: actions\/checkout@[0-9a-f]{40}/);
   });
 
-  it('the token never appears inside a run: block', () => {
+  it('neither the key nor the minted token ever appears inside a run: block', () => {
     const lines = SRC.split('\n');
     let inRun = false, indent = 0;
     for (const l of lines) {
@@ -356,16 +410,18 @@ describe('Suite D: MWA_READ_TOKEN handling', () => {
       if (inRun) {
         if (l.trim() !== '' && (l.length - l.trimStart().length) <= indent) { inRun = false; }
         else {
-          assert.ok(!/secrets\.MWA_READ_TOKEN/.test(l),
-            'the secret must never be expanded into shell source');
+          assert.ok(!/secrets\.MWA_APP_PRIVATE_KEY/.test(l),
+            'the private key must never be expanded into shell source');
+          assert.ok(!/steps\.mwa_token\.outputs\.token/.test(l),
+            'the minted token must never be expanded into shell source');
         }
       }
     }
   });
 
-  it('the presence check exposes a boolean, never the value', () => {
-    assert.match(SRC, /MWA_TOKEN_PRESENT:\s*\$\{\{\s*secrets\.MWA_READ_TOKEN\s*!=\s*''\s*\}\}/,
-      'presence must be computed as a comparison, which yields true/false');
+  it('the presence check exposes a boolean, never either value', () => {
+    assert.match(SRC, /MWA_APP_PRESENT:\s*\$\{\{\s*vars\.MWA_APP_ID\s*!=\s*''\s*&&\s*secrets\.MWA_APP_PRIVATE_KEY\s*!=\s*''\s*\}\}/,
+      'presence must be computed as comparisons, which yield true/false');
   });
 
   it('workflow permissions remain contents: read — no write authority is added', () => {
@@ -388,14 +444,18 @@ describe('Suite E: assurance authority unchanged', () => {
     }
   });
 
-  it('the header no longer claims the workflow carries no credentials at all', () => {
+  it('the header names the credential model it actually carries', () => {
     assert.ok(!/never .{0,40}carr(y|ies|ying) credentials/i.test(SRC),
       'header prose must match behaviour once a credential is carried');
-    assert.match(SRC, /MWA_READ_TOKEN/, 'the header must name the credential it carries');
+    assert.match(SRC, /GITHUB_APP_INSTALLATION_TOKEN/,
+      'the header must name the credential model it carries');
+    assert.match(SRC, /No repository PAT/,
+      'the header must state that no repository PAT is on this path');
   });
 
   it('the runner is still pinned by tag and the baseline by digest', () => {
-    assert.match(SRC, /MWA_TAG:\s*v0\.1\.1/);
+    assert.match(SRC, /MWA_RUNNER_REF:\s*[0-9a-f]{40} # v\d+\.\d+\.\d+/,
+      'the runner must be pinned to the immutable commit of a released tag');
     assert.match(SRC, /baseline-check --lock assurance\/baseline\.lock/);
   });
 });
