@@ -1,0 +1,1481 @@
+{
+  "summary": {
+    "generated_utc": "2026-09-12T10:01:54.000Z",
+    "layer": "A_STATIC_REPO_ONLY",
+    "live_pg_catalog_consulted": false,
+    "migrations_scanned": 34,
+    "dynamic_ddl_files": [],
+    "gucs_referenced_by_policies": [
+      "app.current_tenant_id",
+      "app.tenant_id"
+    ],
+    "gucs_set_by_serving_code": [
+      "app.current_tenant_id",
+      "app.tenant_id"
+    ],
+    "tables_total": 78,
+    "tenant_scoped": 61,
+    "counts": {
+      "UNKNOWN_NEEDS_LIVE_PROOF": 19,
+      "GLOBAL_REFERENCE": 17,
+      "STATIC_GAP": 31,
+      "STATIC_CONFORMANT": 11
+    }
+  },
+  "rows": [
+    {
+      "table": "application_events",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": true,
+      "force_declared": false,
+      "policy_present": true,
+      "policy_count": 1,
+      "guc_names": [
+        "app.current_tenant_id"
+      ],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "UNKNOWN_NEEDS_LIVE_PROOF",
+      "evidence": [
+        "tenant_id column declared in 20260419_create_candidates.sql",
+        "ENABLE RLS in 20260419_create_candidates.sql",
+        "policy tenant_isolation_app_events in 20260419_create_candidates.sql"
+      ]
+    },
+    {
+      "table": "applications",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": true,
+      "force_declared": false,
+      "policy_present": true,
+      "policy_count": 1,
+      "guc_names": [
+        "app.current_tenant_id"
+      ],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "UNKNOWN_NEEDS_LIVE_PROOF",
+      "evidence": [
+        "tenant_id column declared in 20260419_create_candidates.sql",
+        "ENABLE RLS in 20260419_create_candidates.sql",
+        "policy tenant_isolation_applications in 20260419_create_candidates.sql"
+      ]
+    },
+    {
+      "table": "candidate_acceptances",
+      "tenant_scoped": "no",
+      "tenant_key": null,
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "GLOBAL_REFERENCE",
+      "evidence": []
+    },
+    {
+      "table": "candidate_matches",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_GAP",
+      "evidence": [
+        "tenant_id column declared in 20260306_sprint_b_sovereign_recruiting.sql"
+      ]
+    },
+    {
+      "table": "candidate_shortlists",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_GAP",
+      "evidence": [
+        "tenant_id column declared in 20260306_sprint_b_sovereign_recruiting.sql"
+      ]
+    },
+    {
+      "table": "candidate_skills",
+      "tenant_scoped": "no",
+      "tenant_key": null,
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "GLOBAL_REFERENCE",
+      "evidence": []
+    },
+    {
+      "table": "candidates",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": true,
+      "force_declared": false,
+      "policy_present": true,
+      "policy_count": 1,
+      "guc_names": [
+        "app.current_tenant_id"
+      ],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "UNKNOWN_NEEDS_LIVE_PROOF",
+      "evidence": [
+        "tenant_id column declared in 20260306_sprint_b_sovereign_recruiting.sql",
+        "tenant_id column declared in 20260419_create_candidates.sql",
+        "ENABLE RLS in 20260419_create_candidates.sql",
+        "policy tenant_isolation_candidates in 20260419_create_candidates.sql"
+      ]
+    },
+    {
+      "table": "contract_events",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": true,
+      "force_declared": false,
+      "policy_present": true,
+      "policy_count": 1,
+      "guc_names": [
+        "app.current_tenant_id"
+      ],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "UNKNOWN_NEEDS_LIVE_PROOF",
+      "evidence": [
+        "tenant_id column declared in 20260419_create_contracts.sql",
+        "ENABLE RLS in 20260419_create_contracts.sql",
+        "policy tenant_isolation_contract_events in 20260419_create_contracts.sql"
+      ]
+    },
+    {
+      "table": "contract_lifecycle_events",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": true,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_GAP",
+      "evidence": [
+        "tenant_id column declared in 20260416_create_contract_lifecycle.sql",
+        "ENABLE RLS in 20260416_create_contract_lifecycle.sql"
+      ]
+    },
+    {
+      "table": "contract_mappings",
+      "tenant_scoped": "no",
+      "tenant_key": null,
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "GLOBAL_REFERENCE",
+      "evidence": []
+    },
+    {
+      "table": "contract_templates",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": true,
+      "force_declared": false,
+      "policy_present": true,
+      "policy_count": 1,
+      "guc_names": [
+        "app.current_tenant_id"
+      ],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "UNKNOWN_NEEDS_LIVE_PROOF",
+      "evidence": [
+        "tenant_id column declared in 20260419_create_contracts.sql",
+        "ENABLE RLS in 20260419_create_contracts.sql",
+        "policy tenant_isolation_contract_templates in 20260419_create_contracts.sql"
+      ]
+    },
+    {
+      "table": "contracts",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": true,
+      "force_declared": false,
+      "policy_present": true,
+      "policy_count": 1,
+      "guc_names": [
+        "app.current_tenant_id"
+      ],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "UNKNOWN_NEEDS_LIVE_PROOF",
+      "evidence": [
+        "tenant_id column declared in 20260419_create_contracts.sql",
+        "ENABLE RLS in 20260419_create_contracts.sql",
+        "policy tenant_isolation_contracts in 20260419_create_contracts.sql"
+      ]
+    },
+    {
+      "table": "domain_events",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_GAP",
+      "evidence": [
+        "tenant_id column declared in 20260306_phase1_trust_event_foundation.sql"
+      ]
+    },
+    {
+      "table": "employment_contracts",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_GAP",
+      "evidence": [
+        "tenant_id column declared in 20260307_sprint_c_sovereign_onboarding.sql"
+      ]
+    },
+    {
+      "table": "esb_calculation_events",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": true,
+      "force_declared": false,
+      "policy_present": true,
+      "policy_count": 1,
+      "guc_names": [
+        "app.current_tenant_id"
+      ],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "UNKNOWN_NEEDS_LIVE_PROOF",
+      "evidence": [
+        "tenant_id column declared in 20260419_create_esb_calculations.sql",
+        "ENABLE RLS in 20260419_create_esb_calculations.sql",
+        "policy tenant_isolation_esb_events in 20260419_create_esb_calculations.sql"
+      ]
+    },
+    {
+      "table": "esb_calculations",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": true,
+      "force_declared": false,
+      "policy_present": true,
+      "policy_count": 1,
+      "guc_names": [
+        "app.current_tenant_id"
+      ],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "UNKNOWN_NEEDS_LIVE_PROOF",
+      "evidence": [
+        "tenant_id column declared in 20260307_sprint_e_lifecycle_esb_offboarding.sql",
+        "tenant_id column declared in 20260419_create_esb_calculations.sql",
+        "ENABLE RLS in 20260419_create_esb_calculations.sql",
+        "policy tenant_isolation_esb in 20260419_create_esb_calculations.sql"
+      ]
+    },
+    {
+      "table": "event_schema_registry",
+      "tenant_scoped": "no",
+      "tenant_key": null,
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "GLOBAL_REFERENCE",
+      "evidence": []
+    },
+    {
+      "table": "evidence_ai_artifacts",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": true,
+      "force_declared": true,
+      "policy_present": true,
+      "policy_count": 1,
+      "guc_names": [
+        "app.tenant_id"
+      ],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_CONFORMANT",
+      "evidence": [
+        "tenant_id column declared in 20260416_create_evidence_packs.sql",
+        "ENABLE RLS in 20260416_create_evidence_packs.sql",
+        "policy tenant_isolation in 20260416_create_evidence_packs.sql",
+        "FORCE RLS in 20260619_wc_sec_01_force_rls.sql"
+      ]
+    },
+    {
+      "table": "evidence_approvals",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": true,
+      "force_declared": true,
+      "policy_present": true,
+      "policy_count": 1,
+      "guc_names": [
+        "app.tenant_id"
+      ],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_CONFORMANT",
+      "evidence": [
+        "tenant_id column declared in 20260416_create_evidence_packs.sql",
+        "ENABLE RLS in 20260416_create_evidence_packs.sql",
+        "policy tenant_isolation in 20260416_create_evidence_packs.sql",
+        "FORCE RLS in 20260619_wc_sec_01_force_rls.sql"
+      ]
+    },
+    {
+      "table": "evidence_files",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": true,
+      "force_declared": true,
+      "policy_present": true,
+      "policy_count": 1,
+      "guc_names": [
+        "app.tenant_id"
+      ],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_CONFORMANT",
+      "evidence": [
+        "tenant_id column declared in 20260416_create_evidence_packs.sql",
+        "ENABLE RLS in 20260416_create_evidence_packs.sql",
+        "policy tenant_isolation in 20260416_create_evidence_packs.sql",
+        "FORCE RLS in 20260619_wc_sec_01_force_rls.sql"
+      ]
+    },
+    {
+      "table": "evidence_packs",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": true,
+      "force_declared": true,
+      "policy_present": true,
+      "policy_count": 1,
+      "guc_names": [
+        "app.tenant_id"
+      ],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_CONFORMANT",
+      "evidence": [
+        "tenant_id column declared in 20260416_create_evidence_packs.sql",
+        "ENABLE RLS in 20260416_create_evidence_packs.sql",
+        "policy tenant_isolation in 20260416_create_evidence_packs.sql",
+        "FORCE RLS in 20260619_wc_sec_01_force_rls.sql"
+      ]
+    },
+    {
+      "table": "handover_records",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_GAP",
+      "evidence": [
+        "tenant_id column declared in 20260307_sprint_e_lifecycle_esb_offboarding.sql"
+      ]
+    },
+    {
+      "table": "hiring_approvals",
+      "tenant_scoped": "no",
+      "tenant_key": null,
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "GLOBAL_REFERENCE",
+      "evidence": []
+    },
+    {
+      "table": "hiring_cases",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_GAP",
+      "evidence": [
+        "tenant_id column declared in 20260307_sprint_d_sovereign_hiring.sql"
+      ]
+    },
+    {
+      "table": "invitations",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": true,
+      "force_declared": true,
+      "policy_present": true,
+      "policy_count": 1,
+      "guc_names": [
+        "app.current_tenant_id"
+      ],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_CONFORMANT",
+      "evidence": [
+        "tenant_id column declared in 20260418_create_invitations.sql",
+        "ENABLE RLS in 20260418_create_invitations.sql",
+        "policy tenant_isolation_invitations in 20260418_create_invitations.sql",
+        "FORCE RLS in 20260619_wc_sec_01_force_rls.sql"
+      ]
+    },
+    {
+      "table": "invoice_line_items",
+      "tenant_scoped": "no",
+      "tenant_key": null,
+      "rls_declared": true,
+      "force_declared": true,
+      "policy_present": true,
+      "policy_count": 1,
+      "guc_names": [
+        "app.current_tenant_id"
+      ],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "GLOBAL_REFERENCE",
+      "evidence": [
+        "ENABLE RLS in 20260625_wc_sec_02_force_rls_invoices.sql",
+        "FORCE RLS in 20260625_wc_sec_02_force_rls_invoices.sql",
+        "policy wc_sec02_line_items_tenant_isolation in 20260625_wc_sec_02_force_rls_invoices.sql"
+      ]
+    },
+    {
+      "table": "invoices",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": true,
+      "force_declared": true,
+      "policy_present": true,
+      "policy_count": 1,
+      "guc_names": [
+        "app.current_tenant_id"
+      ],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_CONFORMANT",
+      "evidence": [
+        "tenant_id column declared in 20260617_create_invoices.sql",
+        "ENABLE RLS in 20260625_wc_sec_02_force_rls_invoices.sql",
+        "FORCE RLS in 20260625_wc_sec_02_force_rls_invoices.sql",
+        "policy wc_sec02_invoices_tenant_isolation in 20260625_wc_sec_02_force_rls_invoices.sql"
+      ]
+    },
+    {
+      "table": "lifecycle_alerts",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_GAP",
+      "evidence": [
+        "tenant_id column declared in 20260307_sprint_e_lifecycle_esb_offboarding.sql"
+      ]
+    },
+    {
+      "table": "nitaqat_preview_overrides",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": true,
+      "force_declared": true,
+      "policy_present": true,
+      "policy_count": 1,
+      "guc_names": [
+        "app.current_tenant_id"
+      ],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_CONFORMANT",
+      "evidence": [
+        "tenant_id column declared in 20260416_create_nitaqat_overrides.sql",
+        "ENABLE RLS in 20260416_create_nitaqat_overrides.sql",
+        "policy tenant_isolation in 20260416_create_nitaqat_overrides.sql",
+        "FORCE RLS in 20260619_wc_sec_01_force_rls.sql",
+        "policy tenant_isolation in 20260619_wc_sec_01_force_rls.sql"
+      ]
+    },
+    {
+      "table": "offboarding_audit_exports",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_GAP",
+      "evidence": [
+        "tenant_id column declared in 20260307_sprint_e_lifecycle_esb_offboarding.sql"
+      ]
+    },
+    {
+      "table": "offboarding_cases",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_GAP",
+      "evidence": [
+        "tenant_id column declared in 20260307_sprint_e_lifecycle_esb_offboarding.sql"
+      ]
+    },
+    {
+      "table": "offboarding_checklist_items",
+      "tenant_scoped": "no",
+      "tenant_key": null,
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "GLOBAL_REFERENCE",
+      "evidence": []
+    },
+    {
+      "table": "offboarding_events",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": true,
+      "force_declared": false,
+      "policy_present": true,
+      "policy_count": 1,
+      "guc_names": [
+        "app.current_tenant_id"
+      ],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "UNKNOWN_NEEDS_LIVE_PROOF",
+      "evidence": [
+        "tenant_id column declared in 20260419_create_offboarding.sql",
+        "ENABLE RLS in 20260419_create_offboarding.sql",
+        "policy tenant_isolation_offb_events in 20260419_create_offboarding.sql"
+      ]
+    },
+    {
+      "table": "offboardings",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": true,
+      "force_declared": false,
+      "policy_present": true,
+      "policy_count": 1,
+      "guc_names": [
+        "app.current_tenant_id"
+      ],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "UNKNOWN_NEEDS_LIVE_PROOF",
+      "evidence": [
+        "tenant_id column declared in 20260419_create_offboarding.sql",
+        "ENABLE RLS in 20260419_create_offboarding.sql",
+        "policy tenant_isolation_offboardings in 20260419_create_offboarding.sql"
+      ]
+    },
+    {
+      "table": "offer_allowances",
+      "tenant_scoped": "no",
+      "tenant_key": null,
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "GLOBAL_REFERENCE",
+      "evidence": []
+    },
+    {
+      "table": "offer_packages",
+      "tenant_scoped": "no",
+      "tenant_key": null,
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "GLOBAL_REFERENCE",
+      "evidence": []
+    },
+    {
+      "table": "offers",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": true,
+      "force_declared": false,
+      "policy_present": true,
+      "policy_count": 1,
+      "guc_names": [
+        "app.current_tenant_id"
+      ],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "UNKNOWN_NEEDS_LIVE_PROOF",
+      "evidence": [
+        "tenant_id column declared in 20260419_create_offers.sql",
+        "ENABLE RLS in 20260419_create_offers.sql",
+        "policy tenant_isolation_offers in 20260419_create_offers.sql"
+      ]
+    },
+    {
+      "table": "onboarding_cases",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_GAP",
+      "evidence": [
+        "tenant_id column declared in 20260307_sprint_c_sovereign_onboarding.sql"
+      ]
+    },
+    {
+      "table": "onboarding_checklist_items",
+      "tenant_scoped": "no",
+      "tenant_key": null,
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "GLOBAL_REFERENCE",
+      "evidence": []
+    },
+    {
+      "table": "probation_cases",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_GAP",
+      "evidence": [
+        "tenant_id column declared in 20260307_sprint_c_sovereign_onboarding.sql"
+      ]
+    },
+    {
+      "table": "probation_events",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": true,
+      "force_declared": false,
+      "policy_present": true,
+      "policy_count": 1,
+      "guc_names": [
+        "app.current_tenant_id"
+      ],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "UNKNOWN_NEEDS_LIVE_PROOF",
+      "evidence": [
+        "tenant_id column declared in 20260419_create_probation.sql",
+        "ENABLE RLS in 20260419_create_probation.sql",
+        "policy tenant_isolation_probation_events in 20260419_create_probation.sql"
+      ]
+    },
+    {
+      "table": "probation_governance_records",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": true,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_GAP",
+      "evidence": [
+        "tenant_id column declared in 20260416_create_probation_governance.sql",
+        "ENABLE RLS in 20260416_create_probation_governance.sql"
+      ]
+    },
+    {
+      "table": "probation_records",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": true,
+      "force_declared": false,
+      "policy_present": true,
+      "policy_count": 1,
+      "guc_names": [
+        "app.current_tenant_id"
+      ],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "UNKNOWN_NEEDS_LIVE_PROOF",
+      "evidence": [
+        "tenant_id column declared in 20260419_create_probation.sql",
+        "ENABLE RLS in 20260419_create_probation.sql",
+        "policy tenant_isolation_probation in 20260419_create_probation.sql"
+      ]
+    },
+    {
+      "table": "qiwa_contracts",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": true,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_GAP",
+      "evidence": [
+        "tenant_id column declared in 20260416_create_contract_lifecycle.sql",
+        "ENABLE RLS in 20260416_create_contract_lifecycle.sql"
+      ]
+    },
+    {
+      "table": "recommendation_audit_logs",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": true,
+      "force_declared": true,
+      "policy_present": true,
+      "policy_count": 1,
+      "guc_names": [
+        "app.tenant_id"
+      ],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_CONFORMANT",
+      "evidence": [
+        "tenant_id column declared in 20260416_create_recommendation_audit_log.sql",
+        "ENABLE RLS in 20260416_create_recommendation_audit_log.sql",
+        "policy ral_tenant_isolation in 20260416_create_recommendation_audit_log.sql",
+        "FORCE RLS in 20260619_wc_sec_01_force_rls.sql"
+      ]
+    },
+    {
+      "table": "recruiting_ai_decisions",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_GAP",
+      "evidence": [
+        "tenant_id column declared in 20260306_sprint_b_sovereign_recruiting.sql"
+      ]
+    },
+    {
+      "table": "requisition_documents",
+      "tenant_scoped": "no",
+      "tenant_key": null,
+      "rls_declared": true,
+      "force_declared": false,
+      "policy_present": true,
+      "policy_count": 1,
+      "guc_names": [
+        "app.current_tenant_id"
+      ],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "GLOBAL_REFERENCE",
+      "evidence": [
+        "ENABLE RLS in 20260418_create_requisitions.sql",
+        "policy tenant_isolation_req_docs in 20260418_create_requisitions.sql"
+      ]
+    },
+    {
+      "table": "requisition_required_skills",
+      "tenant_scoped": "no",
+      "tenant_key": null,
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "GLOBAL_REFERENCE",
+      "evidence": []
+    },
+    {
+      "table": "requisition_skills",
+      "tenant_scoped": "no",
+      "tenant_key": null,
+      "rls_declared": true,
+      "force_declared": false,
+      "policy_present": true,
+      "policy_count": 1,
+      "guc_names": [
+        "app.current_tenant_id"
+      ],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "GLOBAL_REFERENCE",
+      "evidence": [
+        "ENABLE RLS in 20260418_create_requisitions.sql",
+        "policy tenant_isolation_req_skills in 20260418_create_requisitions.sql"
+      ]
+    },
+    {
+      "table": "requisitions",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": true,
+      "force_declared": false,
+      "policy_present": true,
+      "policy_count": 1,
+      "guc_names": [
+        "app.current_tenant_id"
+      ],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "UNKNOWN_NEEDS_LIVE_PROOF",
+      "evidence": [
+        "tenant_id column declared in 20260306_sprint_b_sovereign_recruiting.sql",
+        "tenant_id column declared in 20260418_create_requisitions.sql",
+        "ENABLE RLS in 20260418_create_requisitions.sql",
+        "policy tenant_isolation_requisitions in 20260418_create_requisitions.sql"
+      ]
+    },
+    {
+      "table": "sdp_enrolments",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": true,
+      "force_declared": true,
+      "policy_present": true,
+      "policy_count": 1,
+      "guc_names": [
+        "app.tenant_id"
+      ],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_CONFORMANT",
+      "evidence": [
+        "tenant_id column declared in 20260416_create_sdp_programmes.sql",
+        "ENABLE RLS in 20260416_create_sdp_programmes.sql",
+        "policy sdp_enrolments_tenant_isolation in 20260416_create_sdp_programmes.sql",
+        "FORCE RLS in 20260619_wc_sec_01_force_rls.sql"
+      ]
+    },
+    {
+      "table": "sdp_pods",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": true,
+      "force_declared": false,
+      "policy_present": true,
+      "policy_count": 1,
+      "guc_names": [
+        "app.current_tenant_id"
+      ],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "UNKNOWN_NEEDS_LIVE_PROOF",
+      "evidence": [
+        "tenant_id column declared in 20260419_create_sdp_programs.sql",
+        "ENABLE RLS in 20260419_create_sdp_programs.sql",
+        "policy tenant_isolation_sdp_pods in 20260419_create_sdp_programs.sql"
+      ]
+    },
+    {
+      "table": "sdp_program_events",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": true,
+      "force_declared": false,
+      "policy_present": true,
+      "policy_count": 1,
+      "guc_names": [
+        "app.current_tenant_id"
+      ],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "UNKNOWN_NEEDS_LIVE_PROOF",
+      "evidence": [
+        "tenant_id column declared in 20260419_create_sdp_programs.sql",
+        "ENABLE RLS in 20260419_create_sdp_programs.sql",
+        "policy tenant_isolation_sdp_events in 20260419_create_sdp_programs.sql"
+      ]
+    },
+    {
+      "table": "sdp_programmes",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": true,
+      "force_declared": true,
+      "policy_present": true,
+      "policy_count": 1,
+      "guc_names": [
+        "app.tenant_id"
+      ],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_CONFORMANT",
+      "evidence": [
+        "tenant_id column declared in 20260416_create_sdp_programmes.sql",
+        "ENABLE RLS in 20260416_create_sdp_programmes.sql",
+        "policy sdp_programmes_tenant_isolation in 20260416_create_sdp_programmes.sql",
+        "FORCE RLS in 20260619_wc_sec_01_force_rls.sql"
+      ]
+    },
+    {
+      "table": "sdp_programs",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": true,
+      "force_declared": false,
+      "policy_present": true,
+      "policy_count": 1,
+      "guc_names": [
+        "app.current_tenant_id"
+      ],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "UNKNOWN_NEEDS_LIVE_PROOF",
+      "evidence": [
+        "tenant_id column declared in 20260419_create_sdp_programs.sql",
+        "ENABLE RLS in 20260419_create_sdp_programs.sql",
+        "policy tenant_isolation_sdp_programs in 20260419_create_sdp_programs.sql"
+      ]
+    },
+    {
+      "table": "sessions",
+      "tenant_scoped": "no",
+      "tenant_key": null,
+      "rls_declared": true,
+      "force_declared": true,
+      "policy_present": true,
+      "policy_count": 1,
+      "guc_names": [
+        "app.current_tenant_id"
+      ],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "GLOBAL_REFERENCE",
+      "evidence": [
+        "ENABLE RLS in 20260418_create_auth_tables.sql",
+        "policy tenant_isolation_sessions in 20260418_create_auth_tables.sql",
+        "FORCE RLS in 20260619_wc_sec_01_force_rls.sql"
+      ]
+    },
+    {
+      "table": "tenants",
+      "tenant_scoped": "no",
+      "tenant_key": null,
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "GLOBAL_REFERENCE",
+      "evidence": []
+    },
+    {
+      "table": "tos_acceptances",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_GAP",
+      "evidence": [
+        "tenant_id column declared in 20260616_create_tos_acceptances.sql"
+      ]
+    },
+    {
+      "table": "trust_consumer_checkpoints",
+      "tenant_scoped": "no",
+      "tenant_key": null,
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "GLOBAL_REFERENCE",
+      "evidence": []
+    },
+    {
+      "table": "trust_ledger_entries",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_GAP",
+      "evidence": [
+        "tenant_id column declared in 20260306_phase1_trust_event_foundation.sql"
+      ]
+    },
+    {
+      "table": "users",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": true,
+      "force_declared": true,
+      "policy_present": true,
+      "policy_count": 1,
+      "guc_names": [
+        "app.current_tenant_id"
+      ],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_CONFORMANT",
+      "evidence": [
+        "tenant_id column declared in 20260418_create_auth_tables.sql",
+        "ENABLE RLS in 20260418_create_auth_tables.sql",
+        "policy tenant_isolation_users in 20260418_create_auth_tables.sql",
+        "FORCE RLS in 20260619_wc_sec_01_force_rls.sql"
+      ]
+    },
+    {
+      "table": "worker_consents",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_GAP",
+      "evidence": [
+        "tenant_id column declared in 20260307_sprint_c_sovereign_onboarding.sql"
+      ]
+    },
+    {
+      "table": "worker_documents",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_GAP",
+      "evidence": [
+        "tenant_id column declared in 20260307_sprint_c_sovereign_onboarding.sql"
+      ]
+    },
+    {
+      "table": "worker_ibans",
+      "tenant_scoped": "no",
+      "tenant_key": null,
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "GLOBAL_REFERENCE",
+      "evidence": []
+    },
+    {
+      "table": "worker_lifecycle_cases",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_GAP",
+      "evidence": [
+        "tenant_id column declared in 20260307_sprint_e_lifecycle_esb_offboarding.sql"
+      ]
+    },
+    {
+      "table": "wos_assignments",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_GAP",
+      "evidence": [
+        "tenant_id column declared in 20260306_sprint_a_wos_core.sql"
+      ]
+    },
+    {
+      "table": "wos_dashboard_projection",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_GAP",
+      "evidence": [
+        "tenant_id column declared in 20260306_sprint_a_wos_core.sql"
+      ]
+    },
+    {
+      "table": "wos_execution_jobs",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_GAP",
+      "evidence": [
+        "tenant_id column declared in 20260306_sprint_a_wos_core.sql"
+      ]
+    },
+    {
+      "table": "wos_milestones",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_GAP",
+      "evidence": [
+        "tenant_id column declared in 20260306_sprint_a_wos_core.sql"
+      ]
+    },
+    {
+      "table": "wos_pods",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_GAP",
+      "evidence": [
+        "tenant_id column declared in 20260306_sprint_a_wos_core.sql"
+      ]
+    },
+    {
+      "table": "wos_projects",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_GAP",
+      "evidence": [
+        "tenant_id column declared in 20260306_sprint_a_wos_core.sql"
+      ]
+    },
+    {
+      "table": "wos_workers",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_GAP",
+      "evidence": [
+        "tenant_id column declared in 20260306_sprint_a_wos_core.sql"
+      ]
+    },
+    {
+      "table": "wos_workstreams",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_GAP",
+      "evidence": [
+        "tenant_id column declared in 20260306_sprint_a_wos_core.sql"
+      ]
+    },
+    {
+      "table": "wps_evidence_packs",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": true,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_GAP",
+      "evidence": [
+        "tenant_id column declared in 20260416_create_wps_readiness.sql",
+        "ENABLE RLS in 20260416_create_wps_readiness.sql"
+      ]
+    },
+    {
+      "table": "wps_readiness_artifacts",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": false,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_GAP",
+      "evidence": [
+        "tenant_id column declared in 20260307_sprint_c_sovereign_onboarding.sql"
+      ]
+    },
+    {
+      "table": "wps_readiness_events",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": true,
+      "force_declared": false,
+      "policy_present": true,
+      "policy_count": 1,
+      "guc_names": [
+        "app.current_tenant_id"
+      ],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "UNKNOWN_NEEDS_LIVE_PROOF",
+      "evidence": [
+        "tenant_id column declared in 20260419_create_wps_readiness.sql",
+        "ENABLE RLS in 20260419_create_wps_readiness.sql",
+        "policy tenant_isolation_wps_events in 20260419_create_wps_readiness.sql"
+      ]
+    },
+    {
+      "table": "wps_readiness_packs",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": true,
+      "force_declared": false,
+      "policy_present": true,
+      "policy_count": 1,
+      "guc_names": [
+        "app.current_tenant_id"
+      ],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "UNKNOWN_NEEDS_LIVE_PROOF",
+      "evidence": [
+        "tenant_id column declared in 20260419_create_wps_readiness.sql",
+        "ENABLE RLS in 20260419_create_wps_readiness.sql",
+        "policy tenant_isolation_wps_packs in 20260419_create_wps_readiness.sql"
+      ]
+    },
+    {
+      "table": "wps_readiness_records",
+      "tenant_scoped": "yes",
+      "tenant_key": "tenant_id",
+      "rls_declared": true,
+      "force_declared": false,
+      "policy_present": false,
+      "policy_count": 0,
+      "guc_names": [],
+      "guc_never_set_in_code": [],
+      "served_in_prod": "unknown",
+      "live_proof": "NOT_ATTEMPTED_STATIC_LAYER_ONLY",
+      "status": "STATIC_GAP",
+      "evidence": [
+        "tenant_id column declared in 20260416_create_wps_readiness.sql",
+        "ENABLE RLS in 20260416_create_wps_readiness.sql"
+      ]
+    }
+  ]
+}
