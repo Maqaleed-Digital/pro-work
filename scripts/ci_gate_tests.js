@@ -55,7 +55,11 @@ const GATE_TESTS = [
 // manifest for WC-007. Same 7-assertion slack preserved: measured 235, floor 228.
 // Raised 228 -> 240 when tests/release/release_manifest.test.js (12 assertions) joined for
 // WC-007 Stage A. Same 7-assertion slack preserved: measured 247, floor 240.
-const MIN_EXPECTED_TESTS = 240;
+// Raised 240 -> 246 after merging main: the WAAP D2 App-credential migration strengthened two
+// suites already on the manifest (workflow_injection 35 -> 38, workflow_trust_boundary 26 -> 29,
+// +6). Measured 253, floor 246 — same 7-assertion slack. The floor is moved because the corpus
+// grew, not to make a run pass.
+const MIN_EXPECTED_TESTS = 246;
 
 function fail(msg) {
   console.error(`\nERROR: ${msg}`);
