@@ -340,8 +340,15 @@ describe('Suite D: GitHub App credential handling', () => {
     assert.match(SRC, /vars\.MWA_APP_ID/, 'the App id must be read from an Actions variable');
     assert.ok(!/ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}/.test(SRC),
       'no token literal may appear in the workflow');
-    assert.ok(!/-----BEGIN[^\n]*KEY-----/.test(SRC),
-      'no private key material may appear in the workflow');
+    // Detect key MATERIAL, not the word "BEGIN". Since H4C-HARDEN-PEM-001 the adapter embeds a
+    // preflight program whose source contains the boundary REGEX (`-----BEGIN [A-Z0-9 ]*PRIVATE
+    // KEY-----`). Matching the bare literal flagged that pattern and would have forced the guard to
+    // be switched off. These two assertions are strictly stronger: a real key is a boundary wrapping
+    // a base64 body, and a key body is a long contiguous base64 run even with its boundaries removed.
+    assert.ok(!/-----BEGIN[^\n]*KEY-----\s*\n[A-Za-z0-9+/=\s]{100,}?-----END[^\n]*KEY-----/.test(SRC),
+      'no PEM private key block may appear in the workflow');
+    assert.ok(!/[A-Za-z0-9+/]{100,}={0,2}/.test(SRC),
+      'no key-body-shaped base64 blob may appear in the workflow');
   });
 
   it('exactly one mint step exists, scoped to the central repository with Contents: Read', () => {
