@@ -18,7 +18,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { check, GOVERNED_RELEASE_WORKFLOWS, triggersOf } =
+const { check, GOVERNED_RELEASE_WORKFLOWS, triggersOf, isStructurallyValid } =
   require('../../scripts/security/release_path_guard.js');
 
 function withWorkflows(files) {
@@ -48,20 +48,28 @@ test('the real repository tree PASSES after retirement', () => {
   assert.ok(r.filesChecked >= 8, `only ${r.filesChecked} workflows scanned`);
 });
 
-test('triggersOf survives BOTH YAML schemas for the `on:` key', () => {
-  // Measured: js-yaml 4.x is YAML 1.2, which keeps `on` as the STRING key, so doc.on works.
-  // The boolean trap is YAML 1.1 (PyYAML, js-yaml 3.x), where `on:` becomes the boolean true
-  // and a guard reading only doc['on'] sees no triggers and clears every workflow vacuously.
-  // triggersOf reads both, so the guard survives a parser change or a port to Python.
-  const yaml = require('js-yaml');
-  const doc = yaml.load('name: X\non:\n  push:\n    branches: [main]\n');
-  assert.deepEqual(Object.keys(doc), ['name', 'on'], 'js-yaml 4 keeps the string key');
-  assert.deepEqual(triggersOf(doc), ['push']);
-
-  // The YAML 1.1 shape, constructed directly — the form a 1.1 parser would hand us.
-  const yaml11Shape = { name: 'X', [true]: { push: { branches: ['main'] } } };
-  assert.equal(yaml11Shape.on, undefined, 'the 1.1 shape has no string key');
-  assert.deepEqual(triggersOf(yaml11Shape), ['push'], 'triggersOf must also read the boolean key');
+test('triggersOf reads the on: block without a YAML library, in every shape', () => {
+  // Structural text parsing, deliberately. A first version of this guard required js-yaml,
+  // which resolved locally via a transitive dep and failed in CI with
+  // "Cannot find module 'js-yaml'" — ci.yml's app job installs only app/ deps, so the gate
+  // runs from a root with no node_modules. A guard that cannot load does not run.
+  //
+  // Reading the text also sidesteps the YAML 1.1 / 1.2 divergence: under YAML 1.1 the `on:`
+  // key becomes the boolean true, and a parser-based guard reading doc['on'] would see no
+  // triggers and clear every workflow vacuously.
+  assert.deepEqual(triggersOf('name: X\non:\n  push:\n    branches: [main]\n'), ['push']);
+  assert.deepEqual(
+    triggersOf('on:\n  push:\n    tags: [\'v*\']\n  workflow_dispatch:\n').sort(),
+    ['push', 'workflow_dispatch']
+  );
+  assert.deepEqual(triggersOf('on: [push, pull_request]\n'), ['push', 'pull_request']);
+  assert.deepEqual(triggersOf('on: push\n'), ['push']);
+  // A YAML 1.1 writer may emit the key literally as `true:` — accepted too.
+  assert.deepEqual(triggersOf('true:\n  push:\n    branches: [main]\n'), ['push']);
+  // Nested detail must not be mistaken for a trigger.
+  assert.ok(!triggersOf('on:\n  push:\n    branches: [main]\n').includes('branches'));
+  // No triggers at all => not executable.
+  assert.deepEqual(triggersOf('name: X\njobs:\n  a:\n    runs-on: x\n'), []);
 });
 
 test('NC-WC011-01 — dispatchable legacy production deploy workflow: FAIL', () => {
@@ -204,11 +212,13 @@ jobs:
   assert.equal(check(dir).pass, true, 'comments must not be treated as executable content');
 });
 
-test('an unparseable workflow FAILS rather than being skipped', () => {
-  const dir = withWorkflows({ 'broken.yml': 'name: X\n  bad: [unclosed\n' });
+test('a structurally invalid workflow FAILS rather than being skipped', () => {
+  const broken = 'name: X\n  bad: [unclosed\n';
+  assert.equal(isStructurallyValid(broken), false, 'precondition: fixture must be invalid');
+  const dir = withWorkflows({ 'broken.yml': broken });
   const r = check(dir);
   assert.equal(r.pass, false);
-  assert.ok(r.findings.some(f => /unparseable/.test(f)));
+  assert.ok(r.findings.some(f => /unparseable or structurally invalid/.test(f)));
 });
 
 test('an empty workflow directory FAILS rather than passing vacuously', () => {

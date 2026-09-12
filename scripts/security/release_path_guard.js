@@ -12,24 +12,29 @@
  * therefore cannot promote a newly built image. Measured across its last 15 runs: every one
  * reported run-level SUCCESS with both deploy jobs SKIPPED.
  *
- * Nothing was broken. It simply could not do what its name claimed, and it said "success"
+ * Nothing was broken. It simply could not do what its name claimed, and said "success"
  * while not doing it. That is the decoy: an operator under pressure reads a green
  * "Production Deployment" and concludes a deployment happened.
  *
- * This guard closes the CLASS, not the filename. A second ambiguous production-deploy
- * workflow must not be introducible.
+ * This guard closes the CLASS, not the filename.
  *
  * DESIGN: ALLOWLIST, NOT KEYWORD GREP
  * -----------------------------------
  * A keyword scan for "deploy" would punish honest tooling and fire on comments. Instead the
  * governed release paths are enumerated by filename, and only a narrow set of production
- * MUTATION patterns is prohibited outside them. Legitimate publish-only, test, and
- * credential-rotation tooling passes untouched.
+ * MUTATION patterns is prohibited outside them.
+ *
+ * DESIGN: NO EXTERNAL DEPENDENCIES
+ * --------------------------------
+ * Learned in CI rather than by inspection. A first version required js-yaml, which resolved
+ * locally (transitively via lighthouse) and failed in CI with "Cannot find module 'js-yaml'":
+ * ci.yml's app job runs `npm ci` in app/ only, so the gate executes from a root with no
+ * node_modules. A guard that cannot load is a guard that does not run. Every other gate
+ * script here is dependency-free; this one now is too.
  */
 
 const fs = require('fs');
 const path = require('path');
-const yaml = require('js-yaml');
 
 const ROOT = path.join(__dirname, '..', '..');
 const WF_DIR = path.join(ROOT, '.github', 'workflows');
@@ -57,21 +62,49 @@ const PRODUCTION_MUTATIONS = [
 const OBSOLETE_TARGETS = ['prowork-production', 'prowork-staging', 'prowork-api'];
 
 /**
- * GitHub Actions `on:` is the YAML 1.1 boolean `true`, not the string "on".
- * Reading doc['on'] silently yields undefined and the guard would pass vacuously —
- * exactly the failure mode this repo keeps closing. Read both, deliberately.
+ * Trigger extraction without a YAML library.
+ *
+ * Parsing is structural and narrow: the top-level `on:` block's first-level keys. That also
+ * sidesteps the YAML 1.1 / 1.2 divergence entirely — under YAML 1.1 (PyYAML, js-yaml 3.x)
+ * `on:` becomes the boolean `true` and `doc['on']` is undefined, which would clear every
+ * workflow vacuously. Reading the text depends on neither schema, so `on:` and a literal
+ * `true:` are both accepted.
  */
-function triggersOf(doc) {
-  const on = doc && (doc.on !== undefined ? doc.on : doc[true]);
-  if (on === undefined || on === null) return [];
-  if (typeof on === 'string') return [on];
-  if (Array.isArray(on)) return on.map(String);
-  return Object.keys(on);
+function triggersOf(source) {
+  const lines = String(source).split(/\r?\n/);
+  const out = [];
+  for (let i = 0; i < lines.length; i++) {
+    const m = /^(on|true)\s*:(.*)$/.exec(lines[i]); // top level only: no leading whitespace
+    if (!m) continue;
+    const inline = m[2].trim();
+    if (inline && !inline.startsWith('#')) {
+      const arr = /^\[(.*)\]$/.exec(inline);          // on: [push, pull_request]
+      const items = arr ? arr[1].split(',') : [inline]; // on: push
+      for (const it of items) {
+        const v = it.trim().replace(/^['"]|['"]$/g, '');
+        if (v) out.push(v);
+      }
+      return out;
+    }
+    let indent = null;
+    for (let j = i + 1; j < lines.length; j++) {
+      const line = lines[j];
+      if (!line.trim() || /^\s*#/.test(line)) continue;
+      if (!/^\s/.test(line)) break;                   // back at column 0: block ended
+      const lead = line.match(/^(\s*)/)[1].length;
+      if (indent === null) indent = lead;
+      if (lead > indent) continue;                    // nested detail: branches:, tags:, inputs:
+      const k = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*:/.exec(line);
+      if (k) out.push(k[1]);
+    }
+    return out;
+  }
+  return out;
 }
 
-/** Does this workflow have any trigger that can start it? */
-function isExecutable(triggers) {
-  return triggers.length > 0;
+/** A workflow must declare both a trigger block and jobs to be readable at all. */
+function isStructurallyValid(source) {
+  return /^(on|true)\s*:/m.test(source) && /^jobs\s*:/m.test(source);
 }
 
 function check(wfDir) {
@@ -90,26 +123,24 @@ function check(wfDir) {
   }
 
   for (const file of files) {
-    const full = path.join(WF, file);
-    const raw = fs.readFileSync(full, 'utf8');
+    const raw = fs.readFileSync(path.join(WF, file), 'utf8');
     filesChecked++;
 
-    let doc;
-    try {
-      doc = yaml.load(raw);
-    } catch (e) {
-      findings.push(`${file}: unparseable YAML (${e.message}) — a workflow that cannot be parsed cannot be cleared`);
+    if (!isStructurallyValid(raw)) {
+      findings.push(`${file}: unparseable or structurally invalid (no top-level on:/jobs:) — a workflow that cannot be read cannot be cleared`);
       continue;
     }
 
-    const triggers = triggersOf(doc);
-    const executable = isExecutable(triggers);
+    const triggers = triggersOf(raw);
+    const executable = triggers.length > 0;
     if (executable) executableChecked++;
 
     const governed = Object.prototype.hasOwnProperty.call(GOVERNED_RELEASE_WORKFLOWS, file);
 
-    // Strip comments before scanning for mutations: a comment explaining why a workflow
-    // is NOT the deploy path must not be read as the deploy path.
+    // Strip comments before scanning: a comment explaining why a workflow is NOT the deploy
+    // path must not be read as the deploy path. Without this, the retired production.yml's
+    // own header — which documents the old command so the history is not erased — would trip
+    // the guard and force the explanation to be deleted to satisfy it.
     const code = raw.replace(/^\s*#.*$/gm, '');
 
     for (const m of PRODUCTION_MUTATIONS) {
@@ -124,10 +155,9 @@ function check(wfDir) {
       }
     }
 
-    // --force-new-deployment redeploys the ALREADY-referenced task definition. It is correct
-    // for a credential-rotation placement and WRONG as an application release: it can never
-    // promote a newly built image, so a workflow using it as a release reports success while
-    // shipping nothing.
+    // --force-new-deployment redeploys the ALREADY-referenced task definition. Correct for a
+    // credential-rotation placement; WRONG as an application release, because it can never
+    // promote a newly built image — so a workflow using it reports success while shipping nothing.
     if (/--force-new-deployment/.test(code) && executable) {
       findings.push(
         `${file}: uses --force-new-deployment in an executable workflow. That redeploys the ` +
@@ -148,7 +178,10 @@ function check(wfDir) {
   return { pass: findings.length === 0, findings, filesChecked, executableChecked };
 }
 
-module.exports = { check, GOVERNED_RELEASE_WORKFLOWS, PRODUCTION_MUTATIONS, OBSOLETE_TARGETS, triggersOf };
+module.exports = {
+  check, GOVERNED_RELEASE_WORKFLOWS, PRODUCTION_MUTATIONS, OBSOLETE_TARGETS,
+  triggersOf, isStructurallyValid,
+};
 
 if (require.main === module) {
   const r = check();
