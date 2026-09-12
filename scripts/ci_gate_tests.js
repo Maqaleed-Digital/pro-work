@@ -66,7 +66,8 @@ const GATE_TESTS = [
 // Measured 280, floor 273 — same 7-assertion slack.
 // Raised 273 -> 286 for WC-011: tests/security/release_path_guard.test.js (13 assertions)
 // joined the manifest. Measured 293, floor 286 — same 7-assertion slack.
-const MIN_EXPECTED_TESTS = 286;
+// Raised 286 -> 288 for the run-name regression controls (2 assertions). Measured 295, floor 288.
+const MIN_EXPECTED_TESTS = 288;
 
 function fail(msg) {
   console.error(`\nERROR: ${msg}`);
