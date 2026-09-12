@@ -203,6 +203,11 @@ jobs:
             console.log("CHILD_SET_EQUALITY=" + (equal ? "PASS" : "FAIL"));
             if (!equal) { console.error("child digest sets differ"); process.exit(1); }
             fs.writeFileSync("/tmp/tgt_children.txt", tgtSet.join("\n"));
+            // The declared child count straight from the parsed index, rather than
+            // recounted from a text file. wc -l counts newlines, and a file joined with
+            // a newline separator has none after the last entry, so 2 children reported
+            // as 1 and the non-vacuity assertion failed on a miscount, not a real defect.
+            fs.writeFileSync("/tmp/tgt_child_count.txt", String(kids.length));
           '
           # Independent retrieval: do not trust the parent index reference alone.
           #
@@ -211,7 +216,7 @@ jobs:
           # ARTIFACT_GRAPH_EQUALITY=PASS — it passed by not failing, rather than by checking.
           # Read into an array first; stdin is then never shared with the tool.
           mapfile -t CHILDREN < /tmp/tgt_children.txt
-          EXPECTED_N="$(wc -l < /tmp/tgt_children.txt | tr -d ' ')"
+          EXPECTED_N="$(cat /tmp/tgt_child_count.txt)"
           VERIFIED=0
           AMD64=NO
           ATTEST=NO
