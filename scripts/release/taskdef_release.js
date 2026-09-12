@@ -161,7 +161,7 @@ function patchImage(candidate, containerName, newImageRef) {
  * "JWT_SECRET was dropped" instead of "containerDefinitions[0].secrets[2] differs",
  * and because they fail loudly if a future refactor ever weakens the diff.
  */
-function checkInvariants(liveStripped, candidate, containerName) {
+function checkInvariants(liveStripped, candidate, containerName, opts = {}) {
   const findings = [];
   const L = (liveStripped.containerDefinitions || []).find((c) => c.name === containerName);
   const C = (candidate.containerDefinitions || []).find((c) => c.name === containerName);
@@ -193,7 +193,10 @@ function checkInvariants(liveStripped, candidate, containerName) {
   eq('portMappings', L.portMappings, C.portMappings);
   eq('healthCheck', L.healthCheck, C.healthCheck);
   eq('logConfiguration', L.logConfiguration, C.logConfiguration);
-  eq('environment', L.environment, C.environment);
+  // ENV_ADDITION_ONLY guards the environment exhaustively as a name->value map, where an
+  // addition is the POINT of the release. Comparing it wholesale here would reject the very
+  // delta being reviewed. Every other profile still compares it. Default stays strict.
+  if (!opts.skipEnvironment) eq('environment', L.environment, C.environment);
 
   const lSecrets = L.secrets || [];
   const cSecrets = C.secrets || [];
@@ -274,3 +277,97 @@ module.exports = {
   diffPaths,
   countLeaves,
 };
+
+// ── WC-012: explicit release profiles ────────────────────────────────────────
+//
+// The default release class permits exactly one semantic delta: the application image
+// identity. The HSTS closure needs a DIFFERENT single delta — adding TRUSTED_PROXY="1"
+// to the environment, with the image held constant.
+//
+// That is deliberately NOT expressed by relaxing the guard to "environment changes are
+// allowed". A profile enumerates the exact permitted transition, so anything else in the
+// environment — a second variable, a changed value, a removal — still fails.
+//
+// Profiles are additive. Adding one must never widen an existing one.
+
+const RELEASE_PROFILES = Object.freeze({
+  IMAGE_ONLY: 'IMAGE_ONLY',
+  ENV_ADDITION_ONLY: 'ENV_ADDITION_ONLY',
+});
+
+/**
+ * Guard for ENV_ADDITION_ONLY.
+ *
+ * Permits exactly the enumerated environment additions and nothing else. The image must be
+ * byte-identical: a release that changes both configuration and code cannot attribute a
+ * failure to either.
+ *
+ * @param permittedAdditions [{name, value}] — exact names AND exact values.
+ */
+function envAdditionGuard(liveTaskDefinition, candidate, { containerName, permittedAdditions }) {
+  const findings = [];
+  const liveStripped = cloneForRegistration(liveTaskDefinition);
+  const L = (liveStripped.containerDefinitions || []).find((c) => c.name === containerName);
+  const C = (candidate.containerDefinitions || []).find((c) => c.name === containerName);
+  if (!L || !C) return { pass: false, findings: [`container "${containerName}" missing`], comparedPaths: 0 };
+
+  if (!Array.isArray(permittedAdditions) || permittedAdditions.length === 0) {
+    return { pass: false, findings: ['no permitted additions enumerated — refusing an open-ended env change'], comparedPaths: 0 };
+  }
+
+  // The image must NOT move under this profile.
+  if (L.image !== C.image) {
+    findings.push(`image changed under ENV_ADDITION_ONLY: ${L.image} -> ${C.image}`);
+  }
+
+  // Compare environment as name->value maps so an insertion does not read as positional churn.
+  const toMap = (arr) => new Map((arr || []).map((e) => [e.name, e.value]));
+  const lEnv = toMap(L.environment);
+  const cEnv = toMap(C.environment);
+
+  const permitted = new Map(permittedAdditions.map((p) => [p.name, p.value]));
+  for (const [name, value] of cEnv) {
+    if (!lEnv.has(name)) {
+      if (!permitted.has(name)) findings.push(`FORBIDDEN environment addition: ${name}`);
+      else if (permitted.get(name) !== value) {
+        findings.push(`${name} added with value "${value}", permitted value is "${permitted.get(name)}"`);
+      }
+    } else if (lEnv.get(name) !== value) {
+      findings.push(`FORBIDDEN environment change: ${name} "${lEnv.get(name)}" -> "${value}"`);
+    }
+  }
+  for (const name of lEnv.keys()) {
+    if (!cEnv.has(name)) findings.push(`FORBIDDEN environment removal: ${name}`);
+  }
+  for (const [name] of permitted) {
+    if (!cEnv.has(name)) findings.push(`permitted addition ${name} is not present in the candidate`);
+    if (lEnv.has(name)) findings.push(`${name} already exists live — this is not an addition`);
+  }
+
+  // Everything OUTSIDE the environment must be semantically identical. Reuse the existing
+  // structural machinery with environment neutralised on both sides, so the same code path
+  // that guards an image release also guards this one.
+  const stripEnv = (td) => {
+    const c = JSON.parse(JSON.stringify(td));
+    for (const cd of c.containerDefinitions || []) delete cd.environment;
+    return c;
+  };
+  const a = canonicalize(stripEnv(liveStripped));
+  const b = canonicalize(stripEnv(candidate));
+  for (const d of diffPaths(a, b)) {
+    findings.push(`FORBIDDEN delta at ${d.path}: ${JSON.stringify(d.from)} -> ${JSON.stringify(d.to)}`);
+  }
+
+  // Named invariants still apply — secrets, roles, credentials.
+  findings.push(...checkInvariants(liveStripped, candidate, containerName, { skipEnvironment: true }));
+
+  return {
+    pass: findings.length === 0,
+    findings,
+    comparedPaths: countLeaves(a) + cEnv.size,
+    permittedDeltas: permittedAdditions.map((p) => `environment.${p.name}=${p.value}`),
+  };
+}
+
+module.exports.RELEASE_PROFILES = RELEASE_PROFILES;
+module.exports.envAdditionGuard = envAdditionGuard;

@@ -43,6 +43,7 @@ const GATE_TESTS = [
   'tests/security/scanner_positive_controls.test.js',
   'tests/release/taskdef_release_guard.test.js',
   'tests/release/release_manifest.test.js',
+  'tests/security/env_contract.test.js',
 ];
 
 // A run reporting fewer than this many assertions is treated as broken wiring
@@ -59,7 +60,10 @@ const GATE_TESTS = [
 // suites already on the manifest (workflow_injection 35 -> 38, workflow_trust_boundary 26 -> 29,
 // +6). Measured 253, floor 246 — same 7-assertion slack. The floor is moved because the corpus
 // grew, not to make a run pass.
-const MIN_EXPECTED_TESTS = 246;
+// Raised 246 -> 273 for WC-012: tests/security/env_contract.test.js (16 assertions) joined the
+// manifest and the WC-007 guard suite grew by 11 for the ENV_ADDITION_ONLY profile controls.
+// Measured 280, floor 273 — same 7-assertion slack.
+const MIN_EXPECTED_TESTS = 273;
 
 function fail(msg) {
   console.error(`\nERROR: ${msg}`);

@@ -1,0 +1,132 @@
+{
+  "$comment": [
+    "WC-012 — WorkCaptain code <-> runtime environment contract.",
+    "",
+    "WHY THIS FILE EXISTS. The CSP/HSTS release (workcaptain:18) shipped correct HSTS code",
+    "and production still emitted no HSTS header. Nothing was broken: app/server.js gates HSTS",
+    "on isHttps(), which trusts the ALB's x-forwarded-proto ONLY when TRUSTED_PROXY is '1' or",
+    "'true' — and TRUSTED_PROXY was never present in the production task definition.",
+    "",
+    "CI could not have caught it. tests/security/security_headers.test.js spawns the server with",
+    "TRUSTED_PROXY: '1' injected, so it proves the behaviour WHEN the variable is set. The test was",
+    "right. Production simply did not match the environment the test supplied. A green suite and a",
+    "broken production surface were both telling the truth about different environments.",
+    "",
+    "This contract is the missing third artefact: it states, in machine-readable form, what the",
+    "shipped code REQUIRES of its runtime, so a release can be checked against the environment it",
+    "will actually run in rather than the one the tests construct.",
+    "",
+    "CLASSES",
+    "  REQUIRED_RUNTIME  - the application cannot behave correctly without it",
+    "  BEHAVIOUR_GATING  - the application runs, but security/business behaviour changes silently",
+    "  OPTIONAL_RUNTIME  - optional, with a safe explicit default in code",
+    "  SECRET_RUNTIME    - supplied via task-definition secrets, never plaintext environment",
+    "  BUILD_ONLY        - not required by the production runtime",
+    "  TEST_ONLY         - not used by the production runtime",
+    "",
+    "Secrets are named here as IDENTITIES only. No secret value appears in this file and none may."
+  ],
+  "schema_version": 1,
+  "product": "WorkCaptain",
+  "runtime": "ecs://workcaptain-production/workcaptain (eu-central-1)",
+  "variables": [
+    {
+      "name": "TRUSTED_PROXY",
+      "class": "BEHAVIOUR_GATING",
+      "provider": "environment",
+      "production_required": true,
+      "accepted_values": ["1", "true"],
+      "read_location": "app/server.js:211 (also gates clientIp at :286 and isHttps at :351)",
+      "default_behaviour": "absent => false => x-forwarded-proto is NOT trusted",
+      "reason": "Required for the ALB's x-forwarded-proto to be trusted. Without it isHttps() is always false behind the load balancer, so Strict-Transport-Security is never emitted, and clientIp() reports the ALB address instead of the real client."
+    },
+    {
+      "name": "NODE_ENV",
+      "class": "REQUIRED_RUNTIME",
+      "provider": "environment",
+      "production_required": true,
+      "accepted_values": ["production"],
+      "read_location": "app/** (56 reads)",
+      "default_behaviour": "absent => development semantics in a production image",
+      "reason": "Selects production behaviour across the application, including config validation."
+    },
+    {
+      "name": "PROWORK_DATA_DIR",
+      "class": "REQUIRED_RUNTIME",
+      "provider": "environment",
+      "production_required": true,
+      "read_location": "app/lib/data_paths.js:20",
+      "default_behaviour": "absent => falls back to a development path inside the container",
+      "reason": "Production data root. A dev fallback in production writes to the wrong location."
+    },
+    {
+      "name": "APP_PORT",
+      "class": "REQUIRED_RUNTIME",
+      "provider": "environment",
+      "production_required": true,
+      "read_location": "app/server.js:201",
+      "default_behaviour": "absent => 3010",
+      "reason": "Must agree with the task definition's containerPort and the target group port."
+    },
+    {
+      "name": "PORT",
+      "class": "OPTIONAL_RUNTIME",
+      "provider": "environment",
+      "production_required": false,
+      "read_location": "app/config/production.js:15",
+      "default_behaviour": "falls back to APP_PORT, then 3010",
+      "reason": "Redundant with APP_PORT; currently supplied and consistent."
+    },
+    {
+      "name": "CORS_ALLOWED_ORIGINS",
+      "class": "BEHAVIOUR_GATING",
+      "provider": "environment",
+      "production_required": true,
+      "read_location": "app/server.js:214",
+      "default_behaviour": "absent/empty => the allowlist is empty and applyCors permits any Origin",
+      "reason": "Empty allowlist disables origin enforcement rather than denying, so absence silently widens CORS."
+    },
+    {
+      "name": "PUBLIC_BASE_URL",
+      "class": "OPTIONAL_RUNTIME",
+      "provider": "environment",
+      "production_required": false,
+      "read_location": "app/**",
+      "default_behaviour": "absent => links may be relative",
+      "reason": "Absolute URL construction. Currently supplied."
+    },
+    {
+      "name": "DATABASE_URL",
+      "class": "SECRET_RUNTIME",
+      "provider": "secret",
+      "production_required": true,
+      "read_location": "app/** (3 reads)",
+      "reason": "Database connection string. Secret-backed identity only; never plaintext environment."
+    },
+    {
+      "name": "ADMIN_API_TOKEN",
+      "class": "SECRET_RUNTIME",
+      "provider": "secret",
+      "production_required": true,
+      "read_location": "app/**",
+      "reason": "Administrative API credential. Secret-backed identity only."
+    },
+    {
+      "name": "JWT_SECRET",
+      "class": "SECRET_RUNTIME",
+      "provider": "secret",
+      "production_required": true,
+      "read_location": "app/** (3 reads)",
+      "reason": "Token signing key. A stale-Terraform apply is known to strip this; it must be asserted present and secret-backed."
+    },
+    {
+      "name": "HYPERPAY_MODE",
+      "class": "OPTIONAL_RUNTIME",
+      "provider": "environment",
+      "production_required": false,
+      "read_location": null,
+      "default_behaviour": "not read by any application code",
+      "reason": "Supplied by the production task definition but read NOWHERE in the codebase (measured 2026-09-12). Recorded so it is not mistaken for the control that keeps payments disabled — it is not. Left in place deliberately: removing it is a production delta and belongs to WC-008, not here."
+    }
+  ]
+}

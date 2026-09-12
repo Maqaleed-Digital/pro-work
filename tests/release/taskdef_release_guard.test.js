@@ -212,3 +212,101 @@ test('NC11 — a field no named invariant enumerates still FAILS via the structu
   assert.equal(r2.pass, false);
   assert.ok(r2.findings.some((f) => /FORBIDDEN delta at ipcMode/.test(f)), JSON.stringify(r2.findings));
 });
+
+// ── WC-012: ENV_ADDITION_ONLY profile controls ───────────────────────────────
+//
+// The HSTS closure needs a different single delta from an image release. These controls
+// prove the profile is a NARROW enumeration, not a door left open for "environment changes".
+
+const { envAdditionGuard, RELEASE_PROFILES } = require('../../scripts/release/taskdef_release.js');
+
+const TP = [{ name: 'TRUSTED_PROXY', value: '1' }];
+const envCandidate = () => {
+  const c = cloneForRegistration(LIVE);
+  container(c).environment.push({ name: 'TRUSTED_PROXY', value: '1' });
+  return c;
+};
+const envGuard = (cand, permitted = TP) =>
+  envAdditionGuard(LIVE, cand, { containerName: CONTAINER, permittedAdditions: permitted });
+
+test('profiles are enumerated, not free-form', () => {
+  assert.deepEqual(Object.keys(RELEASE_PROFILES).sort(), ['ENV_ADDITION_ONLY', 'IMAGE_ONLY']);
+});
+
+test('NC-P1 — exactly the permitted env addition, image unchanged: PASS', () => {
+  const r = envGuard(envCandidate());
+  assert.equal(r.pass, true, `expected PASS, findings: ${JSON.stringify(r.findings)}`);
+  assert.ok(r.comparedPaths > 0, 'a guard that compared nothing must not report clean');
+  assert.deepEqual(r.permittedDeltas, ['environment.TRUSTED_PROXY=1']);
+});
+
+test('NC-P2 — image changed under ENV_ADDITION_ONLY: FAIL', () => {
+  // A release must not change configuration and code together; a failure could not be attributed.
+  const c = envCandidate();
+  container(c).image = NEW_DIGEST;
+  const r = envGuard(c);
+  assert.equal(r.pass, false);
+  assert.ok(r.findings.some(f => /image changed under ENV_ADDITION_ONLY/.test(f)), JSON.stringify(r.findings));
+});
+
+test('NC-P3 — a SECOND environment addition: FAIL', () => {
+  const c = envCandidate();
+  container(c).environment.push({ name: 'SOMETHING_ELSE', value: 'x' });
+  const r = envGuard(c);
+  assert.equal(r.pass, false);
+  assert.ok(r.findings.some(f => /FORBIDDEN environment addition: SOMETHING_ELSE/.test(f)), JSON.stringify(r.findings));
+});
+
+test('NC-P4 — an existing environment value changed: FAIL', () => {
+  const c = envCandidate();
+  container(c).environment.find(e => e.name === 'NODE_ENV').value = 'staging';
+  const r = envGuard(c);
+  assert.equal(r.pass, false);
+  assert.ok(r.findings.some(f => /FORBIDDEN environment change: NODE_ENV/.test(f)), JSON.stringify(r.findings));
+});
+
+test('NC-P5 — an environment removal: FAIL', () => {
+  const c = envCandidate();
+  container(c).environment = container(c).environment.filter(e => e.name !== 'PUBLIC_BASE_URL');
+  const r = envGuard(c);
+  assert.equal(r.pass, false);
+  assert.ok(r.findings.some(f => /FORBIDDEN environment removal: PUBLIC_BASE_URL/.test(f)), JSON.stringify(r.findings));
+});
+
+test('NC-P6 — permitted variable added with the WRONG value: FAIL', () => {
+  const c = cloneForRegistration(LIVE);
+  container(c).environment.push({ name: 'TRUSTED_PROXY', value: 'true' });
+  const r = envGuard(c);
+  assert.equal(r.pass, false);
+  assert.ok(r.findings.some(f => /permitted value is "1"/.test(f)), JSON.stringify(r.findings));
+  // 'true' is accepted by the CODE but this release enumerates '1'. The profile pins the
+  // exact transition that was reviewed, not everything the code would tolerate.
+});
+
+test('NC-P7 — secrets still guarded under the env profile: FAIL', () => {
+  const c = envCandidate();
+  container(c).secrets = container(c).secrets.filter(s => s.name !== 'JWT_SECRET');
+  const r = envGuard(c);
+  assert.equal(r.pass, false);
+  assert.ok(r.findings.some(f => /REQUIRED secret JWT_SECRET is ABSENT/.test(f)), JSON.stringify(r.findings));
+});
+
+test('NC-P8 — a non-environment field changed under the env profile: FAIL', () => {
+  const c = envCandidate();
+  c.taskRoleArn = 'arn:aws:iam::822127611052:role/other';
+  const r = envGuard(c);
+  assert.equal(r.pass, false);
+  assert.ok(r.findings.some(f => /taskRoleArn changed/.test(f)), JSON.stringify(r.findings));
+});
+
+test('NC-P9 — an empty permitted set is REFUSED, not treated as "allow anything"', () => {
+  const r = envGuard(envCandidate(), []);
+  assert.equal(r.pass, false);
+  assert.ok(r.findings.some(f => /refusing an open-ended env change/.test(f)), JSON.stringify(r.findings));
+});
+
+test('NC-P10 — no addition made at all: FAIL (the profile requires its enumerated delta)', () => {
+  const r = envGuard(cloneForRegistration(LIVE));
+  assert.equal(r.pass, false);
+  assert.ok(r.findings.some(f => /permitted addition TRUSTED_PROXY is not present/.test(f)), JSON.stringify(r.findings));
+});
