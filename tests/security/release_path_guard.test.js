@@ -226,3 +226,41 @@ test('an empty workflow directory FAILS rather than passing vacuously', () => {
   assert.equal(r.pass, false);
   assert.ok(r.findings.some(f => /no workflow files/.test(f)));
 });
+
+// ── WC-011 regression: `run-name` on the retired workflow is load-bearing ─────
+
+test('production.yml declares NO run-name — it would sever the assurance trigger', () => {
+  // Measured on 2026-09-12, not theorised. A `run-name` was added to state the truth in the
+  // Actions UI. GitHub then populated `workflow_run.name` FROM IT, so web-assurance's
+  // predicate `github.event.workflow_run.name == 'Production Deployment'` evaluated false
+  // and the assurance job SKIPPED — severing the exact trigger chain the retirement was
+  // designed to preserve.
+  //
+  // The API showed it plainly on the triggering run:
+  //   name: "NOT A DEPLOYMENT — post-merge tests only (releases go through WC-007)"
+  //
+  // This control exists so the same well-intentioned change cannot be made again.
+  const wf = fs.readFileSync(
+    path.join(__dirname, '..', '..', '.github', 'workflows', 'production.yml'), 'utf8');
+
+  assert.ok(/^name:\s*Production Deployment\s*$/m.test(wf),
+    'the workflow name must stay exactly "Production Deployment" — web-assurance keys on it');
+  assert.ok(!/^run-name\s*:/m.test(wf),
+    'run-name must NOT be set: GitHub derives workflow_run.name from it and breaks the ' +
+    'downstream assurance predicate');
+});
+
+test('the assurance predicate still matches the retired workflow name', () => {
+  // Cross-file: the consumer and the producer must agree. If either side is edited alone,
+  // the trigger chain breaks silently — exactly how the run-name regression happened.
+  const dir = path.join(__dirname, '..', '..', '.github', 'workflows');
+  const assurance = fs.readFileSync(path.join(dir, 'web-assurance.yml'), 'utf8');
+  const production = fs.readFileSync(path.join(dir, 'production.yml'), 'utf8');
+
+  const producedName = /^name:\s*(.+?)\s*$/m.exec(production)[1];
+  assert.equal(producedName, 'Production Deployment');
+  assert.ok(assurance.includes(`workflows: ["${producedName}"]`),
+    `web-assurance must trigger on the name production.yml actually declares (${producedName})`);
+  assert.ok(assurance.includes(`workflow_run.name == '${producedName}'`),
+    'the job-level predicate must match the same name');
+});
