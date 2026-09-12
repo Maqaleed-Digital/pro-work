@@ -1,0 +1,128 @@
+{
+    "taskDefinition": {
+        "taskDefinitionArn": "arn:aws:ecs:eu-central-1:822127611052:task-definition/workcaptain:17",
+        "containerDefinitions": [
+            {
+                "name": "workcaptain",
+                "image": "ghcr.io/maqaleed-digital/pro-work@sha256:82280b918462273b5a89533454f9d60cc7f9e1dc1b5086d542f18a0aeceb2514",
+                "repositoryCredentials": {
+                    "credentialsParameter": "arn:aws:secretsmanager:eu-central-1:822127611052:secret:workcaptain/runtime/GHCR_PULL-MRGy3U"
+                },
+                "cpu": 0,
+                "portMappings": [
+                    {
+                        "containerPort": 3010,
+                        "hostPort": 3010,
+                        "protocol": "tcp"
+                    }
+                ],
+                "essential": true,
+                "environment": [
+                    {
+                        "name": "CORS_ALLOWED_ORIGINS",
+                        "value": "https://workcaptain.ai"
+                    },
+                    {
+                        "name": "PORT",
+                        "value": "3010"
+                    },
+                    {
+                        "name": "PROWORK_DATA_DIR",
+                        "value": "/data"
+                    },
+                    {
+                        "name": "NODE_ENV",
+                        "value": "production"
+                    },
+                    {
+                        "name": "HYPERPAY_MODE",
+                        "value": "sandbox"
+                    },
+                    {
+                        "name": "PUBLIC_BASE_URL",
+                        "value": "https://workcaptain.ai"
+                    },
+                    {
+                        "name": "APP_PORT",
+                        "value": "3010"
+                    }
+                ],
+                "mountPoints": [],
+                "volumesFrom": [],
+                "secrets": [
+                    {
+                        "name": "DATABASE_URL",
+                        "valueFrom": "arn:aws:secretsmanager:eu-central-1:822127611052:secret:workcaptain/runtime/DATABASE_URL-Da6kvH"
+                    },
+                    {
+                        "name": "ADMIN_API_TOKEN",
+                        "valueFrom": "arn:aws:secretsmanager:eu-central-1:822127611052:secret:workcaptain/runtime/ADMIN_API_TOKEN-oJuFEu"
+                    },
+                    {
+                        "name": "JWT_SECRET",
+                        "valueFrom": "arn:aws:secretsmanager:eu-central-1:822127611052:secret:workcaptain/runtime/JWT_SECRET-lJRhID"
+                    }
+                ],
+                "logConfiguration": {
+                    "logDriver": "awslogs",
+                    "options": {
+                        "awslogs-group": "/ecs/workcaptain",
+                        "awslogs-region": "eu-central-1",
+                        "awslogs-stream-prefix": "app"
+                    }
+                },
+                "systemControls": []
+            }
+        ],
+        "family": "workcaptain",
+        "taskRoleArn": "arn:aws:iam::822127611052:role/workcaptain-ecs-task",
+        "executionRoleArn": "arn:aws:iam::822127611052:role/workcaptain-ecs-execution",
+        "networkMode": "awsvpc",
+        "revision": 17,
+        "volumes": [],
+        "status": "ACTIVE",
+        "requiresAttributes": [
+            {
+                "name": "com.amazonaws.ecs.capability.logging-driver.awslogs"
+            },
+            {
+                "name": "ecs.capability.execution-role-awslogs"
+            },
+            {
+                "name": "com.amazonaws.ecs.capability.docker-remote-api.1.19"
+            },
+            {
+                "name": "ecs.capability.secrets.asm.environment-variables"
+            },
+            {
+                "name": "ecs.capability.private-registry-authentication.secretsmanager"
+            },
+            {
+                "name": "com.amazonaws.ecs.capability.docker-remote-api.1.21"
+            },
+            {
+                "name": "com.amazonaws.ecs.capability.task-iam-role"
+            },
+            {
+                "name": "com.amazonaws.ecs.capability.docker-remote-api.1.18"
+            },
+            {
+                "name": "ecs.capability.task-eni"
+            }
+        ],
+        "placementConstraints": [],
+        "compatibilities": [
+            "EC2",
+            "FARGATE",
+            "MANAGED_INSTANCES"
+        ],
+        "requiresCompatibilities": [
+            "FARGATE"
+        ],
+        "cpu": "512",
+        "memory": "1024",
+        "registeredAt": "2026-07-26T19:27:11.736000+03:00",
+        "registeredBy": "arn:aws:iam::822127611052:user/stage-b-build"
+    },
+    "tags": []
+}
