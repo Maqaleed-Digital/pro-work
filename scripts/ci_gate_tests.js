@@ -41,6 +41,7 @@ const GATE_TESTS = [
   'tests/security/invoices_rls_migration.test.js',
   'tests/security/csp_origin_parity.test.js',
   'tests/security/scanner_positive_controls.test.js',
+  'tests/release/taskdef_release_guard.test.js',
 ];
 
 // A run reporting fewer than this many assertions is treated as broken wiring
@@ -49,7 +50,9 @@ const GATE_TESTS = [
 // the manifest. The floor moves with the manifest, preserving the same 7-assertion slack the
 // previous value carried; leaving it at 185 would have let the new suite disappear from a run
 // without the floor noticing.
-const MIN_EXPECTED_TESTS = 211;
+// Raised 211 -> 228 when tests/release/taskdef_release_guard.test.js (17 assertions) joined the
+// manifest for WC-007. Same 7-assertion slack preserved: measured 235, floor 228.
+const MIN_EXPECTED_TESTS = 228;
 
 function fail(msg) {
   console.error(`\nERROR: ${msg}`);
