@@ -230,7 +230,11 @@ const envGuard = (cand, permitted = TP) =>
   envAdditionGuard(LIVE, cand, { containerName: CONTAINER, permittedAdditions: permitted });
 
 test('profiles are enumerated, not free-form', () => {
-  assert.deepEqual(Object.keys(RELEASE_PROFILES).sort(), ['ENV_ADDITION_ONLY', 'IMAGE_ONLY']);
+  // Adding a profile is a deliberate, reviewable act. This assertion failing on a new profile
+  // is the control working: it forces the addition to be acknowledged here rather than
+  // appearing silently.
+  assert.deepEqual(Object.keys(RELEASE_PROFILES).sort(),
+    ['ENV_ADDITION_ONLY', 'IMAGE_ONLY', 'REGISTRY_MIGRATION']);
 });
 
 test('NC-P1 — exactly the permitted env addition, image unchanged: PASS', () => {
@@ -309,4 +313,157 @@ test('NC-P10 — no addition made at all: FAIL (the profile requires its enumera
   const r = envGuard(cloneForRegistration(LIVE));
   assert.equal(r.pass, false);
   assert.ok(r.findings.some(f => /permitted addition TRUSTED_PROXY is not present/.test(f)), JSON.stringify(r.findings));
+});
+
+// ── WC-010 / DL-WC-ECR-AUTH-001: REGISTRY_MIGRATION controls ─────────────────
+//
+// Digest equality is a REQUIRED PREDICATE, not an allowed delta. These controls exist to make
+// "we copied the artifact" structurally distinguishable from "we rebuilt something similar".
+
+const { registryMigrationGuard, splitImageRef } = require('../../scripts/release/taskdef_release.js');
+
+const ECR_REPO = '822127611052.dkr.ecr.eu-central-1.amazonaws.com/workcaptain-production';
+const LIVE_DIGEST_FIXTURE = 'sha256:82280b918462273b5a89533454f9d60cc7f9e1dc1b5086d542f18a0aeceb2514';
+
+/** The one legitimate migration candidate: same digest, ECR repo, credentials removed. */
+function migrationCandidate() {
+  const c = cloneForRegistration(LIVE);
+  const cd = container(c);
+  cd.image = `${ECR_REPO}@${LIVE_DIGEST_FIXTURE}`;
+  delete cd.repositoryCredentials;
+  return c;
+}
+const migGuard = (cand, over = {}) => registryMigrationGuard(LIVE, cand, {
+  containerName: CONTAINER,
+  approvedTargetRepository: ECR_REPO,
+  approvedDigest: LIVE_DIGEST_FIXTURE,
+  ...over,
+});
+
+test('splitImageRef parses digest-pinned refs and refuses tags', () => {
+  assert.deepEqual(splitImageRef(`${ECR_REPO}@${LIVE_DIGEST_FIXTURE}`),
+    { repository: ECR_REPO, digest: LIVE_DIGEST_FIXTURE });
+  assert.equal(splitImageRef(`${ECR_REPO}:latest`), null);
+  assert.equal(splitImageRef(''), null);
+});
+
+test('NC-ECR-09 — GHCR→approved ECR, same digest, credentials removed: PASS', () => {
+  const r = migGuard(migrationCandidate());
+  assert.equal(r.pass, true, `expected PASS, findings: ${JSON.stringify(r.findings)}`);
+  assert.equal(r.digestPreserved, true);
+  assert.equal(r.permittedDeltas.length, 2);
+  assert.ok(r.comparedPaths > 0, 'a guard that compared nothing must never report clean');
+});
+
+test('NC-ECR-01 — target digest differs: FAIL (the rebuild trap)', () => {
+  const c = migrationCandidate();
+  container(c).image = `${ECR_REPO}@sha256:${'1'.repeat(64)}`;
+  const r = migGuard(c);
+  assert.equal(r.pass, false);
+  assert.equal(r.digestPreserved, false);
+  assert.ok(r.findings.some(f => /DIGEST CHANGED/.test(f)), JSON.stringify(r.findings));
+  assert.ok(r.findings.some(f => /Do not rebuild — copy/.test(f)),
+    'the finding must say WHY, so a rebuild is not mistaken for an acceptable variation');
+});
+
+test('NC-ECR-02 — ECR image referenced by mutable tag: FAIL', () => {
+  const c = migrationCandidate();
+  container(c).image = `${ECR_REPO}:latest`;
+  const r = migGuard(c);
+  assert.equal(r.pass, false);
+  assert.ok(r.findings.some(f => /not digest-pinned/.test(f)), JSON.stringify(r.findings));
+});
+
+test('NC-ECR-03 — repositoryCredentials retained: FAIL', () => {
+  const c = migrationCandidate();
+  container(c).repositoryCredentials = container(LIVE).repositoryCredentials;
+  const r = migGuard(c);
+  assert.equal(r.pass, false);
+  assert.ok(r.findings.some(f => /RETAINED/.test(f)), JSON.stringify(r.findings));
+});
+
+test('NC-ECR-04 — repositoryCredentials swapped for another credential: FAIL', () => {
+  const c = migrationCandidate();
+  container(c).repositoryCredentials = {
+    credentialsParameter: 'arn:aws:secretsmanager:eu-central-1:822127611052:secret:workcaptain/runtime/OTHER-XXXXXX',
+  };
+  const r = migGuard(c);
+  assert.equal(r.pass, false);
+  assert.ok(r.findings.some(f => /CHANGED to another credential/.test(f)), JSON.stringify(r.findings));
+});
+
+test('NC-ECR-05 — environment altered: FAIL', () => {
+  const c = migrationCandidate();
+  container(c).environment.find(e => e.name === 'NODE_ENV').value = 'staging';
+  assert.equal(migGuard(c).pass, false);
+});
+
+test('NC-ECR-06 — a secret dropped: FAIL', () => {
+  const c = migrationCandidate();
+  container(c).secrets = container(c).secrets.filter(s => s.name !== 'JWT_SECRET');
+  const r = migGuard(c);
+  assert.equal(r.pass, false);
+  assert.ok(r.findings.some(f => /REQUIRED secret JWT_SECRET is ABSENT/.test(f)), JSON.stringify(r.findings));
+});
+
+test('NC-ECR-07 — task/execution role altered: FAIL', () => {
+  for (const key of ['taskRoleArn', 'executionRoleArn']) {
+    const c = migrationCandidate();
+    c[key] = 'arn:aws:iam::822127611052:role/other';
+    const r = migGuard(c);
+    assert.equal(r.pass, false, `${key} could change without a finding`);
+    assert.ok(r.findings.some(f => f.includes(key)), `finding did not name ${key}`);
+  }
+});
+
+test('NC-ECR-08 — healthCheck altered: FAIL', () => {
+  const c = migrationCandidate();
+  container(c).healthCheck = { command: ['CMD-SHELL', 'exit 0'] };
+  assert.equal(migGuard(c).pass, false);
+});
+
+test('an unapproved target registry is REFUSED even with the digest preserved', () => {
+  // "It changed registry" is not the predicate. It must change to THE approved repository.
+  const c = migrationCandidate();
+  container(c).image = `999999999999.dkr.ecr.eu-central-1.amazonaws.com/someone-else@${LIVE_DIGEST_FIXTURE}`;
+  const r = migGuard(c);
+  assert.equal(r.pass, false);
+  assert.ok(r.findings.some(f => /not the approved ECR repository/.test(f)), JSON.stringify(r.findings));
+});
+
+test('an empty approved target is REFUSED, not treated as "any registry"', () => {
+  const r = migGuard(migrationCandidate(), { approvedTargetRepository: undefined });
+  assert.equal(r.pass, false);
+  assert.ok(r.findings.some(f => /open-ended registry change/.test(f)), JSON.stringify(r.findings));
+});
+
+test('NC-ECR-10 — the default IMAGE_ONLY profile REJECTS the migration candidate', () => {
+  const r = diffGuard(LIVE, migrationCandidate(), { containerName: CONTAINER });
+  assert.equal(r.pass, false, 'IMAGE_ONLY must not accept a repositoryCredentials removal');
+});
+
+test('NC-ECR-11 — ENV_ADDITION_ONLY REJECTS the migration candidate', () => {
+  const r = envAdditionGuard(LIVE, migrationCandidate(), {
+    containerName: CONTAINER, permittedAdditions: TP,
+  });
+  assert.equal(r.pass, false, 'ENV_ADDITION_ONLY must not accept an image/registry change');
+});
+
+test('NC-ECR-12 — a field no named invariant enumerates FAILS via the structural diff', () => {
+  // Perturbation showed the named invariants alone caught every other control, leaving the
+  // REGISTRY_MIGRATION structural diff unexercised. This covers what ONLY the diff can catch:
+  // a field nobody thought to enumerate. Without it the diff layer would be decorative here,
+  // exactly as it nearly was for IMAGE_ONLY before NC11.
+  const c = migrationCandidate();
+  container(c).privileged = true;
+  const r = migGuard(c);
+  assert.equal(r.pass, false);
+  assert.ok(r.findings.some(f => /FORBIDDEN delta at containerDefinitions\[\d+\]\.privileged/.test(f)),
+    JSON.stringify(r.findings));
+
+  const t = migrationCandidate();
+  t.ipcMode = 'host';
+  const r2 = migGuard(t);
+  assert.equal(r2.pass, false);
+  assert.ok(r2.findings.some(f => /FORBIDDEN delta at ipcMode/.test(f)), JSON.stringify(r2.findings));
 });

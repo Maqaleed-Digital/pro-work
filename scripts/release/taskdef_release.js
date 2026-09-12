@@ -371,3 +371,135 @@ function envAdditionGuard(liveTaskDefinition, candidate, { containerName, permit
 
 module.exports.RELEASE_PROFILES = RELEASE_PROFILES;
 module.exports.envAdditionGuard = envAdditionGuard;
+
+// ── WC-010 / DL-WC-ECR-AUTH-001: REGISTRY_MIGRATION profile ──────────────────
+//
+// A third release class, added as an explicit enumeration. IMAGE_ONLY and
+// ENV_ADDITION_ONLY are untouched and still reject this candidate — profiles narrow the
+// permitted delta, they never widen each other.
+//
+// The GHCR -> ECR migration must move the artifact WITHOUT changing it. DL-WC-ECR-AUTH-001
+// makes digest equality a REQUIRED PREDICATE, not an allowed delta:
+//
+//     SOURCE_GHCR_DIGEST == TARGET_ECR_DIGEST
+//
+// That is why the migration copies rather than rebuilds. A second independent build from the
+// same source SHA is not bit-identical, and would silently create a new artifact provenance
+// chain under a decision that authorised moving the existing one.
+//
+// Proven read-only before this was written: docker.io/library/alpine:3.20 and
+// public.ecr.aws/docker/library/alpine:3.20 serve the IDENTICAL digest
+// sha256:d9e853e8…b6bc, both as application/vnd.oci.image.index.v1+json with 16 entries
+// including the unknown/unknown attestation manifests buildx provenance emits. ECR therefore
+// preserves OCI indexes with attestations byte-for-byte.
+
+const IMAGE_REF = /^(.+)@(sha256:[0-9a-f]{64})$/;
+
+function splitImageRef(ref) {
+  const m = IMAGE_REF.exec(String(ref || ''));
+  return m ? { repository: m[1], digest: m[2] } : null;
+}
+
+/**
+ * Guard for REGISTRY_MIGRATION.
+ *
+ * Permits EXACTLY two semantic deltas and nothing else:
+ *   A. image repository identity: GHCR -> the approved ECR repository, DIGEST IDENTICAL
+ *   B. repositoryCredentials: present -> absent
+ *
+ * @param approvedTargetRepository the ECR repository this migration is authorised to use.
+ *        Passing it explicitly means a candidate cannot drift to some other registry and
+ *        still satisfy "it changed registry".
+ */
+function registryMigrationGuard(liveTaskDefinition, candidate, opts) {
+  const { containerName, approvedTargetRepository, approvedDigest } = opts || {};
+  const findings = [];
+  const liveStripped = cloneForRegistration(liveTaskDefinition);
+  const L = (liveStripped.containerDefinitions || []).find((c) => c.name === containerName);
+  const C = (candidate.containerDefinitions || []).find((c) => c.name === containerName);
+  if (!L || !C) return { pass: false, findings: [`container "${containerName}" missing`], comparedPaths: 0 };
+
+  if (!approvedTargetRepository) {
+    return { pass: false, findings: ['no approved target repository enumerated — refusing an open-ended registry change'], comparedPaths: 0 };
+  }
+
+  const src = splitImageRef(L.image);
+  const tgt = splitImageRef(C.image);
+
+  // Delta A — and the predicate that makes it safe.
+  if (!src) findings.push(`live image is not digest-pinned: ${L.image}`);
+  if (!tgt) {
+    // Covers the tag case explicitly: a tag has no @sha256 and must never become the
+    // runtime identity, which is the whole discipline WC-007 established.
+    findings.push(`candidate image is not digest-pinned (a tag must never be the runtime identity): ${C.image}`);
+  }
+  if (src && tgt) {
+    if (src.digest !== tgt.digest) {
+      findings.push(
+        `DIGEST CHANGED: ${src.digest} -> ${tgt.digest}. Digest equality is a REQUIRED PREDICATE ` +
+        `under DL-WC-ECR-AUTH-001, not an allowed delta. Do not rebuild — copy.`
+      );
+    }
+    if (approvedDigest && tgt.digest !== approvedDigest) {
+      findings.push(`candidate digest ${tgt.digest} is not the approved artifact ${approvedDigest}`);
+    }
+    if (tgt.repository !== approvedTargetRepository) {
+      findings.push(`target repository ${tgt.repository} is not the approved ECR repository ${approvedTargetRepository}`);
+    }
+    if (src.repository === tgt.repository) {
+      findings.push('repository identity did not change — this profile exists to perform a registry migration');
+    }
+  }
+
+  // Delta B — repositoryCredentials must DISAPPEAR, not change.
+  const hadCreds = !!(L.repositoryCredentials && L.repositoryCredentials.credentialsParameter);
+  const hasCreds = !!(C.repositoryCredentials && C.repositoryCredentials.credentialsParameter);
+  if (!hadCreds) findings.push('live task definition has no repositoryCredentials — nothing to remove');
+  if (hasCreds) {
+    const same = hadCreds && L.repositoryCredentials.credentialsParameter === C.repositoryCredentials.credentialsParameter;
+    findings.push(
+      same
+        ? 'repositoryCredentials RETAINED — ECR pulls on the execution role and must not carry a registry credential'
+        : 'repositoryCredentials CHANGED to another credential — it must be REMOVED, not swapped'
+    );
+  }
+
+  // Everything else must be semantically identical. Image and repositoryCredentials are
+  // neutralised on both sides so the SAME structural machinery that guards an image release
+  // also guards this one.
+  const neutralise = (td) => {
+    const c = JSON.parse(JSON.stringify(td));
+    for (const cd of c.containerDefinitions || []) { delete cd.image; delete cd.repositoryCredentials; }
+    return c;
+  };
+  const a = canonicalize(neutralise(liveStripped));
+  const b = canonicalize(neutralise(candidate));
+  for (const d of diffPaths(a, b)) {
+    findings.push(`FORBIDDEN delta at ${d.path}: ${JSON.stringify(d.from)} -> ${JSON.stringify(d.to)}`);
+  }
+
+  // Named invariants still apply — secrets, roles, env. repositoryCredentials is expected to
+  // change here and is checked above instead.
+  for (const f of checkInvariants(liveStripped, candidate, containerName)) {
+    if (/repositoryCredentials/.test(f)) continue;
+    findings.push(f);
+  }
+
+  return {
+    pass: findings.length === 0,
+    findings,
+    comparedPaths: countLeaves(a),
+    sourceImage: L.image,
+    targetImage: C.image,
+    digestPreserved: !!(src && tgt && src.digest === tgt.digest),
+    permittedDeltas: ['containerDefinitions[].image (repository only, digest identical)',
+                      'containerDefinitions[].repositoryCredentials (present -> absent)'],
+  };
+}
+
+module.exports.RELEASE_PROFILES = Object.freeze({
+  ...RELEASE_PROFILES,
+  REGISTRY_MIGRATION: 'REGISTRY_MIGRATION',
+});
+module.exports.registryMigrationGuard = registryMigrationGuard;
+module.exports.splitImageRef = splitImageRef;
