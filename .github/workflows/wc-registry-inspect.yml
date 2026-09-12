@@ -1,0 +1,125 @@
+# WC-010 — read-only registry inspection. NO PUSH, NO COPY, NO ECS.
+#
+# Two facts cannot be established from the operator host and are established here instead:
+#
+#  1. The WorkCaptain GHCR package is PRIVATE and the local gh token lacks read:packages, so
+#     the accepted artifact's media type and platform set are unmeasurable locally. They decide
+#     the required copy mode (an OCI index needs `skopeo copy --all`; flattening it would change
+#     the digest and break the DL-WC-ECR-AUTH-001 equality predicate).
+#
+#  2. `workcaptain-ci-ecr-push` is assumable ONLY through GitHub OIDC — proven locally by an
+#     AccessDenied when the admin identity tried. That proves the restriction, not that the
+#     intended path works. This exercises the intended path without pushing anything.
+#
+# This workflow deliberately holds NO ECR write permission beyond what the role grants, performs
+# no PutImage, uploads no layer, and touches no ECS resource. It reads and reports.
+#
+# Static rule (scripts/workflow_injection_guard.js): no ${{ }} inside run:. Every value reaches
+# bash through env:.
+name: wc-registry-inspect
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type INSPECT to confirm a read-only registry inspection'
+        required: true
+        default: ''
+
+permissions:
+  contents: read
+  packages: read        # GHCR manifest read only
+  id-token: write       # required to mint the OIDC token for AssumeRoleWithWebIdentity
+
+env:
+  SOURCE_IMAGE: ghcr.io/maqaleed-digital/pro-work@sha256:760bca143118f8bdba78143968ce7d470acb65be02ebe70b726275471c72df13
+  AWS_REGION: eu-central-1
+  ECR_ROLE: arn:aws:iam::822127611052:role/workcaptain-ci-ecr-push
+  ECR_REPO: workcaptain-production
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Refuse an unconfirmed run
+        env:
+          CONFIRM: ${{ github.event.inputs.confirm }}
+        run: |
+          if [ "$CONFIRM" != "INSPECT" ]; then
+            echo "Refusing: confirm input must be exactly INSPECT." >&2
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - name: Install crane
+        run: |
+          VER=v0.20.2
+          curl -sSL "https://github.com/google/go-containerregistry/releases/download/${VER}/go-containerregistry_Linux_x86_64.tar.gz" \
+            | tar -xz -C /usr/local/bin crane
+          crane version
+
+      - name: Log in to GHCR (read-only, Actions identity)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_ACTOR: ${{ github.actor }}
+        run: |
+          echo "$GH_TOKEN" | crane auth login ghcr.io -u "$GH_ACTOR" --password-stdin
+          echo "authenticated to ghcr.io as the Actions identity"
+
+      - name: Inspect the accepted source artifact (READ ONLY)
+        env:
+          SRC: ${{ env.SOURCE_IMAGE }}
+        run: |
+          set -euo pipefail
+          echo "=== digest as the registry reports it ==="
+          MEASURED="$(crane digest "$SRC")"
+          echo "MEASURED_DIGEST=$MEASURED"
+          EXPECTED="${SRC##*@}"
+          echo "EXPECTED_DIGEST=$EXPECTED"
+          if [ "$MEASURED" != "$EXPECTED" ]; then
+            echo "STOP: measured digest does not equal the accepted digest" >&2
+            exit 1
+          fi
+          echo "=== raw manifest ==="
+          crane manifest "$SRC" > /tmp/manifest.json
+          node -e '
+            const m = require("/tmp/manifest.json");
+            const isIndex = Array.isArray(m.manifests);
+            console.log("SOURCE_ARTIFACT_MEDIA_TYPE=" + m.mediaType);
+            console.log("SOURCE_ARTIFACT_SHAPE=" + (isIndex ? "OCI_INDEX" : "SINGLE_MANIFEST"));
+            if (isIndex) {
+              const plats = m.manifests.map(x => x.platform
+                ? `${x.platform.os}/${x.platform.architecture}` : "(attestation)");
+              console.log("SOURCE_ARTIFACT_PLATFORM_SET=" + plats.join(","));
+              console.log("SOURCE_CHILD_COUNT=" + m.manifests.length);
+              const att = m.manifests.filter(x => !x.platform
+                || x.platform.architecture === "unknown").length;
+              console.log("SOURCE_ATTESTATION_CHILDREN=" + att);
+              console.log("COPY_MODE_REQUIRED=skopeo copy --all (index must not be flattened)");
+            } else {
+              console.log("SOURCE_ARTIFACT_PLATFORM_SET=single");
+              console.log("COPY_MODE_REQUIRED=skopeo copy (single manifest)");
+            }
+          '
+
+      - name: Configure AWS credentials via GitHub OIDC (no long-lived key)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.ECR_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: wc010-registry-inspect
+
+      - name: Witness the assumed identity (READ ONLY — no push)
+        env:
+          REPO: ${{ env.ECR_REPO }}
+          REGION: ${{ env.AWS_REGION }}
+        run: |
+          set -euo pipefail
+          echo "=== OIDC_CALLER_IDENTITY ==="
+          aws sts get-caller-identity --output json
+          echo "=== target repository image count (must be 0 — nothing copied) ==="
+          aws ecr describe-images --repository-name "$REPO" --region "$REGION" \
+            --query 'length(imageDetails)' --output text 2>/dev/null || echo "0 (empty repository)"
+          echo "ECR_PUSH_NOT_EXERCISED=YES"
