@@ -44,6 +44,7 @@ const GATE_TESTS = [
   'tests/release/taskdef_release_guard.test.js',
   'tests/release/release_manifest.test.js',
   'tests/security/env_contract.test.js',
+  'tests/security/release_path_guard.test.js',
 ];
 
 // A run reporting fewer than this many assertions is treated as broken wiring
@@ -63,7 +64,9 @@ const GATE_TESTS = [
 // Raised 246 -> 273 for WC-012: tests/security/env_contract.test.js (16 assertions) joined the
 // manifest and the WC-007 guard suite grew by 11 for the ENV_ADDITION_ONLY profile controls.
 // Measured 280, floor 273 — same 7-assertion slack.
-const MIN_EXPECTED_TESTS = 273;
+// Raised 273 -> 286 for WC-011: tests/security/release_path_guard.test.js (13 assertions)
+// joined the manifest. Measured 293, floor 286 — same 7-assertion slack.
+const MIN_EXPECTED_TESTS = 286;
 
 function fail(msg) {
   console.error(`\nERROR: ${msg}`);
