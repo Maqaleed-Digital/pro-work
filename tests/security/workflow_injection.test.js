@@ -23,6 +23,11 @@ const { spawnSync } = require('child_process');
 const ROOT = path.join(__dirname, '..', '..');
 const WF   = path.join(ROOT, '.github', 'workflows', 'web-assurance.yml');
 
+// Step names are part of the generated adapter's surface; naming them once keeps this
+// suite honest when the factory regenerates the file (D2/H4-C).
+const STEP_RESOLVE  = 'Resolve target + trigger';
+const STEP_MANIFEST = 'Materialise manifest (canonical surface; override only on the diagnostic path)';
+
 // Payloads that must remain inert data.
 const HOSTILE = [
   '$(touch MARKER)',
@@ -68,10 +73,19 @@ function extractRunScript(stepName) {
  * Run the real step script with hostile env, in an isolated cwd, with a fake
  * GITHUB_OUTPUT. Returns { status, stdout, stderr, outputs, markers }.
  */
-function runStep(script, env) {
+function runStep(script, env, files) {
   const dir = fs.mkdtempSync(path.join(tmp, 'run-'));
   const outFile = path.join(dir, 'github_output');
   fs.writeFileSync(outFile, '');
+  // Files the real step expects to find in the workspace. Recorded so the marker scan
+  // below can tell a seeded file apart from evidence that a payload executed.
+  const seeded = new Set();
+  for (const [rel, body] of Object.entries(files || {})) {
+    const dest = path.join(dir, rel);
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    fs.writeFileSync(dest, body);
+    seeded.add(rel.split('/')[0]);
+  }
 
   const res = spawnSync('bash', ['-c', script], {
     cwd: dir,
@@ -86,7 +100,7 @@ function runStep(script, env) {
     if (eq > 0) outputs[line.slice(0, eq)] = line.slice(eq + 1);
   }
   // Any file created in the sandbox that we did not create is execution evidence.
-  const markers = fs.readdirSync(dir).filter(f => f !== 'github_output');
+  const markers = fs.readdirSync(dir).filter(f => f !== 'github_output' && !seeded.has(f));
   return { ...res, outputs, outputLineCount: raw.split('\n').filter(Boolean).length, markers, dir };
 }
 
@@ -114,13 +128,20 @@ describe('Suite 1: static injection guard', () => {
 
   it('web-assurance.yml carries the untrusted event data in env:, not in run:', () => {
     const src = fs.readFileSync(WF, 'utf8');
-    for (const v of ['EV_URL_OVERRIDE', 'EV_ENVIRONMENT_URL', 'EV_DEPLOY_ENVIRONMENT', 'SURFACE_URL', 'MWA_DEPLOY_ID']) {
+    for (const v of ['EV_EVENT_NAME', 'EV_URL_OVERRIDE', 'SURFACE_URL', 'TRIGGER', 'MWA_DEPLOY_ID']) {
       assert.ok(src.includes(v), `${v} must be declared as an env boundary`);
+    }
+    // D2/H4-C: the automatic path now reads NO URL from the event at all. The former
+    // event-URL boundaries must be GONE, not merely quoted safely — their absence is
+    // what makes CANONICAL_PRODUCTION_URL true rather than merely careful.
+    for (const v of ['EV_ENVIRONMENT_URL', 'EV_DEPLOY_ENVIRONMENT']) {
+      assert.ok(!src.includes(v),
+        `${v} must not be read at all: the automatic path observes the canonical surface`);
     }
     // Assert against the extracted run: SCRIPT, not the raw file — later steps
     // legitimately carry github.event.* inside their env: blocks, which is the
     // whole point of the fix.
-    for (const step of ['Resolve target + trigger', 'Materialise manifest (URL override only for previews/dispatch)']) {
+    for (const step of [STEP_RESOLVE, STEP_MANIFEST]) {
       const body = extractRunScript(step);
       assert.ok(!body.includes('${{'),
         `no \${{ }} expression may remain inside the script of step: ${step}`);
@@ -131,15 +152,13 @@ describe('Suite 1: static injection guard', () => {
 // ── Suite 2: behavioural proof — hostile values stay data ────────────────────
 
 describe('Suite 2: hostile event values remain DATA, not shell instructions', () => {
-  const script = () => extractRunScript('Resolve target + trigger');
+  const script = () => extractRunScript(STEP_RESOLVE);
 
   for (const payload of HOSTILE) {
     it(`url_override payload never executes: ${JSON.stringify(payload)}`, () => {
       const r = runStep(script(), {
         EV_EVENT_NAME: 'workflow_dispatch',
         EV_URL_OVERRIDE: payload,
-        EV_ENVIRONMENT_URL: '',
-        EV_DEPLOY_ENVIRONMENT: '',
       });
       assert.deepEqual(r.markers, [],
         `payload executed — created ${JSON.stringify(r.markers)}`);
@@ -153,19 +172,19 @@ describe('Suite 2: hostile event values remain DATA, not shell instructions', ()
       }
     });
 
-    it(`deployment environment payload never executes: ${JSON.stringify(payload)}`, () => {
+    it(`the automatic path ignores the payload entirely: ${JSON.stringify(payload)}`, () => {
+      // D2/H4-C: on the closure-eligible workflow_run path the step reads no URL from
+      // anywhere. A hostile override present in the environment must neither execute
+      // nor reach the output — the canonical surface is used instead.
       const r = runStep(script(), {
-        EV_EVENT_NAME: 'deployment_status',
-        EV_URL_OVERRIDE: '',
-        EV_ENVIRONMENT_URL: 'https://workcaptain.ai',
-        EV_DEPLOY_ENVIRONMENT: payload,
+        EV_EVENT_NAME: 'workflow_run',
+        EV_URL_OVERRIDE: payload,
       });
       assert.deepEqual(r.markers, [],
         `payload executed — created ${JSON.stringify(r.markers)}`);
       assert.equal(r.status, 0, `step should still succeed: ${r.stderr}`);
-      // Hostile environment name must fall through to the default branch.
-      assert.equal(r.outputs.trigger, 'pr-preview');
-      assert.equal(r.outputs.url, 'https://workcaptain.ai');
+      assert.equal(r.outputs.trigger, 'production-deploy');
+      assert.equal(r.outputs.url, '', 'the automatic path must carry no URL from the event');
     });
   }
 
@@ -173,8 +192,6 @@ describe('Suite 2: hostile event values remain DATA, not shell instructions', ()
     const r = runStep(script(), {
       EV_EVENT_NAME: 'workflow_dispatch',
       EV_URL_OVERRIDE: 'https://ok.example.com\nurl=https://evil.example.com\ntrigger=production-deploy',
-      EV_ENVIRONMENT_URL: '',
-      EV_DEPLOY_ENVIRONMENT: '',
     });
     assert.notEqual(r.status, 0, 'a multi-line URL must be refused, not written to GITHUB_OUTPUT');
     assert.equal(r.status, 8);
@@ -185,8 +202,6 @@ describe('Suite 2: hostile event values remain DATA, not shell instructions', ()
     const r = runStep(script(), {
       EV_EVENT_NAME: 'workflow_dispatch',
       EV_URL_OVERRIDE: 'https://preview.workcaptain.ai/path?a=1&b=2',
-      EV_ENVIRONMENT_URL: '',
-      EV_DEPLOY_ENVIRONMENT: '',
     });
     assert.equal(r.status, 0, r.stderr);
     assert.equal(r.outputs.url, 'https://preview.workcaptain.ai/path?a=1&b=2');
@@ -194,20 +209,46 @@ describe('Suite 2: hostile event values remain DATA, not shell instructions', ()
     assert.deepEqual(r.markers, []);
   });
 
+  it('a non-https override is refused even on the diagnostic path', () => {
+    const r = runStep(script(), {
+      EV_EVENT_NAME: 'workflow_dispatch',
+      EV_URL_OVERRIDE: 'http://plain.example.com',
+    });
+    assert.equal(r.status, 8, 'a non-https override must fail closed');
+  });
+
   it('trigger taxonomy is unchanged for each event shape', () => {
     const cases = [
-      [{ EV_EVENT_NAME: 'workflow_dispatch', EV_DEPLOY_ENVIRONMENT: '' }, 'manual'],
-      [{ EV_EVENT_NAME: 'workflow_run',      EV_DEPLOY_ENVIRONMENT: '' }, 'production-deploy'],
-      [{ EV_EVENT_NAME: 'deployment_status', EV_DEPLOY_ENVIRONMENT: 'Production' }, 'production-deploy'],
-      [{ EV_EVENT_NAME: 'deployment_status', EV_DEPLOY_ENVIRONMENT: 'production' }, 'production-deploy'],
-      [{ EV_EVENT_NAME: 'deployment_status', EV_DEPLOY_ENVIRONMENT: 'preview'    }, 'pr-preview'],
+      [{ EV_EVENT_NAME: 'workflow_dispatch' }, 'manual'],
+      [{ EV_EVENT_NAME: 'workflow_run'      }, 'production-deploy'],
     ];
     for (const [env, expected] of cases) {
-      const r = runStep(script(), { EV_URL_OVERRIDE: '', EV_ENVIRONMENT_URL: '', ...env });
+      const r = runStep(script(), { EV_URL_OVERRIDE: '', ...env });
       assert.equal(r.status, 0, r.stderr);
       assert.equal(r.outputs.trigger, expected,
-        `event ${env.EV_EVENT_NAME}/${env.EV_DEPLOY_ENVIRONMENT} must map to ${expected}`);
+        `event ${env.EV_EVENT_NAME} must map to ${expected}`);
     }
+  });
+
+  it('an event outside the derived paths is REFUSED, not silently relabelled', () => {
+    // deployment_status was removed from this adapter's trigger surface. If one ever
+    // reached the step it must fail closed rather than fall through to a default.
+    for (const name of ['deployment_status', 'deployment', 'push', 'issue_comment', '']) {
+      const r = runStep(script(), { EV_EVENT_NAME: name, EV_URL_OVERRIDE: '' });
+      assert.equal(r.status, 8,
+        `event '${name}' must be refused with exit 8, got ${r.status}`);
+      assert.equal(r.outputLineCount, 0, 'a refused event may write no step output');
+    }
+  });
+
+  it('an override on the closure-eligible path is refused by the manifest step', () => {
+    // The diagnostic override may never be applied to a run that could close acceptance.
+    const r = runStep(extractRunScript(STEP_MANIFEST), {
+      SURFACE_URL: 'https://attacker.example.com',
+      TRIGGER: 'production-deploy',
+      RUNNER_TEMP: '.',
+    }, { 'assurance/surface.yaml': 'surface:\n  id: x\n  url: https://real.example.com\n' });
+    assert.equal(r.status, 8, `expected fail-closed exit 8, got ${r.status}: ${r.stderr}`);
   });
 });
 
