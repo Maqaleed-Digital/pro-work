@@ -90,8 +90,14 @@ jobs:
             console.log("SOURCE_ARTIFACT_MEDIA_TYPE=" + m.mediaType);
             console.log("SOURCE_ARTIFACT_SHAPE=" + (isIndex ? "OCI_INDEX" : "SINGLE_MANIFEST"));
             if (isIndex) {
-              const plats = m.manifests.map(x => x.platform
-                ? `${x.platform.os}/${x.platform.architecture}` : "(attestation)");
+              // String concatenation, not a template literal. shellcheck SC2016 fires on
+              // brace-expansion syntax inside the single-quoted node script even though no
+              // shell expansion is wanted. Removing the trigger beats suppressing the linter.
+              const plats = m.manifests.map(function (x) {
+                return x.platform
+                  ? x.platform.os + "/" + x.platform.architecture
+                  : "(attestation)";
+              });
               console.log("SOURCE_ARTIFACT_PLATFORM_SET=" + plats.join(","));
               console.log("SOURCE_CHILD_COUNT=" + m.manifests.length);
               const att = m.manifests.filter(x => !x.platform
