@@ -205,23 +205,52 @@ jobs:
             fs.writeFileSync("/tmp/tgt_children.txt", tgtSet.join("\n"));
           '
           # Independent retrieval: do not trust the parent index reference alone.
-          AMD64=NO; ATTEST=NO
-          while read -r CHILD; do
+          #
+          # NOT a `while read` loop. The first version was one, and `crane manifest` consumed
+          # the loop's stdin, so it iterated ONCE over a two-child index and still reported
+          # ARTIFACT_GRAPH_EQUALITY=PASS — it passed by not failing, rather than by checking.
+          # Read into an array first; stdin is then never shared with the tool.
+          mapfile -t CHILDREN < /tmp/tgt_children.txt
+          EXPECTED_N="$(wc -l < /tmp/tgt_children.txt | tr -d ' ')"
+          VERIFIED=0
+          AMD64=NO
+          ATTEST=NO
+          for CHILD in "${CHILDREN[@]}"; do
             [ -z "$CHILD" ] && continue
-            if crane manifest "$REGISTRY/$REPO@$CHILD" > /tmp/child.json 2>/dev/null; then
-              PLAT="$(node -e 'const m=require("/tmp/child.json");console.log(m.mediaType)')"
-              echo "CHILD_RETRIEVABLE=YES | $CHILD | $PLAT"
-              case "$PLAT" in
-                *image.manifest*) AMD64=YES ;;
-              esac
-              if grep -q "in-toto" /tmp/child.json 2>/dev/null; then ATTEST=YES; fi
-            else
+            if ! crane manifest "$REGISTRY/$REPO@$CHILD" > /tmp/child.json 2>/dev/null; then
               echo "CHILD_RETRIEVABLE=NO | $CHILD" >&2
               exit 1
             fi
-          done < /tmp/tgt_children.txt
+            KIND="$(node -e '
+              const m = require("/tmp/child.json");
+              const layers = m.layers || [];
+              const isAttest = m.artifactType === "application/vnd.docker.attestation.manifest.v1+json"
+                || layers.some(function (l) { return l.mediaType === "application/vnd.in-toto+json"; });
+              console.log(isAttest ? "attestation" : "image");
+            ')"
+            echo "CHILD_RETRIEVABLE=YES | $CHILD | $KIND"
+            VERIFIED=$((VERIFIED + 1))
+            if [ "$KIND" = "attestation" ]; then ATTEST=YES; else AMD64=YES; fi
+          done
+
+          # Non-vacuity: the control must prove it examined every child, not merely that it
+          # never failed. A loop that exits early would otherwise report a clean PASS.
+          echo "CHILDREN_VERIFIED=$VERIFIED of $EXPECTED_N"
+          if [ "$VERIFIED" -ne "$EXPECTED_N" ]; then
+            echo "STOP: verified $VERIFIED children but the index declares $EXPECTED_N" >&2
+            exit 1
+          fi
+          if [ "$VERIFIED" -eq 0 ]; then
+            echo "STOP: verified zero children — the control evaluated nothing" >&2
+            exit 1
+          fi
+
           echo "AMD64_CHILD_RETRIEVABLE=$AMD64"
           echo "ATTESTATION_CHILD_RETRIEVABLE=$ATTEST"
+          if [ "$AMD64" != "YES" ] || [ "$ATTEST" != "YES" ]; then
+            echo "STOP: both the runnable image child and the provenance attestation must be present" >&2
+            exit 1
+          fi
           echo "ARTIFACT_GRAPH_EQUALITY=PASS"
 
       - name: Report ECR state (no ECS touched)
