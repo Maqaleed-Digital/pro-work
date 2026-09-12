@@ -1,0 +1,113 @@
+# WC-007 Stage A — WorkCaptain production PUBLISH.
+#
+# Builds the WorkCaptain image from an approved commit, pushes it to GHCR using the
+# Actions identity (github.token + packages:write — NO human PAT), captures the
+# IMMUTABLE DIGEST from the push output, and emits a machine-readable release manifest.
+#
+# This workflow PUBLISHES. It does not deploy. It makes no AWS call, reads no AWS
+# credential, and touches no ECS resource. Stage B (scripts/release/taskdef_release.js)
+# consumes the manifest under a separate Sponsor G1.
+#
+# Derived from ci-publish-test.yml, which proved the github.token publish path. That file
+# stays a disposable proof and is NOT repurposed: a throwaway proof promoted to production
+# machinery carries its throwaway assumptions with it.
+#
+# NOT production.yml. That workflow's deploy jobs name cluster `prowork-production` /
+# service `prowork-api` in `us-east-1`; measured 2026-09-12, `us-east-1` holds zero ECS
+# clusters and no `prowork-*` cluster exists anywhere. Live WorkCaptain is
+# `workcaptain-production` / `workcaptain` in `eu-central-1`. Those jobs are tag-gated and
+# have always been SKIPPED, so a green "Production Deployment" run has never meant a deploy.
+#
+# Static rule enforced by scripts/workflow_injection_guard.js: no ${{ }} expression may sit
+# inside a run: block. Expressions are substituted before bash parses the script, so event
+# text placed there is shell SOURCE, not data. Every value below reaches bash via env:.
+name: wc-release-publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type PUBLISH to confirm a production image publish'
+        required: true
+        default: ''
+
+permissions:
+  contents: read
+  packages: write        # Actions GITHUB_TOKEN — no human PAT anywhere in this path
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PATH: maqaleed-digital/pro-work
+  DOCKERFILE: infrastructure/docker/Dockerfile
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Refuse an unconfirmed publish
+        # Fail closed. A dispatch that did not deliberately type PUBLISH must not
+        # push a production image. Compared as data via env:, never interpolated.
+        env:
+          CONFIRM: ${{ github.event.inputs.confirm }}
+        run: |
+          if [ "$CONFIRM" != "PUBLISH" ]; then
+            echo "Refusing: confirm input must be exactly PUBLISH." >&2
+            exit 1
+          fi
+          echo "Publish confirmed."
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR (Actions identity — github.token, NOT a PAT)
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Build and push by digest
+        id: push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ env.DOCKERFILE }}
+          push: true
+          # A sha tag is a convenience label only. The release identity is the digest
+          # captured below; nothing downstream may resolve production from a tag.
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_PATH }}:sha-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Emit release manifest
+        # The digest comes from the push step's OUTPUT. It is never reconstructed from
+        # a tag or recomputed locally: a digest that did not come from the registry is
+        # an assertion, not a measurement.
+        env:
+          WC_REPOSITORY:       ${{ github.repository }}
+          WC_SOURCE_SHA:       ${{ github.sha }}
+          WC_SOURCE_REF:       ${{ github.ref }}
+          WC_RUN_ID:           ${{ github.run_id }}
+          WC_RUN_URL:          ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          WC_IMAGE_REPOSITORY: ${{ env.REGISTRY }}/${{ env.IMAGE_PATH }}
+          WC_IMAGE_DIGEST:     ${{ steps.push.outputs.digest }}
+          WC_BUILDER_IDENTITY: ${{ github.actor }} via github.token
+          WC_DOCKERFILE_PATH:  ${{ env.DOCKERFILE }}
+        run: |
+          mkdir -p release
+          node scripts/release/release_manifest.js > release/release-manifest.json
+          echo "--- release manifest ---"
+          cat release/release-manifest.json
+
+      - name: Upload release manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: wc-release-manifest
+          path: release/release-manifest.json
+          retention-days: 90
