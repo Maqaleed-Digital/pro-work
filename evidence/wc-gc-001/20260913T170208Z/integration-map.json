@@ -1,0 +1,61 @@
+{
+ "date": "2026-09-13",
+ "method": "traced actual runtime selection logic, not names or comments",
+ "decisive_measurement": "The ONLY outbound HTTP calls in app/modules, app/api and services are in payments adapters (tap_adapter.js, hyperpay_adapter.js). There are ZERO outbound calls to any government or regulator API.",
+ "integrations": [
+  {
+   "name": "Qiwa",
+   "classification": "INTERNAL_ENGINE",
+   "evidence_grade": "[V]",
+   "evidence": "QiwaMappingService (app/modules/compliance/qiwa_mapping_service.js) is 17 lines and pure: it renames contract fields (employee_name, job_title, base_salary, allowances, probation_days). No client, no credential, no network. 'Qiwa Ready' / 'Qiwa readiness' badges derive from validateQiwaCompleteness(), a local required-field presence check in contract_state_machine.js."
+  },
+  {
+   "name": "GOSI",
+   "classification": "NONE",
+   "evidence_grade": "[V]",
+   "evidence": "Appears only in policy config JSON and UI copy. No adapter, no client, no call path."
+  },
+  {
+   "name": "Mudad",
+   "classification": "NONE",
+   "evidence_grade": "[V]",
+   "evidence": "Appears only in UI copy and brand regulator lists. No adapter, no client, no call path."
+  },
+  {
+   "name": "VERITAS",
+   "classification": "INTERNAL_ENGINE",
+   "evidence_grade": "[V]",
+   "evidence": "Internal evidence/event forwarding plus a CI gate workflow (veritas_forwarder_gate.yml). No outbound client found."
+  },
+  {
+   "name": "HyperPay",
+   "classification": "LIVE_API",
+   "evidence_grade": "[V]",
+   "evidence": "Real adapter with fetch() to /checkouts and /payments. HYPERPAY_ENV selects sandbox vs production and DEFAULTS TO 'production'. Production path asserts HYPERPAY_ENTITY_ID / ACCESS_TOKEN / WEBHOOK_SECRET and throws MISSING_CREDENTIALS when absent. Live fund movement is contained by CREDENTIAL ABSENCE (DL-096), not by mode configuration."
+  },
+  {
+   "name": "Tap",
+   "classification": "LIVE_API",
+   "evidence_grade": "[V]",
+   "evidence": "Second payment adapter with fetch() to /charges, /refunds, /transfers. Present in the reverse walk; not named in the run brief's integration list."
+  },
+  {
+   "name": "ERP",
+   "classification": "NONE",
+   "evidence_grade": "[V]",
+   "evidence": "No ERP adapter or client. Raw substring hits are inflated by 'erp' occurring inside unrelated words; no integration exists."
+  }
+ ],
+ "public_claim_under_review": {
+  "claim": "GOSI, Mudad, Qiwa integrations via licensed partners",
+  "where": [
+   "app/frontend/app.html meta description",
+   "app/frontend/index.html meta description",
+   "app/frontend/src/components/trust_band.js",
+   "app/frontend/src/components/hero.js"
+  ],
+  "verdict": "UNSUBSTANTIATED_IN_REPO — not FALSIFIED",
+  "reasoning": "The wording is deliberately hedged: trust_band.js states 'Regulator integration is via licensed partners' and carries a disclaimer naming what is NOT claimed (SAMA licensing, NCA ECC certification); payroll.js states 'Payroll execution is partner-mediated ... No payment is initiated from this surface.' So the copy does not assert a direct WorkCaptain-to-Qiwa integration, and the absence of a direct client does not falsify it. However NO partner adapter, partner configuration or partner linkage exists in the repository either, so the claim is not substantiated here.",
+  "remediation": "NOT REMEDIATED. Rewriting customer-facing marketing/positioning copy is a Sponsor/brand decision, not a code-only defect fix. Recorded as UNDER_ADJUDICATION rather than changed unilaterally."
+ }
+}

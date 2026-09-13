@@ -1,0 +1,170 @@
+{
+ "date": "2026-09-13",
+ "journey": "REQ-WC-1 — Employer forward warning",
+ "binding_product_rule": "Current Nitaqat/compliance band ALONE is insufficient. Required outcome = current position + drivers + trajectory + predicted threshold/band breach + meaningful lead time + ranked remediation.",
+ "authority": "ProWork Gold BRD A4 / RT-1 §4.1, cited in app/api/nitaqat_router.js header. NOT re-specified by WC Master BRD V2.0, which defers feature-level scope to DL-032.",
+ "method": "STATIC TRACE ONLY. Static code presence supports implementation existence; it does NOT support production runtime PASS.",
+ "stages": [
+  {
+   "stage": 1,
+   "name": "Employer authentication",
+   "verification_state": "PASS",
+   "evidence_grade": "[V]",
+   "blocked_by": null,
+   "defect": "RBAC roles are OWNER/ADMIN/HIRING_MANAGER/FINANCE_APPROVER/VIEWER — there is no EMPLOYER or SEEKER role"
+  },
+  {
+   "stage": 2,
+   "name": "Employer enters/imports workforce+payroll data via the EMPLOYER path",
+   "verification_state": "PARTIAL",
+   "evidence_grade": "[V]",
+   "blocked_by": null,
+   "defect": "Both pages are routed but appear in NEITHER FRONT_NAV.A nor FRONT_NAV.B — reachable only by direct URL hash"
+  },
+  {
+   "stage": 3,
+   "name": "Tenant-scoped persistence",
+   "verification_state": "PARTIAL",
+   "evidence_grade": "[R]",
+   "blocked_by": "live pg_catalog proof not attempted (static layer only); DB access absent",
+   "defect": null
+  },
+  {
+   "stage": 4,
+   "name": "Compliance / current-position engine",
+   "verification_state": "PASS",
+   "evidence_grade": "[V]",
+   "blocked_by": null,
+   "defect": null
+  },
+  {
+   "stage": 5,
+   "name": "Trajectory engine",
+   "verification_state": "NOT_IMPLEMENTED",
+   "evidence_grade": "[V]",
+   "blocked_by": null,
+   "defect": "ABSENT. Exhaustive vocabulary sweep over ALL tracked files for trajector|forecast|predict|time-to-breach|runway returned ZERO hits in app/ or services/ — every hit is governance prose or an unrelated occupation-codes skills list."
+  },
+  {
+   "stage": 6,
+   "name": "Forward-warning engine (predicted threshold/band breach)",
+   "verification_state": "NOT_IMPLEMENTED",
+   "evidence_grade": "[V]",
+   "blocked_by": null,
+   "defect": "ABSENT. nitaqat_service.projectedZone is HIRE-IMPACT projection (zone after a hypothetical hire), not a time-trajectory breach forecast. The two are different capabilities."
+  },
+  {
+   "stage": 7,
+   "name": "Lead-time calculation",
+   "verification_state": "NOT_IMPLEMENTED",
+   "evidence_grade": "[V]",
+   "blocked_by": null,
+   "defect": "ABSENT for Saudisation band breach. days_remaining exists only for probation deadlines and document expiry — a countdown to a KNOWN date, not a forecast lead time."
+  },
+  {
+   "stage": 8,
+   "name": "Ranked remediation",
+   "verification_state": "NOT_IMPLEMENTED",
+   "evidence_grade": "[V]",
+   "blocked_by": null,
+   "defect": "buildRedAlerts() emits a FLAT list ordered by construction sequence (WPS failed, probation red, probation decision, docs expired). No ranking by impact, effort or yield."
+  },
+  {
+   "stage": 9,
+   "name": "Agent explanation",
+   "verification_state": "FAIL",
+   "evidence_grade": "[V]",
+   "blocked_by": "audit-log entries carry no domain/subject field; a correct discriminator requires a data-model addition = new scope",
+   "defect": "VACUOUS FILTER: the advisor filters action_type for substrings 'saudi'|'nitaqat'|'hiring'. Permitted ACTION_TYPES are exactly RECOMMENDATION|MATCH|COMPLIANCE_HINT|SUMMARY|RISK_SCORE and write() asserts membership. No permitted value contains any of those substrings, so the panel matches ZERO rows by construction and is permanently empty. agentNameFromActionType carries the same dead predicate."
+  },
+  {
+   "stage": 10,
+   "name": "API response",
+   "verification_state": "PARTIAL",
+   "evidence_grade": "[V]",
+   "blocked_by": null,
+   "defect": "Serves current position only; no trajectory/lead-time payload exists to return"
+  },
+  {
+   "stage": 11,
+   "name": "Frontend warning + lead time",
+   "verification_state": "FAIL",
+   "evidence_grade": "[V]",
+   "blocked_by": null,
+   "defect": "No lead-time element exists; no trajectory to render (see S05-S07)"
+  },
+  {
+   "stage": 12,
+   "name": "Arabic and English",
+   "verification_state": "PASS",
+   "evidence_grade": "[V]",
+   "blocked_by": null,
+   "defect": null
+  },
+  {
+   "stage": 13,
+   "name": "Rationale / explainability inspection",
+   "verification_state": "PARTIAL",
+   "evidence_grade": "[V]",
+   "blocked_by": null,
+   "defect": "Components exist but the advisor feed that populates them is vacuous (S09)"
+  },
+  {
+   "stage": 14,
+   "name": "HITL approve/reject/modify/escalate",
+   "verification_state": "PARTIAL",
+   "evidence_grade": "[V]",
+   "blocked_by": null,
+   "defect": "Backend disposition path exists and is permission-gated (APPROVE_AI); it is unreachable from the Saudisation surface because the feed is empty"
+  },
+  {
+   "stage": 15,
+   "name": "Disposition persistence",
+   "verification_state": "PASS",
+   "evidence_grade": "[V]",
+   "blocked_by": null,
+   "defect": null
+  },
+  {
+   "stage": 16,
+   "name": "Resulting business-state change",
+   "verification_state": "NOT_MEASURABLE",
+   "evidence_grade": "[V]",
+   "blocked_by": "requires runtime replay with a populated tenant; no acceptance tenant, no DB access",
+   "defect": null
+  },
+  {
+   "stage": 17,
+   "name": "Evidence / audit / VERITAS emission",
+   "verification_state": "PARTIAL",
+   "evidence_grade": "[V]",
+   "blocked_by": null,
+   "defect": null
+  },
+  {
+   "stage": 18,
+   "name": "UI round-trip + determinism / tenant replay",
+   "verification_state": "NOT_MEASURABLE",
+   "evidence_grade": "[V]",
+   "blocked_by": "P4 acceptance tenant does not exist; creation is G1",
+   "defect": null
+  }
+ ],
+ "aggregate_journey_1_state": "FAIL",
+ "aggregate_basis": "The binding rule is conjunctive. Stages 5, 6, 7 and 8 (trajectory, forward warning, lead time, ranked remediation) are NOT_IMPLEMENTED with absence proven by exhaustive sweep, and stage 9 (agent explanation) is FAIL via a provably vacuous filter. A conjunctive requirement shipped as its current-position half cannot aggregate to PASS on the strength of that half.",
+ "explicitly_not_claimed": "No production runtime PASS is claimed for ANY stage. Stages 16 and 18 are NOT_MEASURABLE (no acceptance tenant, no DB access), not FAIL.",
+ "dl_exp_accept_001": {
+  "conformance": "PARTIAL — code-level UI tests only",
+  "acceptance": "ABSENT — no witnessed runtime-state evidence captured this run",
+  "alignment": "NOT_MEASURABLE",
+  "note": "A code-level UI test was NOT treated as Experience Acceptance. No competing acceptance model was created."
+ },
+ "stage_tally": {
+  "PASS": 4,
+  "PARTIAL": 6,
+  "NOT_IMPLEMENTED": 4,
+  "FAIL": 2,
+  "NOT_MEASURABLE": 2
+ },
+ "stage_count": 18
+}

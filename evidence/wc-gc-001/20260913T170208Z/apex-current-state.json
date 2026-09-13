@@ -1,0 +1,19 @@
+{
+ "date": "2026-09-13",
+ "APEX_CURRENT_CAUSE": "HELD_FLIP_STILL_CURRENT",
+ "evidence_grade_code_and_history": "[V]",
+ "evidence_grade_runtime_ingress": "NOT_MEASURABLE",
+ "answers": {
+  "DOES_APEX_ROUTE_EXIST_IN_CODE": "NO — server.js has no pathname === '/' handler; matchRoute() returns null and the request falls to fail(res,'NOT_FOUND','Route not found',404).",
+  "DOES_APEX_HAVE_CUSTOMER_SURFACE": "A landing entry EXISTS (app/landing/index.html, app/frontend/index.html, dist landing bundle) but is deliberately NOT mounted at '/'.",
+  "DOES_APEX_INTENTIONALLY_404": "YES — governed and test-locked, not accidental.",
+  "IS_THERE_A_TEST_ASSERTING_404": "YES — tests/ui/admin_surface_serve.test.js asserts status 404, content-type application/json, the exact NOT_FOUND envelope body, and that '/' must NOT serve landing HTML.",
+  "WAS_THAT_BEHAVIOUR_LATER_CHANGED": "NO — 835afb1 (2026-07-26) 'fix(workcaptain): keep apex unchanged while repairing admin'. Only 2 commits touched app/server.js after it (a69c635 CSP, 73a61e2 CI); neither released the apex.",
+  "IS_STAGE_H_STILL_GOVERNING": "SD-WC-DOMAIN-001 records DNS cutover as Stage H and non-blocking for build lanes. Nothing measured this run contradicts it.",
+  "IS_CURRENT_DNS_STATE_MEASURABLE": "NO — not attempted. AWS/Route53 read credentials absent.",
+  "IS_CURRENT_INGRESS_STATE_MEASURABLE": "NO — ALB/listener/target-group state requires AWS read credentials, which are absent."
+ },
+ "ec_001_3_admin_repair": "835afb1 repaired /admin (it had served the landing entry whose absolute /assets/* references were unmounted -> JS 404 -> empty skip-link shell) while explicitly preserving the apex 404.",
+ "defect_found": "tests/ui/admin_surface_serve.test.js is NOT on the scripts/ci_gate_tests.js manifest, so the apex lock is asserted locally only and proves nothing about any pushed commit.",
+ "explicitly_not_inferred": "No claim is made about live HTTP behaviour at the public apex. Only code and git history were measured."
+}

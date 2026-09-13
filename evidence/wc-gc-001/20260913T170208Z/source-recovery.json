@@ -1,0 +1,110 @@
+{
+ "run": "WC-GC-001",
+ "date": "2026-09-13",
+ "dl032_recovery": "EXHAUSTED",
+ "dl032_original_inventory_body": "NOT_RECOVERABLE (proven, not merely not-found)",
+ "source_classes": [
+  {
+   "class": "1 Notion canonical/history",
+   "status": "EXHAUSTED",
+   "result": "NEGATIVE for inventory body",
+   "detail": "DL-032 row RECOVERED and D28 RESOLVED. Page body BLANK. Source Doc relation -> MPP-REV-001 V1.3.2 Sponsor Decision Sheet V2 (authority basis for DL-008..DL-034, signed 24 Apr 2026) — that page body is ALSO BLANK."
+  },
+  {
+   "class": "2 repository working tree",
+   "status": "EXHAUSTED",
+   "result": "NEGATIVE",
+   "detail": "git ls-files | xargs grep for DL-032 / DL032 / D28 -> 0 hits."
+  },
+  {
+   "class": "3 complete git history",
+   "status": "EXHAUSTED",
+   "result": "NEGATIVE",
+   "detail": "git log --all -S'DL-032' and -S'D28' -> 0 commits. One .docx blob in history (WorkCaptain_Platform_Excellence_Evaluation.docx) SHA-256 0ca86148375b491f3f4476bce85aba8f98ae24e3c82ff9789a648da7577549f1 — NEGATIVE_HASH_MATCH against both targets."
+  },
+  {
+   "class": "4 referenced artefacts/indexes",
+   "status": "EXHAUSTED",
+   "result": "NEGATIVE, with primary-source proof of circularity",
+   "detail": "BRD V2.0 RATIFIED recovered at exact hash. Appendix A reads: 'Authoritative source: DL-032 Feature Audit ... this BRD references that inventory rather than re-specifying it.' MAQ-MBRD-001 V1.0 F-19-34 independently records DL-032 as 'not locally readable' and the local DL mirror as 'an 86-line stub, not the 280-entry register'. MAQ-MBRD-001 V2.0 REQ-WC-2 calls it 'a class-A blocker for WorkCaptain specifically'."
+  },
+  {
+   "class": "5 local backup/archive",
+   "status": "EXHAUSTED",
+   "result": "NEGATIVE",
+   "detail": "2242 .docx under ~ swept; PORTFOLIO_DECISION_LOG_LOCAL_MIRROR.md is 86 lines and does not contain DL-032."
+  }
+ ],
+ "d28": {
+  "status": "RESOLVED",
+  "decision_id": "DL-032",
+  "decision_ref": "D28",
+  "decision_title": "WorkCaptain features vs BRD scope",
+  "status_property": "Ratified",
+  "date_ratified": "2026-04-24",
+  "immutable_lock": true,
+  "mode_impact": "Mixed",
+  "impact": [
+   "WorkCaptain"
+  ],
+  "bundle": "Bundle 4 - Platform Cluster 2",
+  "notes": "Feature audit folded into WorkCaptain V2.0 production with Mode A/D tagging.",
+  "page_body": "BLANK",
+  "verification_state_of_page": "unverified",
+  "url": "https://app.notion.com/34d3ed7dc10481d3a9eceeaf69723792"
+ },
+ "hashed_artefacts": [
+  {
+   "target": "WorkCaptain_Master_BRD_V2_0_RATIFIED.docx",
+   "sha256": "2bba0985d8ca2be604915bd5e3c66db98ff8186b823ce92111fb9fb4fb2ba429",
+   "exact_match": true,
+   "locations": [
+    "~/Downloads/WorkCaptain_Master_BRD_V2_0_RATIFIED.docx",
+    "~/Maqaleed/Maqaleed-Digital/10_Operational-Runtime-Towers/WorkCaptain/WorkCaptain_Master_BRD_V2_0_RATIFIED.docx"
+   ],
+   "docx_created": "2026-06-07T20:44:03Z",
+   "paragraphs": 105,
+   "tables": 3,
+   "capability_count_recovered": 0,
+   "capability_domains": 7,
+   "mode_tags_recovered": 0,
+   "note": "Appendix A is a POINTER, not an inventory. Zero enumerated capabilities, zero Mode A/D tag values."
+  },
+  {
+   "target": "WorkCaptain_Master_BRD_V2_0_Realignment.docx",
+   "sha256": "565ef4de16f93f2f499689335eedb2cc518425fc758faa7f564447a01a8da472",
+   "exact_match": true,
+   "locations": [
+    "~/Downloads/WorkCaptain_Master_BRD_V2_0_Realignment.docx",
+    "~/Maqaleed/Maqaleed-Digital/10_Operational-Runtime-Towers/WorkCaptain/WorkCaptain_Master_BRD_V2_0_Realignment.docx"
+   ],
+   "docx_created": "2026-06-07T20:41:33Z",
+   "paragraphs": 97,
+   "tables": 3,
+   "status_line": "DRAFT for Sponsor review",
+   "note": "This is the DRAFT predecessor, created 2m30s before the RATIFIED copy."
+  }
+ ],
+ "draft_to_ratified_delta": {
+  "paragraphs_added": 8,
+  "changes": [
+   "Status: 'DRAFT for Sponsor review' -> 'RATIFIED — Approved (capability-inventory appendix incorporated)'",
+   "Appendix A — Capability Inventory Reference (8 paragraphs) appended"
+  ],
+  "finding": "The ratification act's own stated basis is 'capability-inventory appendix incorporated'. The appendix that was incorporated incorporates a REFERENCE, not an inventory. No capability inventory has ever existed inside the ratified BRD."
+ },
+ "register_conflict_noted": {
+  "issue": "PetCare_Sector_Absorption_Memo_V1_0.md line 73 attributes 'DL-032/D31'; the authoritative register and the BRD both say D28.",
+  "resolution": "Notion Portfolio Decision Log (Immutable) is authoritative: Decision Ref = D28. The PetCare memo is stale/incorrect on this point.",
+  "evidence_grade": "[V]"
+ },
+ "dl088": {
+  "decision_id": "DL-088",
+  "status": "Ratified",
+  "date_ratified": "2026-06-07",
+  "immutable_lock": true,
+  "mode_impact": "Mode D",
+  "impact": null,
+  "anomaly": "Impact property is NULL on the WorkCaptain BRD ratification row, despite DL-032 carrying Impact=[WorkCaptain]. Register data-quality gap, recorded not corrected."
+ }
+}
