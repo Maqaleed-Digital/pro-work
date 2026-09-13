@@ -27,7 +27,12 @@ export function frontMode(front) { return (FRONTS[front] && FRONTS[front].defaul
 // after the UI-0 audit misclassified it as a customer surface (corrected per Sponsor ruling).
 // UI-6: payout-matrix = PSP routing config (psp_routing_matrix_v1.json) — internal payment
 // infrastructure, NOT customer. Added to the guard set (Front A walled).
-export const INTERNAL_ONLY_ROUTES = Object.freeze(["admin", "audit", "governance", "tenants", "evidence", "system", "beta", "evidence-export", "payout-matrix"])
+// WC-GC-001: `beta-dashboard` added. router.js binds ONE page module (betaDashboard) to TWO keys —
+// "beta" and "beta-dashboard". Listing only "beta" walled #beta while leaving #beta-dashboard open:
+// the same internal GTM scorecard, reachable on Front A by typing the other key. A wall that one
+// alias walks around is not a wall. tests/security/front_surface_alias_guard.test.js holds the
+// general invariant (no page module may be walled under one key and reachable under another).
+export const INTERNAL_ONLY_ROUTES = Object.freeze(["admin", "audit", "governance", "tenants", "evidence", "system", "beta", "beta-dashboard", "evidence-export", "payout-matrix"])
 
 // Surfaces carrying an EXECUTING action (Addendum B: executes ⇒ Mode A + review, not passive display).
 export const EXECUTING_SURFACES = Object.freeze({
