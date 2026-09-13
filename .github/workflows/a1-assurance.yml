@@ -1,0 +1,139 @@
+# A1 Engineering Assurance — product CI adapter · OBSERVE only · never blocking · Authority NONE
+#
+# This repository owns NO assurance semantics. Every predicate, the delta engine, the
+# seal and the authority mapping live in the central repository and are pinned below by
+# immutable commit. Nothing here is forked: PRODUCT_SPECIFIC_CORE_FORKS=0.
+#
+# Tranche A1 is credential-free assurance: every check is credential_class=NONE,
+# observation_class=REPOSITORY, authorization_class=UNGATED. The App token minted below
+# is infrastructure to READ the central runner (Contents:Read, that repository only) —
+# it is never an observation credential, and this workflow holds no product credential.
+#
+# Automatic (witness-eligible) path: push to main. workflow_dispatch is DIAGNOSTIC —
+# the runner stamps diagnostic_only=true and it can never close acceptance.
+#
+# This workflow deploys nothing, writes nothing, mutates no database and touches no
+# product business logic. A1 findings are OBSERVATIONS and never fail the build (C-02).
+
+name: a1-assurance
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+env:
+  MWA_A1_REPO: Waheebow/maqaleed-web-assurance
+  MWA_A1_RUNNER_REF: 3952da0b406bc3d41e81a0097d23fa476dad2464
+  MWA_A1_PRODUCT: workcaptain
+
+permissions:
+  contents: read
+
+concurrency:
+  group: a1-assurance-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  a1:
+    name: A1 assurance (security · api · data)
+    if: github.repository == 'Maqaleed-Digital/pro-work'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout product at the exact commit under assurance
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      # Presence is not validity — only the mint proves the key parses. This gate exists
+      # so an absent secret fails with a legible message instead of an opaque mint error.
+      - name: App credential presence gate
+        env:
+          APP_ID: ${{ vars.MWA_APP_ID }}
+          KEY_PRESENT: ${{ secrets.MWA_APP_PRIVATE_KEY != '' }}
+        run: |
+          set -euo pipefail
+          if [ -z "$APP_ID" ] || [ "$KEY_PRESENT" != "true" ]; then
+            echo "::error::MWA_APP_ID variable or MWA_APP_PRIVATE_KEY secret is absent — cannot read the central runner"
+            exit 6
+          fi
+          echo "APP_CREDENTIAL_PRESENT=YES"
+
+      - name: Mint short-lived App token — Contents:Read on the central repository only
+        id: mwa_token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ vars.MWA_APP_ID }}
+          private-key: ${{ secrets.MWA_APP_PRIVATE_KEY }}
+          owner: Waheebow
+          repositories: maqaleed-web-assurance
+
+      - name: Checkout central assurance at the immutable pin
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ${{ env.MWA_A1_REPO }}
+          ref: ${{ env.MWA_A1_RUNNER_REF }}
+          path: .mwa-a1
+          token: ${{ steps.mwa_token.outputs.token }}
+          persist-credentials: false
+
+      - name: Prove the pin resolved to the exact commit requested
+        working-directory: .mwa-a1
+        env:
+          WANT: ${{ env.MWA_A1_RUNNER_REF }}
+        run: |
+          set -euo pipefail
+          GOT="$(git rev-parse HEAD)"
+          echo "ASSURANCE_RUNNER_PIN=$GOT"
+          if [ "$GOT" != "$WANT" ]; then
+            echo "::error::runner pin mismatch — wanted $WANT got $GOT"
+            exit 7
+          fi
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with: { node-version: 20 }
+
+      - name: Install central runner dependencies (no lifecycle scripts)
+        working-directory: .mwa-a1
+        run: npm ci --ignore-scripts
+
+      - name: Central runner self-check — refuse to observe with a runner that fails its own tests
+        working-directory: .mwa-a1
+        run: |
+          set -euo pipefail
+          shasum -a 256 -c SHA256SUMS.txt
+          npm run test:a1
+
+      - name: Run A1 against this commit
+        env:
+          PRODUCT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          node .mwa-a1/adapters/products/a1-ci.js \
+            --product "$MWA_A1_PRODUCT" \
+            --sha "$PRODUCT_SHA" \
+            --product-path . \
+            --out a1-runs \
+            --runner-pin "$MWA_A1_RUNNER_REF" | tee a1-summary.json
+
+      - name: Verify the sealed bundle
+        run: |
+          set -euo pipefail
+          # The runner reports its own output directory; deriving it by globbing
+          # would pick the wrong bundle if a previous run left one behind.
+          dir="$(node -e 'process.stdout.write(JSON.parse(require("fs").readFileSync("a1-summary.json","utf8")).dir)')"
+          test -n "$dir"
+          cd "$dir"
+          shasum -a 256 -c SHA256SUMS.txt
+          echo "A1_SEAL=PASS"
+
+      - name: Upload sealed A1 evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: a1-assurance-${{ github.run_id }}
+          path: |
+            a1-runs/
+            a1-summary.json
+          if-no-files-found: error
+          retention-days: 90
