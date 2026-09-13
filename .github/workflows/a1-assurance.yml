@@ -9,8 +9,9 @@
 # is infrastructure to READ the central runner (Contents:Read, that repository only) —
 # it is never an observation credential, and this workflow holds no product credential.
 #
-# Automatic (witness-eligible) path: push to main. workflow_dispatch is DIAGNOSTIC —
-# the runner stamps diagnostic_only=true and it can never close acceptance.
+# Automatic (witness-eligible) path: push to main. pull_request proves the wiring on the
+# branch before merge and is branch evidence only. workflow_dispatch is DIAGNOSTIC — the
+# runner stamps diagnostic_only=true and it can never close acceptance.
 #
 # This workflow deploys nothing, writes nothing, mutates no database and touches no
 # product business logic. A1 findings are OBSERVATIONS and never fail the build (C-02).
@@ -18,7 +19,12 @@
 name: a1-assurance
 
 on:
+  # push to main is the AUTOMATIC, witness-eligible path.
   push:
+    branches: [main]
+  # pull_request proves the wiring on the branch before merge. It is branch
+  # evidence, not the automatic main witness.
+  pull_request:
     branches: [main]
   workflow_dispatch: {}
 
