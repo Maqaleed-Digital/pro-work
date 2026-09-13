@@ -62,3 +62,7 @@ assurance-runs/
 **/service-account*.json
 **/gha-creds-*.json
 .docker/config.json
+
+# Generated agent-harness state (concurrent lanes write these at many depths).
+# Narrow rule: only the generated state file, not the whole .claude-flow directory.
+**/.claude-flow/policy/state.json
