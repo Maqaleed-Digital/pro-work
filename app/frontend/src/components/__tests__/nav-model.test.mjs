@@ -43,10 +43,22 @@ test("per-front nav: Front A is customer surfaces; Front B holds the internal/op
   const aKeys = FRONT_NAV.A.map((i) => i.key)
   const bKeys = FRONT_NAV.B.map((i) => i.key)
   assert.ok(aKeys.includes("fee-transparency") && aKeys.includes("hyperpay-sandbox"))
-  // beta is in the operator set and lives on Front B (not A)
+  // WC-GC-001: the guard set contains route ALIASES as well as canonical surfaces.
+  // router.js binds one page module to two keys ("beta" and "beta-dashboard"), and BOTH must be
+  // walled from Front A — but a surface gets exactly ONE Front-B nav row, under its canonical key.
+  // So an alias is expected to be guarded WITHOUT appearing in FRONT_NAV.B. Map alias -> canonical
+  // and assert the canonical surface is the thing Front B exposes.
+  const ALIAS_OF = { "beta-dashboard": "beta" }
   for (const internal of INTERNAL_ONLY_ROUTES) {
-    if (internal === "beta") { assert.ok(bKeys.includes("beta")); continue }
-    assert.ok(bKeys.includes(internal), `B should expose ${internal}`)
+    const canonical = ALIAS_OF[internal] || internal
+    assert.ok(bKeys.includes(canonical),
+      `B should expose ${canonical}${canonical === internal ? "" : ` (canonical surface for alias ${internal})`}`)
+  }
+  // The alias must be guarded even though it has no nav row of its own.
+  for (const alias of Object.keys(ALIAS_OF)) {
+    assert.ok(INTERNAL_ONLY_ROUTES.includes(alias), `${alias} must stay in the guard set`)
+    assert.equal(canAccessRoute("A", alias), false, `Front A must not reach ${alias}`)
+    assert.equal(bKeys.includes(alias), false, `${alias} is an alias — it must not get a duplicate nav row`)
   }
 })
 

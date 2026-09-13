@@ -45,6 +45,7 @@ const GATE_TESTS = [
   'tests/release/release_manifest.test.js',
   'tests/security/env_contract.test.js',
   'tests/security/release_path_guard.test.js',
+  'tests/security/front_surface_alias_guard.test.js',
 ];
 
 // A run reporting fewer than this many assertions is treated as broken wiring
@@ -69,7 +70,11 @@ const GATE_TESTS = [
 // Raised 286 -> 288 for the run-name regression controls (2 assertions). Measured 295, floor 288.
 // Raised 288 -> 303 for WC-010: the REGISTRY_MIGRATION profile controls (15 assertions).
 // Measured 310, floor 303 — same 7-assertion slack.
-const MIN_EXPECTED_TESTS = 303;
+// Raised 303 -> 309 for WC-GC-001: tests/security/front_surface_alias_guard.test.js (6 assertions)
+// joined the manifest — the Front-A surface-access guard must hold across route ALIASES, not just
+// canonical keys. Measured 316, floor 309 — same 7-assertion slack. The floor moves because the
+// corpus grew, not to make a run pass.
+const MIN_EXPECTED_TESTS = 309;
 
 function fail(msg) {
   console.error(`\nERROR: ${msg}`);

@@ -1,0 +1,97 @@
+{
+ "date": "2026-09-13",
+ "agent_implementation_files": [
+  "app/modules/agents/agent_router.js",
+  "app/modules/agents/credential_oracle.js",
+  "app/modules/agents/reputation_market_agent.js",
+  "app/modules/agents/trust_agent_runtime.js",
+  "app/modules/agents/trust_signal_stream.js",
+  "app/modules/agents/verification_agent.js"
+ ],
+ "agent_orchestrator_service": "services/agent-orchestrator (Go: main.go + Dockerfile + go.mod)",
+ "governing_control": "app/modules/ai/audit_log_service.js — append-only, immutable_hash per entry, hash re-verified on every read, bias monitor on every write, tenant isolation asserted on get().",
+ "permitted_action_types": [
+  "RECOMMENDATION",
+  "MATCH",
+  "COMPLIANCE_HINT",
+  "SUMMARY",
+  "RISK_SCORE"
+ ],
+ "hitl": {
+  "present": true,
+  "path": "PATCH /api/admin/ai/audit-log/:id (ai_router.js:182-192)",
+  "permission": "APPROVE_AI for PATCH/POST, VIEW_AI for GET",
+  "decisions": [
+   "ACCEPTED",
+   "REJECTED",
+   "OVERRIDDEN",
+   "PENDING"
+  ],
+  "note": "A disposition writes a NEW append-only entry rather than mutating the original."
+ },
+ "jobs": [
+  {
+   "job": "compliance interpretation",
+   "architecture_required": true,
+   "implementation_present": true,
+   "static_tests": true,
+   "production_proven": "NOT_MEASURABLE"
+  },
+  {
+   "job": "forward warning",
+   "architecture_required": true,
+   "implementation_present": false,
+   "static_tests": false,
+   "production_proven": "NOT_APPLICABLE",
+   "note": "No implementation anywhere — see Journey-1 stages 5-7."
+  },
+  {
+   "job": "ranked remediation",
+   "architecture_required": true,
+   "implementation_present": false,
+   "static_tests": false,
+   "production_proven": "NOT_APPLICABLE",
+   "note": "buildRedAlerts emits an unranked flat list."
+  },
+  {
+   "job": "candidate intelligence / matching",
+   "architecture_required": true,
+   "implementation_present": true,
+   "static_tests": true,
+   "production_proven": "NOT_MEASURABLE",
+   "note": "ai_matching_service + talent_marketplace_service writes action_type RECOMMENDATION."
+  },
+  {
+   "job": "record completeness (occupation code)",
+   "architecture_required": true,
+   "implementation_present": true,
+   "static_tests": true,
+   "production_proven": "NOT_MEASURABLE",
+   "note": "occupation_code_service writes COMPLIANCE_HINT when ranked results exist."
+  },
+  {
+   "job": "evidence generation",
+   "architecture_required": true,
+   "implementation_present": true,
+   "static_tests": true,
+   "production_proven": "NOT_MEASURABLE"
+  },
+  {
+   "job": "override / escalation",
+   "architecture_required": true,
+   "implementation_present": true,
+   "static_tests": true,
+   "production_proven": "NOT_MEASURABLE",
+   "note": "nitaqat override store requires a reason of >= 10 chars and is append-only."
+  }
+ ],
+ "critical_finding": {
+  "id": "WCGC-AGENT-01",
+  "title": "The Saudisation Advisor customer surface can never display anything",
+  "detail": "app/frontend/src/api/nitaqat.js listAdvisorRecommendations() filters audit-log entries whose action_type contains 'saudi', 'nitaqat' or 'hiring'. The permitted ACTION_TYPES are exactly RECOMMENDATION, MATCH, COMPLIANCE_HINT, SUMMARY, RISK_SCORE, and write() asserts membership, so no other value can ever be stored. No permitted value contains any of those substrings. The predicate therefore matches ZERO rows by construction, for every tenant, forever. agentNameFromActionType() carries the same dead predicate and always falls through to the generic 'WorkCaptain Advisor'.",
+  "consequence": "The page renders its 'No active recommendations' empty state unconditionally. A load failure is additionally swallowed by a catch that returns {recommendations: []}, so an auth/network/500 error is indistinguishable from a genuine empty result.",
+  "evidence_grade": "[V]",
+  "remediation": "NOT REMEDIATED. The defect is proven, but audit-log entries carry no domain/subject field, so a CORRECT replacement predicate cannot be written without adding one — that is a data-model change and new scope. Per the run brief, inventing product behaviour to close an unknown-authority defect is prohibited. Recorded UNDER_ADJUDICATION."
+ },
+ "discipline_note": "Agent output was NOT treated as agentic completion anywhere in this map; 'implementation_present' means a code path exists, not that it runs correctly in production."
+}

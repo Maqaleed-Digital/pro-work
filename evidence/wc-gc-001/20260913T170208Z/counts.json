@@ -1,0 +1,130 @@
+{
+ "date": "2026-09-13",
+ "repo": "Maqaleed-Digital/pro-work",
+ "branch": "wc-gc-001/discovery-remediation",
+ "base": "origin/main 7d1be69",
+ "reverse_walk": {
+  "tracked_files": 830,
+  "frontend_pages": 33,
+  "frontend_components": 35,
+  "frontend_api_clients": 11,
+  "frontend_routes_declared": 34,
+  "api_routers": 26,
+  "api_routes_unique": 131,
+  "backend_module_dirs": 39,
+  "backend_module_files": 197,
+  "agent_files": 6,
+  "go_services": 4,
+  "scheduler_worker_files": 2,
+  "sql_files_tracked": 43,
+  "create_table_statements": 86,
+  "distinct_table_names": 82,
+  "enable_rls_statements": 41,
+  "force_rls_statements": 15,
+  "create_policy_statements": 37,
+  "github_workflows": 12,
+  "locales": 5,
+  "scoping_note": "86 CREATE TABLE / 82 distinct names span ALL 43 tracked .sql files including test bootstrap and analytics SQL. The WC-005 matrix scanned 34 MIGRATIONS and reports 78 tables. The two are consistent once scope is stated; this is not a discrepancy."
+ },
+ "tenancy_static": {
+  "source": "docs/WC-005_static_matrix.json (generated 2026-09-12)",
+  "tables_total": 78,
+  "tenant_scoped": 61,
+  "STATIC_CONFORMANT": 11,
+  "STATIC_GAP": 31,
+  "UNKNOWN_NEEDS_LIVE_PROOF": 19,
+  "GLOBAL_REFERENCE": 17,
+  "live_pg_catalog_consulted": false,
+  "dynamic_proof_status": "NOT_MEASURABLE — DB/VPC access absent; no live connection attempted"
+ },
+ "tests": {
+  "test_files_total": 138,
+  "suites_on_ci_gate_manifest": 15,
+  "gate_run_before": {
+   "tests": 310,
+   "pass": 310,
+   "fail": 0,
+   "suites": 14
+  },
+  "gate_run_after": {
+   "tests": 316,
+   "pass": 316,
+   "fail": 0,
+   "suites": 15
+  },
+  "gate_floor_before": 303,
+  "gate_floor_after": 309,
+  "app_npm_test_baseline_origin_main": {
+   "tests": 41,
+   "pass": 41,
+   "fail": 0
+  },
+  "app_npm_test_after": {
+   "tests": 41,
+   "pass": 41,
+   "fail": 0
+  },
+  "full_tree_untouched_origin_main": {
+   "tests": 1732,
+   "suites": 236,
+   "pass": 1614,
+   "fail": 118,
+   "skipped": 0
+  },
+  "full_tree_note": "The full tests/ tree HANGS without --test-force-exit --test-timeout (a suite holds an open handle). Measured with a 20s per-test timeout. The 118 failures are PRE-EXISTING on a clean origin/main worktree and lie OUTSIDE the 15-suite CI manifest, so CI is green while they fail."
+ },
+ "orphans": {
+  "implementation_orphans": 24,
+  "requirement_orphans": 5,
+  "implementation_orphan_classes": {
+   "IMPLEMENTATION_ORPHAN": 2,
+   "TESTED_BUT_UNMOUNTED": 4,
+   "GOVERNED_NOT_ORPHAN": 1,
+   "ROUTED_BUT_UNNAVIGABLE": 10,
+   "DEAD_NAV_TARGET": 6,
+   "VACUOUS_GUARD_ENTRY": 1
+  },
+  "note": "GOVERNED_NOT_ORPHAN (wos_router, SEC-WC-02) is listed in the register for traceability but is NOT an orphan: its unmounted state is an enforced governed disposition. Net true orphans = 23."
+ },
+ "ledger_rows": {
+  "total": 29,
+  "by_scope_status": {
+   "CURRENT_REQUIRED": 25,
+   "AUTHORIZED_NOT_ACTIVATED": 1,
+   "UNDER_ADJUDICATION": 2,
+   "DEFERRED": 1
+  },
+  "by_verification_state": {
+   "PASS": 9,
+   "PARTIAL": 8,
+   "NOT_IMPLEMENTED": 4,
+   "FAIL": 3,
+   "NOT_MEASURABLE": 5
+  },
+  "by_evidence_grade": {
+   "[V]": 28,
+   "[R]": 1
+  },
+  "by_lane": {
+   "C": 18,
+   "A": 2,
+   "B": 5,
+   "CONTROL": 4
+  },
+  "by_remediation_status": {
+   "NONE": 20,
+   "NOT_REMEDIATED_AUTHORITY_UNRESOLVED": 4,
+   "NOT_REMEDIATED_CORRECT_PREDICATE_UNRESOLVED": 1,
+   "FIXED_COMMITTED": 1,
+   "NOT_REMEDIATED_SCOPE_DECISION": 1,
+   "NOT_REMEDIATED_MARKETING_POSITIONING_IS_SPONSOR_SCOPE": 1,
+   "GOVERNED_DISPOSITION_EXISTS": 1
+  }
+ },
+ "p1_aws": {
+  "credentials_available": false,
+  "sweep_performed": false,
+  "blocked_by": "AWS read credentials absent (no AWS_PROFILE, no AWS_ACCESS_KEY_ID; sts get-caller-identity -> NoCredentials)",
+  "note": "No credential entry attempted — that would be G2. All AWS-dependent rows are NOT_MEASURABLE."
+ }
+}
