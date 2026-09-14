@@ -52,8 +52,9 @@ jobs:
         with:
           persist-credentials: false
 
-      # Presence is not validity — only the mint proves the key parses. This gate exists
-      # so an absent secret fails with a legible message instead of an opaque mint error.
+      # Presence is not validity. This gate answers only "is it set?"; the KEY_PREFLIGHT step
+      # below classifies the MATERIAL before any token can exist, so a malformed key fails by
+      # name here rather than as an opaque "Invalid keyData" from inside the mint action.
       - name: App credential presence gate
         env:
           APP_ID: ${{ vars.MWA_APP_ID }}
@@ -65,6 +66,20 @@ jobs:
             exit 6
           fi
           echo "APP_CREDENTIAL_PRESENT=YES"
+
+      # H4C-HARDEN-PEM-001. The presence check above is value-blind by design, so it passes on a
+      # truncated or mangled key and the mint then fails as an opaque "Invalid keyData". This step
+      # classifies the MATERIAL first and fails by name, before any token can exist. It runs AFTER the
+      # job predicate and BEFORE the mint, so an untrusted event still reaches neither. The key crosses
+      # as an environment value, never an expression inside the shell; the program prints only
+      # KEY_PREFLIGHT=<CODE> and a fixed remedy — never the key, its body, or its length.
+      - name: Preflight the App private key (classification only — the key is never printed)
+        id: key_preflight
+        env:
+          MWA_APP_KEY_MATERIAL: ${{ secrets.MWA_APP_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          node -e "const{createPrivateKey,webcrypto}=require(\"crypto\");const CODES={PASS:\"PASS\",FAIL_MISSING_BOUNDARY:\"FAIL_MISSING_BOUNDARY\",FAIL_TRUNCATED_OR_INVALID:\"FAIL_TRUNCATED_OR_INVALID\",FAIL_IMPORT:\"FAIL_IMPORT\",FAIL_ABSENT:\"FAIL_ABSENT\"};const REMEDY={FAIL_ABSENT:\"The App private-key secret is empty or unset. Configure it before this workflow can mint a token.\",FAIL_MISSING_BOUNDARY:\"The stored value has no BEGIN/END PRIVATE KEY boundary lines. Store the complete PEM exactly as issued, including both boundary lines and every newline.\",FAIL_TRUNCATED_OR_INVALID:\"The stored value is incomplete or not a valid PEM key. This is what a truncated paste looks like. Re-enter the secret by streaming the key file straight into the secret store rather than pasting it, so nothing can be cut.\",FAIL_IMPORT:\"The key parsed but could not be imported as an RSA signing key. Confirm the file is the App private key issued by GitHub and has not been converted or re-encoded.\"};async function classify(text){if(!text||!text.trim())return CODES.FAIL_ABSENT;if(!/-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----/.test(text)||!/-----END [A-Z0-9 ]*PRIVATE KEY-----/.test(text))return CODES.FAIL_MISSING_BOUNDARY;const body=text.replace(/-----(BEGIN|END)[^-]*-----/g,\"\").replace(/\\s+/g,\"\");if(!body)return CODES.FAIL_TRUNCATED_OR_INVALID;let d;try{d=createPrivateKey(text).export({type:\"pkcs8\",format:\"der\"});}catch(e){return CODES.FAIL_TRUNCATED_OR_INVALID;}try{await webcrypto.subtle.importKey(\"pkcs8\",d,{name:\"RSASSA-PKCS1-v1_5\",hash:\"SHA-256\"},false,[\"sign\"]);}catch(e){return CODES.FAIL_IMPORT;}return CODES.PASS;}classify(process.env.MWA_APP_KEY_MATERIAL).then(code=>{console.log(\"KEY_PREFLIGHT=\"+code);if(code!==CODES.PASS){console.log(\"::error::App private key preflight failed (\"+code+\"). \"+REMEDY[code]);process.exit(6);}});"
 
       - name: Mint short-lived App token — Contents:Read on the central repository only
         id: mwa_token
